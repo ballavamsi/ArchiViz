@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Archi-Flow — Architecture Simulator</title>
+<title>Archi-Flow — Live Architecture Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <meta property="og:type" content="website"/>
 <meta property="og:title" content="Archi-Flow — Architecture Diagram"/>
 <meta property="og:description" content="Interactive cloud architecture diagram with live traffic simulation. Built with Archi-Flow."/>
@@ -14,20 +17,38 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 :root {
-  --bg:       #0d1117;
-  --surface:  #161b22;
-  --border:   #21262d;
-  --border2:  #30363d;
-  --text:     #e6edf3;
-  --muted:    #7d8590;
-  --accent:   #58a6ff;
-  --green:    #3fb950;
-  --yellow:   #e3b341;
-  --red:      #f85149;
-  --purple:   #bc8cff;
+  --bg:       #080d14;
+  --surface:  #0e1520;
+  --surface2: #121a27;
+  --surface3: #172030;
+  --border:   #1c2736;
+  --border2:  #243044;
+  --text:     #eaf0fb;
+  --text2:    #c0cfe0;
+  --muted:    #6b7f96;
+  --accent:   #4f9cf9;
+  --accent2:  #3b82f6;
+  --green:    #34d058;
+  --yellow:   #f5b731;
+  --red:      #f66060;
+  --purple:   #a78bfa;
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.35);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.45);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.55);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 13px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 /* ── TOOLBAR ── */
 #toolbar { height: 44px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 4px; padding: 0 12px; flex-shrink: 0; overflow: visible; min-width: 0; position: relative; z-index: 120; }
@@ -94,16 +115,19 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 /* ── CANVAS ── */
 #canvas-wrap {
   flex: 1; position: relative; overflow: hidden;
-  background-color: #060a10;
+  background-color: #070c14;
+  /* Two-level grid: fine dots + subtle large grid lines */
   background-image:
-    radial-gradient(circle, rgba(42,58,80,0.55) 1px, transparent 1px);
-  background-size: 22px 22px;
+    radial-gradient(circle, rgba(40,60,90,0.5) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,0.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 22px 22px, 110px 110px, 110px 110px;
 }
-/* Subtle inset vignette */
+/* Radial vignette — keeps focus on the diagram center */
 #canvas-wrap::after {
   content: '';
   position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  background: radial-gradient(ellipse 90% 80% at 50% 50%, transparent 60%, rgba(6,10,16,0.55) 100%);
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 55%, rgba(7,12,20,0.6) 100%);
 }
 #canvas-svg  { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 #canvas-svg .edge-layer, #canvas-svg .label-layer { pointer-events: none; }
@@ -112,26 +136,28 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 /* ── NODES ── */
 .a-node {
   position: absolute; width: 172px;
-  background: linear-gradient(160deg,#131c28 0%,#0d1520 100%);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-left: 3.5px solid var(--border2);
-  border-radius: 11px;
+  background: linear-gradient(150deg, #111a28 0%, #0b1220 100%);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-left: 3px solid var(--border2);
+  border-radius: 12px;
   cursor: pointer; user-select: none; pointer-events: all;
-  transition: box-shadow 0.18s, border-color 0.18s, transform 0.13s;
+  transition: box-shadow 0.16s, transform 0.13s, border-color 0.16s;
   overflow: hidden;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.04);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+  will-change: transform;
 }
 .node-titles { min-width: 0; flex: 1; overflow: hidden; }
 .a-node:hover {
-  transform: translateY(-2px) scale(1.012);
+  transform: translateY(-2px) scale(1.015);
   transform-origin: center center;
-  box-shadow: 0 10px 32px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.13);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+  z-index: 10;
 }
 .a-node.selected {
-  border-color: var(--accent) !important;
+  border-color: rgba(79,156,249,0.5) !important;
   border-left-color: var(--accent) !important;
-  box-shadow: 0 0 0 2px rgba(79,156,249,0.35), 0 10px 32px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 0 0 2px rgba(79,156,249,0.3), 0 8px 28px rgba(0,0,0,0.5) !important;
 }
 /* Status left-border color */
 .a-node.status-ok   { border-left-color: var(--green) !important; }
@@ -512,32 +538,47 @@ body { background: #070b10; letter-spacing: -0.01em; }
   align-items: center; justify-content: center;
   pointer-events: none; z-index: 2;
   gap: 0;
+  animation: empty-fade-in 0.5s ease;
 }
+@keyframes empty-fade-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 .empty-hero-icon {
-  width: 64px; height: 64px; border-radius: 20px;
-  background: linear-gradient(135deg, rgba(79,156,249,0.15), rgba(167,139,250,0.15));
-  border: 1px solid rgba(79,156,249,0.2);
+  width: 72px; height: 72px; border-radius: 22px;
+  background: linear-gradient(135deg, rgba(79,156,249,0.18) 0%, rgba(167,139,250,0.18) 100%);
+  border: 1px solid rgba(79,156,249,0.25);
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 18px;
-  box-shadow: 0 0 40px rgba(79,156,249,0.12);
+  margin-bottom: 20px;
+  box-shadow: 0 0 60px rgba(79,156,249,0.14), 0 0 0 8px rgba(79,156,249,0.04);
+  animation: hero-float 4s ease-in-out infinite;
 }
-.empty-headline { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; margin-bottom: 6px; }
-.empty-sub-text { font-size: 12px; color: var(--muted); margin-bottom: 28px; text-align: center; line-height: 1.6; max-width: 280px; }
-.empty-steps { display: flex; gap: 12px; }
+@keyframes hero-float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+.empty-headline {
+  font-size: 22px; font-weight: 800; color: var(--text);
+  letter-spacing: -0.04em; margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--text) 0%, rgba(192,207,224,0.7) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.empty-sub-text {
+  font-size: 12.5px; color: var(--muted); margin-bottom: 32px;
+  text-align: center; line-height: 1.65; max-width: 300px; font-weight: 400;
+}
+.empty-steps { display: flex; gap: 10px; }
 .empty-step {
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 12px; padding: 14px 16px; width: 110px;
-  transition: border-color 0.2s;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; padding: 16px 14px; width: 108px;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
 }
-.empty-step:hover { border-color: rgba(79,156,249,0.25); }
+.empty-step:hover { border-color: rgba(79,156,249,0.3); background: rgba(79,156,249,0.05); transform: translateY(-2px); }
 .empty-step-num {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: rgba(79,156,249,0.15); border: 1px solid rgba(79,156,249,0.3);
+  width: 24px; height: 24px; border-radius: 50%;
+  background: linear-gradient(135deg, rgba(79,156,249,0.25), rgba(79,156,249,0.1));
+  border: 1px solid rgba(79,156,249,0.4);
   color: var(--accent); font-size: 11px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
 }
-.empty-step-label { font-size: 10.5px; font-weight: 600; color: var(--text2); text-align: center; line-height: 1.4; }
+.empty-step-label { font-size: 10.5px; font-weight: 500; color: var(--text2); text-align: center; line-height: 1.45; }
 
 /* ── CANVAS ── */
 #canvas-wrap {
@@ -676,26 +717,27 @@ body { background: #070b10; letter-spacing: -0.01em; }
   position: absolute;
   right: 14px;
   bottom: 14px;
-  width: 188px;
-  height: 108px;
+  width: 192px;
+  height: 112px;
   z-index: 48;
   border-radius: 14px;
-  background: rgba(11,17,27,0.82);
-  border: 1px solid rgba(100,130,165,0.2);
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.04);
-  backdrop-filter: blur(14px);
+  background: rgba(8,13,20,0.88);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
   overflow: hidden;
 }
 #minimap::before {
   content: "OVERVIEW";
   position: absolute;
-  top: 7px; left: 10px;
-  font-size: 8.5px; font-weight: 800;
-  color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  top: 8px; left: 10px;
+  font-size: 8px; font-weight: 800;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+  font-family: 'Inter', sans-serif;
 }
-#minimap svg { position: absolute; inset: 22px 8px 8px; width: calc(100% - 16px); height: calc(100% - 30px); }
-.mini-edge { stroke: rgba(79,156,249,0.38); stroke-width: 1; }
-.mini-view { fill: rgba(79,156,249,0.07); stroke: rgba(79,156,249,0.65); stroke-width: 1.2; rx: 4; }
+#minimap svg { position: absolute; inset: 24px 8px 8px; width: calc(100% - 16px); height: calc(100% - 32px); }
+/* viewport rect */
+.mini-view { fill: rgba(79,156,249,0.06); stroke: rgba(79,156,249,0.5); stroke-width: 1; rx: 2; }
 
 /* ── PROPERTIES PANEL ── */
 #props-panel {
@@ -777,20 +819,21 @@ textarea.prop-inp {
   gap: 7px;
 }
 .sug-card {
-  background: rgba(15,21,30,0.94);
+  background: rgba(11,16,24,0.95);
   border: 1px solid var(--border2);
-  border-radius: 10px;
-  padding: 10px 13px;
-  gap: 9px;
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.04);
-  backdrop-filter: blur(14px);
+  border-radius: 12px;
+  padding: 11px 14px;
+  gap: 10px;
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
 }
-.sug-card.warn  { border-left: 3px solid var(--yellow); }
-.sug-card.crit  { border-left: 3px solid var(--red); }
-.sug-card.info  { border-left: 3px solid var(--accent); }
+.sug-card.warn  { border-left: 3px solid var(--yellow); background: rgba(11,16,24,0.95); }
+.sug-card.crit  { border-left: 3px solid var(--red);    background: rgba(12,10,14,0.96); }
+.sug-card.info  { border-left: 3px solid var(--accent); background: rgba(10,14,22,0.95); }
+.sug-body { flex: 1; min-width: 0; }
 .sug-body .sug-title { font-size: 12px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
-.sug-body .sug-msg   { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
-.sug-close { color: var(--muted); font-size: 16px; opacity: 0.6; transition: opacity 0.12s; }
+.sug-body .sug-msg   { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+.sug-close { color: var(--muted); font-size: 16px; opacity: 0.5; transition: opacity 0.12s; cursor: pointer; flex-shrink: 0; margin-left: auto; }
 .sug-close:hover { opacity: 1; }
 
 /* ── STATUS BAR ── */
@@ -1752,28 +1795,42 @@ function renderMiniMap() {
   const sx = x => ox + (x - minX) * scale;
   const sy = y => oy + (y - minY) * scale;
 
+  // Edges — color by sim status
   S.edges.forEach(e => {
     const a = S.nodes[e.src], b = S.nodes[e.tgt];
     if (!a || !b) return;
+    const tgtSim = S.simLoad[e.tgt];
+    const edgeColor = S.simOn && tgtSim
+      ? (tgtSim.loadPct > 85 ? 'rgba(248,81,73,0.7)' : tgtSim.loadPct > 60 ? 'rgba(245,183,49,0.65)' : 'rgba(52,208,88,0.55)')
+      : 'rgba(79,156,249,0.25)';
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('class', 'mini-edge');
-    line.setAttribute('x1', sx(a.x + a.w / 2));
-    line.setAttribute('y1', sy(a.y + a.h / 2));
-    line.setAttribute('x2', sx(b.x + b.w / 2));
-    line.setAttribute('y2', sy(b.y + b.h / 2));
+    line.setAttribute('x1', sx(a.x + a.w / 2)); line.setAttribute('y1', sy(a.y + a.h / 2));
+    line.setAttribute('x2', sx(b.x + b.w / 2)); line.setAttribute('y2', sy(b.y + b.h / 2));
+    line.setAttribute('stroke', edgeColor);
+    line.setAttribute('stroke-width', e.dashed ? '0.5' : '1');
+    if (e.dashed) line.setAttribute('stroke-dasharray', '2,2');
     minimapSvg.appendChild(line);
   });
 
+  // Nodes — color by sim status, rounded rects
   ids.forEach(id => {
     const n = S.nodes[id];
     const def = COMPONENT_DEFS.find(d => d.id === n.defId);
+    const sim = S.simLoad[id];
+    // Border color = sim status; fill = component color (dimmed)
+    const borderColor = S.simOn && sim && sim.status !== 'source'
+      ? (sim.loadPct > 85 ? '#f85149' : sim.loadPct > 60 ? '#f5b731' : '#34d058')
+      : (def?.color || '#58a6ff');
+    const fillColor = (def?.color || '#58a6ff') + '40'; // 25% opacity
+    const isSelected = S.sel === id;
     const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('class', 'mini-node');
-    rect.setAttribute('x', sx(n.x));
-    rect.setAttribute('y', sy(n.y));
-    rect.setAttribute('width', Math.max(4, n.w * scale));
-    rect.setAttribute('height', Math.max(3, n.h * scale));
-    rect.setAttribute('fill', def?.color || '#58a6ff');
+    rect.setAttribute('x', sx(n.x) + 0.5); rect.setAttribute('y', sy(n.y) + 0.5);
+    rect.setAttribute('width', Math.max(5, n.w * scale - 1));
+    rect.setAttribute('height', Math.max(4, n.h * scale - 1));
+    rect.setAttribute('rx', '2');
+    rect.setAttribute('fill', fillColor);
+    rect.setAttribute('stroke', isSelected ? '#58a6ff' : borderColor);
+    rect.setAttribute('stroke-width', isSelected ? '1.5' : '1');
     minimapSvg.appendChild(rect);
   });
 
@@ -1896,14 +1953,17 @@ function renderEdges() {
   edgesG.innerHTML = '';
   labelsG.innerHTML = '';
   particlesG.innerHTML = '';
-  // Scale visual elements with zoom so they look consistent at any zoom level
+  // Scale visual elements proportionally with zoom — same visual size as node labels
   const z = S.zoom;
-  const strokeW    = Math.max(0.8, Math.min(2.2, 1.6 * z));        // edge stroke
-  const labelScale = Math.max(0.6, Math.min(1.2, z));               // label font/pill scale
-  const pillH      = Math.round(18 * labelScale);
-  const pillRx     = Math.round(9  * labelScale);
-  const labelFs    = Math.max(7, Math.round(10.5 * labelScale));
-  const particleR  = Math.max(1.2, 3.1 * z);
+  // Edge stroke: thin at zoom-out, proportional at zoom-in
+  const strokeW = Math.max(0.6, Math.min(2.0, 1.4 * z));
+  // Label font: exactly matches node-label (12px) at every zoom level
+  // In SVG screen space, we must multiply by zoom to get the right visual size
+  const labelFs = Math.max(8, Math.round(12 * z));
+  // Pill: proportional padding around the text
+  const pillH  = Math.max(14, Math.round(labelFs * 1.75));
+  const pillRx = Math.round(pillH / 2);
+  const labelScale = z; // keep for stroke-width calcs
   S.edges.forEach(edge => {
     const { ss, ts } = bestSides(edge.src, edge.tgt);
     const s = portXY(edge.src, ss);
