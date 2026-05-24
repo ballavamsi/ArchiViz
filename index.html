@@ -762,10 +762,18 @@ body { background: #070b10; letter-spacing: -0.01em; }
 .section-title {
   font-size: 9.5px; font-weight: 800; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--muted);
-  margin: 14px 0 7px; padding-bottom: 5px;
+  margin: 14px 0 7px; padding: 0 0 5px;
   border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 5px;
+  cursor: pointer; user-select: none;
+  transition: color 0.15s;
 }
 .section-title:first-child { margin-top: 0; }
+.section-title:hover { color: var(--text2); }
+.section-title .sec-chevron { margin-left: auto; transition: transform 0.18s; color: var(--border2); flex-shrink:0; }
+.section-title.collapsed .sec-chevron { transform: rotate(-90deg); }
+.section-body { overflow: hidden; transition: max-height 0.22s ease; }
+.section-body.collapsed { max-height: 0 !important; }
 
 .prop-row { margin-bottom: 9px; }
 .prop-lbl { font-size: 10px; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -1166,23 +1174,31 @@ textarea.prop-inp {
 
       <div id="props-scroll">
         <!-- Properties section -->
-        <div class="section-title">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:5px;vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>Properties
+        <div class="section-title" id="sec-props-title" onclick="toggleSection('props')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>Properties
+          <svg class="sec-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </div>
-        <div id="props-fields"></div>
+        <div class="section-body" id="sec-props-body">
+          <div id="props-fields" style="padding-top:2px"></div>
+        </div>
 
         <!-- Auto-scale section -->
         <div id="autoscale-section" style="display:none">
-          <div class="section-title">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:5px;vertical-align:middle;color:#84cc16"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Auto Scaling
+          <div class="section-title" id="sec-scale-title" onclick="toggleSection('scale')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:#84cc16"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Auto Scaling
+            <svg class="sec-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
           </div>
-          <div id="autoscale-fields"></div>
+          <div class="section-body" id="sec-scale-body">
+            <div id="autoscale-fields" style="padding-top:2px"></div>
+          </div>
         </div>
 
         <!-- Simulation stats -->
-        <div class="section-title" id="sim-section-title">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:5px;vertical-align:middle;color:var(--accent)"><polygon points="5 3 19 12 5 21 5 3"/></svg>Simulation
+        <div class="section-title" id="sim-section-title" onclick="toggleSection('sim')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:var(--accent)"><polygon points="5 3 19 12 5 21 5 3"/></svg>Simulation
+          <svg class="sec-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </div>
+        <div class="section-body" id="sec-sim-body">
         <div id="sim-stats">
           <!-- Load bar card -->
           <div id="ss-load-card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 13px;margin-bottom:10px;display:none">
@@ -1202,6 +1218,7 @@ textarea.prop-inp {
           <div class="sim-stat-row"><span>Replicas</span><span id="ss-rep">—</span></div>
           <div class="sim-stat-row"><span>Status</span>  <span id="ss-st">—</span></div>
         </div>
+        </div><!-- /sec-sim-body -->
       </div>
 
       <div id="props-foot">
@@ -1956,12 +1973,11 @@ function renderEdges() {
   // Scale visual elements proportionally with zoom — same visual size as node labels
   const z = S.zoom;
   // Edge stroke: thin at zoom-out, proportional at zoom-in
-  const strokeW = Math.max(0.6, Math.min(2.0, 1.4 * z));
-  // Label font: exactly matches node-label (12px) at every zoom level
-  // In SVG screen space, we must multiply by zoom to get the right visual size
-  const labelFs = Math.max(8, Math.round(12 * z));
-  // Pill: proportional padding around the text
-  const pillH  = Math.max(14, Math.round(labelFs * 1.75));
+  const strokeW = Math.max(0.5, Math.min(1.8, 1.2 * z));
+  // Label font: slightly smaller than node-label so it's subordinate; no floor so it naturally disappears at low zoom
+  const labelFs = Math.round(10 * z);
+  // Pill: compact proportions
+  const pillH  = Math.max(8, Math.round(labelFs * 1.6));
   const pillRx = Math.round(pillH / 2);
   const labelScale = z; // keep for stroke-width calcs
   S.edges.forEach(edge => {
@@ -2019,16 +2035,16 @@ function renderEdges() {
 
     // Flow label
     const flow = S.eFlow[edge.id];
-    if (S.simOn && flow > 0 && !edge.dashed && z >= 0.22) {
+    if (S.simOn && flow > 0 && !edge.dashed && z >= 0.4) {
       // Label sits ABOVE the edge midpoint — clear vertical separation from the line
       const midX = (s.x * 0.5 + t.x * 0.5);
       const midY = (s.y * 0.5 + t.y * 0.5);
-      // Lift by a fixed amount so label never overlaps the edge stroke
-      const liftY = Math.max(14, 18 * z);
+      // Lift scales with zoom so label stays proportionally positioned
+      const liftY = Math.round(14 * z);
       const lx = midX;
       const ly = midY - liftY;
-      // At low zoom use compact label (no "events/s" suffix)
-      const flowLabel = z < 0.55 ? formatFlow(flow).replace(/\s*events\/s/, '').replace(/\s*req\/s/, '') : formatFlow(flow);
+      // At lower zoom use compact label (number only); at higher zoom show full label
+      const flowLabel = z < 0.75 ? formatFlow(flow).replace(/\s*events\/s/, '').replace(/\s*req\/s/, '') : formatFlow(flow);
       const charW = labelFs * 0.62;
       const tw = Math.max(labelFs * 3.2, flowLabel.length * charW) + labelFs * 1.4;
       const pillColor = cls === 'edge-crit' ? '#f85149' : cls === 'edge-warn' ? '#f0a732' : '#3fb950';
@@ -2039,7 +2055,7 @@ function renderEdges() {
       bg.setAttribute('width', tw); bg.setAttribute('height', pillH); bg.setAttribute('rx', pillRx);
       bg.setAttribute('fill', 'rgba(8,12,17,0.88)');           // solid dark, never transparent
       bg.setAttribute('stroke', pillColor);
-      bg.setAttribute('stroke-width', String(Math.max(0.6, labelScale)));
+      bg.setAttribute('stroke-width', String(Math.max(0.4, labelScale * 0.7)));
       labelsG.appendChild(bg);
       const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
       txt.setAttribute('x', lx); txt.setAttribute('y', ly + 0.5);
@@ -2097,6 +2113,29 @@ function deselect() {
 }
 
 // ══ PROPERTIES PANEL ══════════════════════════════════════════════════════════
+// Track which sections are collapsed
+const sectionState = { props: false, scale: false, sim: false };
+function toggleSection(key) {
+  sectionState[key] = !sectionState[key];
+  const title = document.getElementById(`sec-${key}-title`) || document.getElementById('sim-section-title');
+  const body  = document.getElementById(`sec-${key}-body`);
+  if (!body) return;
+  const open = !sectionState[key];
+  // Animate max-height for smooth collapse
+  body.style.maxHeight = open ? body.scrollHeight + 'px' : '0';
+  body.classList.toggle('collapsed', !open);
+  if (title) title.classList.toggle('collapsed', !open);
+  // After open animation, remove explicit max-height so content can grow
+  if (open) { setTimeout(() => { body.style.maxHeight = ''; }, 240); }
+}
+// Init section bodies with maxHeight so CSS transition works
+function initSections() {
+  ['props','scale','sim'].forEach(k => {
+    const b = document.getElementById(`sec-${k}-body`);
+    if (b) b.style.maxHeight = '';
+  });
+}
+
 function showProps(id) {
   const panel = document.getElementById('props-panel');
   const empty = document.getElementById('props-empty');
