@@ -1,4 +1,4 @@
-# ArchViz — Agent Handoff
+# Archi-Flow — Agent Handoff
 
 **Date:** 2026-05-24  
 **Repo:** `/Users/ballavamsi/Downloads/ArchiViz/ArchiViz`  
@@ -10,7 +10,7 @@
 
 ## Product Summary
 
-ArchViz is a browser-based architecture diagramming and traffic simulation tool, modeled after draw.io/Lucidchart but specialized for cloud/system design.
+Archi-Flow is a browser-based architecture diagramming and traffic simulation tool, modeled after draw.io/Lucidchart but specialized for cloud/system design.
 
 Users drag components onto a canvas, connect ports, run traffic simulation, and inspect load, capacity, bottlenecks, auto-scaling, read replicas, flow labels, and estimated monthly cost.
 
@@ -380,11 +380,11 @@ After changes:
 
 ## Current Best Mental Model
 
-ArchViz should not become just "draw.io with traffic animation." The winning product shape is:
+Archi-Flow should not become just "draw.io with traffic animation." The winning product shape is:
 
 ```text
 Draw rough architecture -> enter traffic -> Run Sim ->
-ArchViz explains bottlenecks -> applies safe fixes -> shows cost impact
+Archi-Flow explains bottlenecks -> applies safe fixes -> shows cost impact
 ```
 
 Build toward that.

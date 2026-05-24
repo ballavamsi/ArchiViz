@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ArchViz — Architecture Simulator</title>
+<title>Archi-Flow — Architecture Simulator</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 :root {
@@ -458,7 +458,7 @@ textarea.prop-inp {
 <div id="toolbar">
   <div class="logo">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#5aa7ff"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-    <span>ArchViz</span>
+    <span>Archi-Flow</span>
   </div>
   <input id="diagram-title" type="text" value="Untitled Architecture" title="Diagram title" style="height:28px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--text);font-size:13px;font-weight:600;padding:0 8px;outline:none;min-width:0;width:190px;transition:border-color 0.15s;" onfocus="this.style.borderColor='var(--accent)';this.style.background='var(--bg)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"/>
   <div class="sep"></div>
@@ -1913,44 +1913,89 @@ function autoLayout() {
   const ids = Object.keys(S.nodes); if (!ids.length) return;
   snapshot();
 
-  // Build adjacency (skip dashed)
-  const outEdges = {}; const inDeg = {};
-  ids.forEach(id => { outEdges[id] = []; inDeg[id] = 0; });
-  S.edges.forEach(e => { if (!e.dashed && S.nodes[e.src] && S.nodes[e.tgt]) { outEdges[e.src].push(e.tgt); inDeg[e.tgt]++; } });
+  const mainIds = ids.filter(id => !S.nodes[id].props._isReplica);
+  const outEdges = {}; const inEdges = {}; const inDeg = {};
+  mainIds.forEach(id => { outEdges[id] = []; inEdges[id] = []; inDeg[id] = 0; });
+  S.edges.forEach(e => {
+    if (e.dashed || !outEdges[e.src] || !inEdges[e.tgt]) return;
+    outEdges[e.src].push(e.tgt);
+    inEdges[e.tgt].push(e.src);
+    inDeg[e.tgt]++;
+  });
 
-  // BFS layers
-  const layer = {}; const queue = ids.filter(id => inDeg[id] === 0);
+  // Longest-path layering gives more stable architecture flow than first-visit BFS.
+  const layer = {};
+  const remainingInDeg = { ...inDeg };
+  const queue = mainIds.filter(id => inDeg[id] === 0 || SOURCE_DEFS.has(S.nodes[id]?.defId));
+  const processed = new Set();
   queue.forEach(id => { layer[id] = 0; });
-  const visited = new Set(queue);
-  let q = [...queue];
-  while (q.length) {
-    const nq = [];
-    q.forEach(id => outEdges[id].forEach(tid => {
-      if (!visited.has(tid)) {
-        layer[tid] = (layer[id]||0) + 1;
-        visited.add(tid); nq.push(tid);
-      }
-    }));
-    q = nq;
+  while (queue.length) {
+    const id = queue.shift();
+    if (processed.has(id)) continue;
+    processed.add(id);
+    outEdges[id].forEach(tid => {
+      layer[tid] = Math.max(layer[tid] ?? 0, (layer[id] ?? 0) + 1);
+      remainingInDeg[tid]--;
+      if (remainingInDeg[tid] <= 0) queue.push(tid);
+    });
   }
-  // Unvisited (disconnected/cycles) go to their own layer
-  ids.forEach(id => { if (layer[id] === undefined) layer[id] = 0; });
 
-  // Group by layer
+  // Disconnected/cyclic nodes keep their relative neighborhood and avoid piling onto one point.
+  mainIds.forEach(id => {
+    if (layer[id] === undefined) {
+      const upstreamLayers = inEdges[id].map(src => layer[src]).filter(Number.isFinite);
+      layer[id] = upstreamLayers.length ? Math.max(...upstreamLayers) + 1 : 0;
+    }
+  });
+
   const byLayer = {};
-  ids.forEach(id => { const l=layer[id]; (byLayer[l]=byLayer[l]||[]).push(id); });
+  mainIds.forEach(id => { (byLayer[layer[id]] = byLayer[layer[id]] || []).push(id); });
+  const layerNums = Object.keys(byLayer).map(Number).sort((a,b)=>a-b);
 
-  // Position
-  const COL_GAP = 250, ROW_GAP = 160;
-  Object.entries(byLayer).sort((a,b)=>+a[0]-+b[0]).forEach(([l, layerIds]) => {
-    // Skip replica nodes — position them relative to their parent after layout
-    const mainIds = layerIds.filter(id => !S.nodes[id].props._isReplica);
-    const lx = +l * COL_GAP + 40;
-    mainIds.forEach((id, i) => {
-      const totalH = mainIds.length * ROW_GAP;
-      const startY = Math.max(40, 260 - totalH / 2);
-      S.nodes[id].x = lx;
-      S.nodes[id].y = startY + i * ROW_GAP;
+  const typeRank = {
+    users: 0, deviceapp: 1, eventsource: 1, cdcsource: 1,
+    cdn: 2, firewall: 3, apigateway: 4, loadbalancer: 5,
+    appserver: 6, vm: 6, pod: 6,
+    cache: 7, queue: 8, database: 9,
+    debezium: 10, kafkatopic: 11, streamwindow: 12, streamprocessor: 13,
+    objectstorage: 14, datalake: 14, tableformat: 15, metastore: 16,
+    queryengine: 17, warehouse: 18, appinsights: 19, logging: 20,
+    textnote: 99
+  };
+  const rankOf = id => typeRank[S.nodes[id]?.defId] ?? 50;
+
+  // Barycenter passes reduce edge crossings by sorting each layer near connected neighbors.
+  layerNums.forEach(l => byLayer[l].sort((a,b) => rankOf(a) - rankOf(b) || S.nodes[a].y - S.nodes[b].y));
+  for (let pass = 0; pass < 4; pass++) {
+    layerNums.forEach(l => {
+      byLayer[l].sort((a,b) => {
+        const ay = inEdges[a].length ? inEdges[a].reduce((sum, src) => sum + (S.nodes[src]?.y ?? 0), 0) / inEdges[a].length : S.nodes[a].y;
+        const by = inEdges[b].length ? inEdges[b].reduce((sum, src) => sum + (S.nodes[src]?.y ?? 0), 0) / inEdges[b].length : S.nodes[b].y;
+        return ay - by || rankOf(a) - rankOf(b);
+      });
+    });
+    [...layerNums].reverse().forEach(l => {
+      byLayer[l].sort((a,b) => {
+        const ay = outEdges[a].length ? outEdges[a].reduce((sum, tgt) => sum + (S.nodes[tgt]?.y ?? 0), 0) / outEdges[a].length : S.nodes[a].y;
+        const by = outEdges[b].length ? outEdges[b].reduce((sum, tgt) => sum + (S.nodes[tgt]?.y ?? 0), 0) / outEdges[b].length : S.nodes[b].y;
+        return ay - by || rankOf(a) - rankOf(b);
+      });
+    });
+  }
+
+  const COL_GAP = 280;
+  const ROW_GAP = 138;
+  const LEFT = 80;
+  const TOP = 80;
+  const maxRows = Math.max(...layerNums.map(l => byLayer[l].length), 1);
+  const canvasMid = Math.max(260, TOP + ((maxRows - 1) * ROW_GAP) / 2);
+
+  layerNums.forEach(l => {
+    const layerIds = byLayer[l];
+    const startY = Math.max(TOP, canvasMid - ((layerIds.length - 1) * ROW_GAP) / 2);
+    layerIds.forEach((id, i) => {
+      S.nodes[id].x = LEFT + l * COL_GAP;
+      S.nodes[id].y = snapVal(startY + i * ROW_GAP);
     });
   });
 
@@ -1961,8 +2006,8 @@ function autoLayout() {
       // Find index among siblings
       const siblings = Object.values(S.nodes).filter(r => r.props._replicaOf === rep.props._replicaOf);
       const idx = siblings.indexOf(rep);
-      rep.x = parent.x + 220;
-      rep.y = parent.y + idx * 120;
+      rep.x = parent.x + 230;
+      rep.y = parent.y + idx * 118;
     }
   });
 
@@ -2212,7 +2257,7 @@ function importArchitecture(payload) {
   if (next.title) {
     const titleEl = document.getElementById('diagram-title');
     if (titleEl) titleEl.value = next.title;
-    document.title = next.title + ' — ArchViz';
+    document.title = next.title + ' — Archi-Flow';
   }
   setExampleSelect(S.activeExample);
   cNodes.innerHTML = '';

@@ -1,11 +1,11 @@
-# ArchViz — Architecture Simulator
+# Archi-Flow — Architecture Simulator
 
 ## Goal
 Interactive drag-and-drop architecture visualization with real-time traffic simulation.
 Modeled after draw.io / Lucidchart — professional, fast, zero-install, runs in the browser.
 
 ## Product North Star
-Make ArchViz feel like a **Lucid/draw.io-grade architecture workspace** that anyone can open, present, and understand:
+Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that anyone can open, present, and understand:
 
 1. **Easy access:** one command locally, shareable URL state, and eventually hosted/static deploy.
 2. **Presentation-ready:** clean chrome, image export, readable diagrams, and no visual glitches during zoom/pan.
@@ -76,7 +76,7 @@ Make ArchViz feel like a **Lucid/draw.io-grade architecture workspace** that any
 
 ## 10/10 Gap Analysis — What's Missing Now
 
-ArchViz is past the "diagram prototype" stage. The next jump is to make it feel like an architecture copilot: explain why a design is failing, offer safe fixes, estimate cost impact, and keep canvas work fast.
+Archi-Flow is past the "diagram prototype" stage. The next jump is to make it feel like an architecture copilot: explain why a design is failing, offer safe fixes, estimate cost impact, and keep canvas work fast.
 
 ### Critical Product Gaps
 1. **Explainable diagnostics** — users still ask "why is this red?" Nodes and edges need a diagnostic breakdown: incoming, capacity, upstream contributors, downstream split, status reason, and suggested fix.

@@ -39,5 +39,5 @@ createServer((req, res) => {
     res.end('Not found');
   }
 }).listen(port, () => {
-  console.log(`ArchViz running at http://localhost:${port}`);
+  console.log(`Archi-Flow running at http://localhost:${port}`);
 });

@@ -95,6 +95,7 @@ test('index.html contains required app hooks', () => {
     assert.match(html, new RegExp(`id=["']${id}["']`), `index.html missing #${id}`);
   }
 
+  assert.match(html, /Archi-Flow/, 'app should use Archi-Flow branding');
   assert.match(html, /transform:scale\(\$\{S\.zoom\}\)/, 'nodes should use transform scaling for zoom');
   assert.doesNotMatch(html, /width:\$\{n\.w \* S\.zoom\}px/, 'nodes should not resize width directly during zoom');
 });
