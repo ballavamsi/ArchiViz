@@ -109,6 +109,8 @@ Claude/Codex preview config lives in `.claude/launch.json` and currently uses `/
 | Grid snapping toggle | Done |
 | Editable diagram title | Done |
 | JSON import/export | Done |
+| SVG diagram image export | Done |
+| Printable PDF report export | Done |
 | Shareable `#arch=` URL state | Done |
 | Cost badge | Done |
 | Minimap/overview | Done |
@@ -129,14 +131,19 @@ Claude/Codex preview config lives in `.claude/launch.json` and currently uses `/
 3. **Button wrapping**
    - `Run Sim` / `Stop` and `Delete Node` are inline-flex, one-line controls.
 
-4. **Topology rules**
+4. **Presentation export/share**
+   - Share creates a resumable link and attempts to include a generated SVG diagram image.
+   - More -> Export Image downloads a clean SVG snapshot.
+   - More -> Export PDF opens a printable report with diagram, node capacity/cost summary, and full JSON config.
+
+5. **Topology rules**
    - `Load Balancer -> Database`, `Load Balancer -> Cache`, microservice-to-microservice, Kafka consumers, stream sinks, query paths, and other real-world patterns are allowed.
 
-5. **Edge coloring**
+6. **Edge coloring**
    - Edges color by destination node health, not source node health.
    - Healthy targets stay green even if their source is overloaded.
 
-6. **Warning color**
+7. **Warning color**
    - Yellow was updated to be visually distinct from critical red.
 
 ---

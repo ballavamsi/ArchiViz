@@ -154,6 +154,18 @@ npm start
 
 **Verification:** `npm test` passes — 6 tests, 0 failures.
 
+### Task 18 — Presentation Export + Better Sharing
+**Status:** ✅ Done
+**What:**
+- Improved Share to include a resumable link and a generated diagram SVG when browser sharing/clipboard supports it
+- Added `Export Image` menu action for a clean architecture SVG snapshot
+- Added `Export PDF` menu action that opens a printable report with diagram, capacity/cost summary, and full architecture JSON config
+- Added smoke-test coverage for export hooks
+
+**Verification:**
+- `npm test` passes
+- `npm run build` passes
+
 ---
 
 ## Pending Tasks (Next Phases)

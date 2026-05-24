@@ -57,6 +57,8 @@ Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that 
 | Accordion component sidebar + search | ✅ Done | Collapsible categories, close/open sidebar toggle |
 | Inline label editing | ✅ Done | Double-click node label |
 | JSON import | ✅ Done | Toolbar file picker or drag .json onto canvas |
+| SVG diagram export | ✅ Done | Clean generated architecture snapshot |
+| PDF report export | ✅ Done | Printable report with diagram, capacity/cost summary, and JSON config |
 | Shareable resume links | ✅ Done | URL hash contains nodes, edges, users, view, selected example |
 | Live traffic particles | ✅ Done | SVG animateMotion particles on active simulated edges |
 | Right panel health cockpit | ✅ Done | Empty panel shows node/edge/traffic/critical stats |
@@ -167,7 +169,7 @@ Archi-Flow is past the "diagram prototype" stage. The next jump is to make it fe
 | 2 — One-click fixes | ⏳ Pending | `npm test` + undo/redo fix action check |
 | 3 — Real cost engine | ⏳ Pending | `npm test` + cost formula scenario checks |
 | 4 — Lucid-style canvas productivity | ⏳ Pending | `npm test` + browser editing checklist |
-| 5 — Presentation/access polish | ⏳ Pending | `npm test` + export/share/open checklist |
+| 5 — Presentation/access polish | 🔄 Started | SVG export and printable PDF report done; hosted/share polish continues |
 
 ---
 
