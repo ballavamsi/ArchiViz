@@ -110,3 +110,9 @@ test('run scripts exist for macOS/Linux and Windows', () => {
   assert.match(sh, /node server\.mjs/, 'run.sh should start server.mjs');
   assert.match(bat, /node server\.mjs/i, 'run.bat should start server.mjs');
 });
+
+test('netlify config publishes explicit build output', () => {
+  const config = readFileSync(rootFile('netlify.toml'), 'utf8');
+  assert.match(config, /publish\s*=\s*"dist"/, 'Netlify should publish dist/');
+  assert.match(config, /npm test && npm run build/, 'Netlify build should run tests then build static output');
+});
