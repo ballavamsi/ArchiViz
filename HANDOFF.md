@@ -1,259 +1,390 @@
-# ArchViz — Handoff Document
+# ArchViz — Agent Handoff
 
 **Date:** 2026-05-24  
-**Server:** `http://localhost:3456` (see `.claude/launch.json`)  
-**Entry point:** `index.html` — the entire app lives here, no build step needed.
+**Repo:** `/Users/ballavamsi/Downloads/ArchiViz/ArchiViz`  
+**Primary server:** `node server.mjs`  
+**Default URL:** `http://localhost:3456`  
+**Important:** port `3456` is often already in use on this machine. Use `PORT=3457 node server.mjs` or Claude/Codex preview auto-port if needed.
 
 ---
 
-## What This Is
+## Product Summary
 
-A browser-based architecture diagramming + traffic simulation tool, modeled after draw.io / Lucidchart. You drag components onto a canvas, connect them with edges, and run a real-time simulation to see traffic load, auto-scaling, and bottlenecks.
+ArchViz is a browser-based architecture diagramming and traffic simulation tool, modeled after draw.io/Lucidchart but specialized for cloud/system design.
+
+Users drag components onto a canvas, connect ports, run traffic simulation, and inspect load, capacity, bottlenecks, auto-scaling, read replicas, flow labels, and estimated monthly cost.
+
+The current direction is to evolve it from a diagramming prototype into an **architecture copilot**:
+
+1. Explain exactly why nodes/edges are warning or critical.
+2. Offer one-click topology fixes.
+3. Estimate realistic cost impact.
+4. Keep canvas editing polished and fast.
+
+The product bar is **Lucid/draw.io-grade editing plus architecture intelligence**: easy to open, easy to present, and clear enough that non-authors can understand the design from a shared link.
 
 ---
 
-## How to Run
+## How To Run
 
 ```bash
-# Option 1 — Node app, no dependencies
+# macOS/Linux
+./run.sh
+
+# or directly
 node server.mjs
 
-# If npm is installed, this also works:
+# if port 3456 is busy
+PORT=3457 node server.mjs
+
+# if npm is installed
 npm start
-
-# Option 2 — Python fallback
-python3 -m http.server 3456
-
-# Option 3 — one-line Node fallback
-node -e "const h=require('http'),fs=require('fs'),p=require('path');h.createServer((req,res)=>{let f=p.join('.',req.url==='/'?'index.html':req.url);fs.readFile(f,(e,d)=>{res.writeHead(e?404:200,{'Content-Type':{'html':'text/html','js':'application/javascript'}[f.split('.').pop()]||'text/plain'});res.end(e?'404':d)});}).listen(3456);"
-
-# Then open: http://localhost:3456
 ```
 
-Or use the Claude Code preview with `.claude/launch.json`.
+Windows:
+
+```bat
+run.bat
+```
+
+Then open the printed local URL.
+
+Claude/Codex preview config lives in `.claude/launch.json` and currently uses `/opt/homebrew/bin/node` with `autoPort: true`.
 
 ---
 
 ## File Map
 
 | File | Purpose |
-|------|---------|
-| `index.html` | Entire app — state, rendering, simulation, all UI |
-| `server.mjs` / `package.json` | Node app wrapper, `npm start` runs the static server |
-| `src/components.js` | 33 component definitions (JSON schema) |
-| `src/rules.js` | Architecture connection rules used when linking nodes |
-| `src/examples.js` | 7 example diagram templates |
-| `.claude/PLAN.md` | Architecture decisions, feature status, full roadmap |
-| `.claude/TASKS.md` | Task log with implementation notes and formulas |
-| `.claude/launch.json` | Dev server config for Claude Code preview |
+|---|---|
+| `index.html` | Entire app UI, state, rendering, simulation, canvas behavior |
+| `src/components.js` | Component definitions, SVG icons, defaults, capacities, costs, properties |
+| `src/rules.js` | Architecture connection validation rules |
+| `src/examples.js` | Built-in example architectures |
+| `server.mjs` | Static Node.js server |
+| `package.json` | `npm start` wrapper |
+| `run.sh` | macOS/Linux launcher |
+| `run.bat` | Windows launcher |
+| `.claude/PLAN.md` | Current roadmap and 10/10 iteration plan |
+| `.claude/TASKS.md` | Historical task tracker and implementation notes |
+| `.claude/launch.json` | Preview server config |
 
 ---
 
-## What's Built
+## Current App Status
 
-| Feature | Status |
-|---------|--------|
-| Drag-drop canvas with 33 components | ✅ |
-| Bezier edges with animated flow labels | ✅ |
-| BFS traffic simulation (700ms tick) | ✅ |
-| Load Balancer — splits traffic evenly downstream | ✅ |
-| Auto-Scaler — scales replicas to stay below threshold | ✅ |
-| DB Read Replicas — spawn visual nodes + replication edges | ✅ |
-| Properties panel — live edit all node properties | ✅ |
-| Simulation stats per node (load %, replicas, status) | ✅ |
-| Suggestions panel — diff-based, no flicker, toolbar toggle | ✅ |
-| Undo / Redo (snapshot-based) | ✅ |
-| Auto-layout (BFS layering, no overlaps) | ✅ |
-| Zoom / Pan / Fit View | ✅ |
-| Keyboard shortcuts (Del, Esc, Ctrl+Z/Y) | ✅ |
-| Edge delete (hover × button) | ✅ |
-| Drop component onto edge → auto-splits and re-wires | ✅ |
-| 7 example templates | ✅ |
-| Export JSON | ✅ |
-| Cost tracker in toolbar | ✅ |
-| Category filter + search in sidebar | ✅ |
-| Inline node label editing | ✅ |
-| JSON import via toolbar or drag-drop | ✅ |
-| Shareable URL links that resume state | ✅ |
-| Live traffic particles on active edges | ✅ |
-| Diagram health cockpit in empty right panel | ✅ |
-| Data engineering components: CDC Source DB, Debezium, Kafka Topic, Stream Processor, Object Storage, Table Format, Data Catalog, Batch Processor, Query Engine, Data Quality, Data Lake, Warehouse | ✅ |
-| Observability components: App Insights, Log Analytics | ✅ |
-| CDC/event-source simulation without a fake Users box | ✅ |
-| Lucid-style UI polish: cleaner chrome, sleeker node cards, floating HUD, minimap overview | ✅ |
-| Whiteboard text notes | ✅ |
-| Billion-scale event/user flow labels (`1.3B`, `5.2B events/s`) | ✅ |
-| Device/app emitters, event sources, hooks, schedulers, stream windows | ✅ |
+**Overall status:** strong prototype, roughly 8/10. The UI/canvas foundation is solid, but it is not yet 10/10 because diagnostics, one-click fixes, formula cost modeling, multi-select, and presentation export are still pending.
 
----
+**Last completed iteration:** Iteration 0 — status + testability baseline (`npm test` passes).
 
-## Bugs Fixed in Last Session
+**Current/next iteration:** Iteration 1 — explainable diagnostics.
 
-### 1. Arrows in wrong positions
-**Root cause:** `bezier()` was receiving node-space `dx/dy` but screen-space port coordinates — so control points were calculated in mixed coordinate spaces, producing incorrect curves at any zoom or pan offset.
+### Built And Working
 
-**Fix:** Pass port sides (`'r'/'l'/'t'/'b'`) instead of dx/dy. Control points now always exit/enter in the port's own direction.
+| Area | Status |
+|---|---|
+| Drag/drop canvas | Done |
+| 33 architecture/data/observability components | Done |
+| Professional inline SVG icons | Done |
+| Accordion component sidebar | Done |
+| Sidebar close/open toggle | Done |
+| Click-to-connect ports | Done |
+| Edge drag connect | Done |
+| Drop component onto edge to insert | Done |
+| Bezier edges with arrow markers | Done |
+| Live flow labels and traffic particles | Done |
+| Multi-pass traffic propagation | Done |
+| Simulation speed selector | Done |
+| Load balancer traffic splitting | Done |
+| Cache/CDN hit-rate pass-through | Done |
+| Firewall block-rate pass-through | Done |
+| Auto-scaler support | Done |
+| DB read replicas as visible managed nodes | Done |
+| Properties panel with live editing | Done |
+| Simulation stats per selected node | Done |
+| Suggestions panel with diff-based rendering | Done |
+| Undo/redo | Done |
+| Auto-layout | Done |
+| Lucid-style zoom/pan/fit | Done |
+| Grid snapping toggle | Done |
+| Editable diagram title | Done |
+| JSON import/export | Done |
+| Shareable `#arch=` URL state | Done |
+| Cost badge | Done |
+| Minimap/overview | Done |
+| Whiteboard text notes | Done |
+| Billion-scale number formatting | Done |
+| Realistic baseline cost defaults | Done |
 
-```js
-// BEFORE (broken)
-const dx = tn.x - sn.x, dy = tn.y - sn.y;          // node-space
-bezier(s.x, s.y, t.x, t.y, dx, dy)                   // mixed spaces ❌
+### Most Recent Fixes
 
-// AFTER (fixed)
-bezier(s.x, s.y, t.x, t.y, ss, ts)                   // port sides ✅
-```
+1. **Lucid-style zoom behavior**
+   - Nodes now keep fixed internal size (`160x88`) and use CSS `transform: scale(...)`.
+   - This prevents labels, badges, ports, and layout from reflowing while zooming.
 
-### 2. U-shape curves when zoomed in
-**Root cause:** Control point distance was hard-capped at 220px. When zoomed in, nodes are far apart in screen pixels, making 220px proportionally tiny — curves pinched into U-shapes.
+2. **Collapsible sidebar**
+   - Canvas edge button hides/shows the component palette.
+   - Preference persists in `localStorage` as `archviz.sidebar`.
 
-**Fix:** Removed the cap. Distance now scales with actual screen-space distance:
-```js
-const dist = Math.hypot(x2-x1, y2-y1) * 0.4;  // no cap — correct at any zoom
-```
+3. **Button wrapping**
+   - `Run Sim` / `Stop` and `Delete Node` are inline-flex, one-line controls.
 
-### 3. Suggestion cards flashing every 700ms
-**Root cause:** `buildSuggestions()` was wiping `panel.innerHTML = ''` on every simulation tick, destroying and re-creating all DOM elements.
+4. **Topology rules**
+   - `Load Balancer -> Database`, `Load Balancer -> Cache`, microservice-to-microservice, Kafka consumers, stream sinks, query paths, and other real-world patterns are allowed.
 
-**Fix:** Diff-based approach — keeps existing cards in place, only adds/removes when the set of active suggestions changes. Cards are keyed by `data-key` attribute.
+5. **Edge coloring**
+   - Edges color by destination node health, not source node health.
+   - Healthy targets stay green even if their source is overloaded.
 
-### 4. "Add Read Load Balancer" suggestion created messy topology
-**Root cause:** Suggesting a visible LB node in front of read replicas created `DB→LB→Replica` edges everywhere, which is architecturally misleading (real-world read balancing is handled by DB proxies/connection pools, not visible topology nodes).
-
-**Fix:** Removed that suggestion. If DB is still overloaded after replicas are added (>85% load), suggest adding a Cache layer instead.
+6. **Warning color**
+   - Yellow was updated to be visually distinct from critical red.
 
 ---
 
-## Key Technical Details
+## Important Implementation Details
 
 ### State Object
+
+`index.html` owns state in `S`:
+
 ```js
 let S = {
-  nodes: {},      // id → { id, defId, x, y, w:160, h:88, props }
-  edges: [],      // { id, src, tgt, animated, dashed, replication? }
-  eFlow: {},      // edgeId → req/s flowing on that edge
-  simLoad: {},    // nodeId → { incoming, capacity, loadPct, status, scaledCap?, replicas?, scaling? }
-  sel: null,      // selected node id
-  selEdge: null,  // selected edge id
-  zoom: 1, panX: 40, panY: 40,
-  simOn: false, simTick: null,
-  suggestionsOn: true,       // persisted as localStorage archviz.suggestions
-  hist: [], histPos: -1,   // undo/redo snapshots
-  nSeq: 0, eSeq: 0,        // id counters
+  nodes: {},
+  edges: {},
+  eFlow: {},
+  simLoad: {},
+  sel: null,
+  selEdge: null,
+  zoom: 1,
+  panX: 40,
+  panY: 40,
+  simOn: false,
+  simTick: null,
+  snapGrid: true,
+  sidebarOpen: true,
+  gridSize: 40,
+  title: 'Untitled Architecture',
+  suggestionsOn: true,
+  simSpeed: 'normal',
+  activeExample: '',
+  hist: [],
+  histPos: -1,
+  nSeq: 0,
+  eSeq: 0
 };
 ```
 
-### Suggestions Toggle
-- Toolbar button `#btn-suggestions` turns live recommendation cards on/off.
-- Preference is persisted in `localStorage` as `archviz.suggestions`.
-- Architecture-rule toasts are marked `.toast-card` and still appear when live suggestions are disabled.
+Note: the comment above is conceptual. Check the live object in `index.html` before editing because it may use `{}`/arrays and additional fields.
 
-### Auto-Scaler Formula
+### Zoom Model
+
+Do not resize nodes directly based on zoom. The current correct pattern is:
+
 ```js
-// Scales to bring load BELOW the threshold, not just to 100%
-const neededReplicas = Math.ceil(incoming / (capacity * (threshold / 100)));
-replicas  = Math.min(maxReplicas, neededReplicas);
-scaledCap = capacity * replicas;
-loadPct   = (incoming / scaledCap) * 100;
+el.style.cssText = `
+  left:${x}px;
+  top:${y}px;
+  width:${n.w}px;
+  height:${n.h}px;
+  transform:scale(${S.zoom});
+  transform-origin:top left;
+`;
 ```
 
-### Read Replica Tracking
-- `n.props._replicaOf = parentDbId` — marks a node as a replica
-- `n.props._isReplica = true` — excludes from auto-layout, suggestions, simulation source
-- `syncDbReplicas(dbId, targetCount)` — call this whenever `readReplicas` property changes
-- Replica edges: `edge.replication = true`, drawn as purple dashed lines
+Edges use actual DOM port centers via `getBoundingClientRect()`, so transformed nodes still anchor correctly.
 
-### Share / Import / Export
-- `architecturePayload()` exports nodes, edges, active example, view state, and user slider value.
-- `Share` writes dependency-free base64url JSON into `#arch=...` and copies the full link.
-- Opening a URL with `#arch=` imports that architecture and resumes from the same point.
+### Simulation
 
-### Connection Rules
-- Rules live in `src/rules.js`.
-- `addEdge()` validates source/target component types before creating a connection.
-- Invalid links show an architecture-rule suggestion instead of drawing misleading topology.
+Simulation is multi-pass. It iterates propagation and stops when edge flows converge.
 
-### Bezier Edge (correct formula)
+Important pass-through behaviors:
+
+- CDN forwards `incoming * (1 - cacheHitRate%)`
+- Cache forwards `incoming * (1 - hitRate%)`
+- Firewall forwards `incoming * (1 - blockRate%)`
+- Device/App multiplies incoming by `eventsPerInput`
+- Load Balancer splits equally to downstream targets
+
+Cache must be wired **between app and database** to reduce DB pressure:
+
+```text
+App Server -> Cache -> Database
+```
+
+Not:
+
+```text
+App Server -> Cache
+App Server -> Database
+```
+
+### Read Replicas
+
+Managed by `syncDbReplicas(dbId, targetCount)`.
+
+Replica nodes:
+
+- `props._replicaOf = parentDbId`
+- `props._isReplica = true`
+- purple dashed replication edges
+- excluded from suggestions as independent DBs
+
+### Suggestions
+
+`buildSuggestions()` currently produces recommendation cards. It is diff-based and should not wipe `innerHTML` every tick.
+
+Next iteration should replace most ad hoc suggestion logic with a diagnostics engine:
+
 ```js
-function bezier(x1, y1, x2, y2, ss, ts) {
-  // ss/ts = source/target port side: 'r','l','t','b'
-  const dist = Math.hypot(x2-x1, y2-y1) * 0.4;  // scales with zoom, no cap
-  const sideOff = { r:[dist,0], l:[-dist,0], b:[0,dist], t:[0,-dist] };
-  const [o1x,o1y] = sideOff[ss] || [dist,0];
-  const [o2x,o2y] = sideOff[ts] || [-dist,0];
-  return `M${x1},${y1} C${x1+o1x},${y1+o1y} ${x2+o2x},${y2+o2y} ${x2},${y2}`;
-}
+diagnoseNode(nodeId)
+diagnoseEdge(edgeId)
+```
+
+Then suggestions become thin views over diagnostics.
+
+---
+
+## Known Issues / Not Yet 10-10
+
+These are the important next problems. Do not spend time redoing already-solved items like title, grid, minimap, sidebar, SVG icons, or share links.
+
+1. **Why-is-this-red confusion**
+   - Users still need clearer explanations for red/yellow nodes and edges.
+   - Need selected node/edge diagnostics: incoming, capacity, load, top upstream contributors, downstream split, and reason.
+
+2. **Suggestions are text-only**
+   - Suggestions should include buttons that apply safe fixes with undo snapshots.
+
+3. **Topology intelligence is incomplete**
+   - Detect:
+     - Users hitting App Server directly while LB exists
+     - LB placed after compute
+     - Cache wired parallel to DB instead of between app and DB
+     - Read replicas exist but are not reducing the modeled bottleneck
+     - Queue with no consumers
+     - Object Storage used as hot request path
+
+4. **Cost model is still mostly static**
+   - Costs are better baseline defaults now, but not fully formula-based.
+   - Need S3/object storage cost from storage TB + GET/PUT + egress.
+   - Need CDN cost from requests + bandwidth.
+   - Need DB/cache/compute cost from replicas/instance profile/storage.
+
+5. **Canvas productivity**
+   - No multi-select.
+   - No rubber-band selection.
+   - No duplicate selection.
+   - No PNG/SVG visual export.
+
+---
+
+## Recommended Next Iteration
+
+Start with **Iteration 1: Explainable Diagnostics**.
+
+### Goal
+
+Every warning/critical node or edge should explain itself clearly and numerically.
+
+### Deliverables
+
+1. Add `diagnoseNode(nodeId)`
+   - Return:
+     - label/component type
+     - status
+     - incoming flow
+     - effective capacity
+     - load percent
+     - top upstream contributors
+     - downstream split
+     - reason string
+     - fix suggestions
+
+2. Add `diagnoseEdge(edgeId)`
+   - Return:
+     - source/target labels
+     - flow on edge
+     - target load
+     - whether target is bottleneck
+     - reason string
+
+3. Add Diagnostics UI
+   - In properties panel under Simulation.
+   - Show plain English first, numbers second.
+   - For selected edge, show edge diagnostics in the right panel.
+
+4. Rewrite suggestion cards to consume diagnostics
+   - Avoid duplicate vague advice.
+   - Use exact topology/traffic facts.
+
+### Example Diagnostic Copy
+
+```text
+App Server is critical because it receives 100,000 events/s but has 25,000 events/s effective capacity after 5 replicas.
+
+Top contributor:
+Users -> 100,000 events/s
+
+Recommended fix:
+Route Users through a Load Balancer and add more App Server replicas, or increase App Server capacity to 125,000 events/s for 80% target load.
 ```
 
 ---
 
-## What's Next (Priority Order)
+## Iteration After That
 
-### Phase 9 — Core UX (start here)
-1. **Multi-select** — shift-click or rubber-band drag to select/move/delete multiple nodes
-2. **Node duplication** — Ctrl+D
-3. **PNG export** — serialize canvas to image for sharing with non-technical stakeholders
-4. **Connection rule UI** — show allowed target hints while dragging from a port
+**Iteration 2: One-Click Fixes**
 
-### Phase 10 — Power Features
-5. **Failure / chaos mode** — "Take Offline" toggle per node, traffic cascades visually ← _highest wow factor_
-6. **6 new components** — Lambda, S3/Object Storage, DNS, Monitoring, Service Mesh, Elasticsearch
-7. **Visual group containers** — VPC / Region / AZ boundary boxes that nodes sit inside
-8. **Edge annotations** — click an edge to add latency (ms) or protocol label
+Add action buttons to suggestion cards:
 
-### Phase 11 — Advanced Simulation
-9. **Latency modeling** — response time in ms, end-to-end P95
-10. **Burst spike button** — 3× traffic for 3 seconds to expose failure modes
-11. **Per-node sparklines** — load-over-time graph in the right panel
+- `Insert Load Balancer before App Server`
+- `Route DB reads through Cache`
+- `Add 3 App Server replicas`
+- `Increase Cache capacity to 100K`
+- `Add Queue Consumer`
 
-### Phase 12 — Sharing & Polish
-12. **Minimap** — small overview bottom-right, click to pan
-13. **Keyboard shortcut modal** — press `?` to show all shortcuts
+Every action must:
+
+1. call `snapshot()` before mutating
+2. preserve existing node labels where possible
+3. update edges safely
+4. call `renderAll()`, `updateStats()`, `updateCost()`, `buildSuggestions()`
 
 ---
 
-## Known Gaps Not Yet Addressed
-- Node labels truncate past ~14 chars at default 160px node width
-- Ports only appear on hover — new users don't discover how to connect nodes
-- No diagram title (always shows "ArchViz" in the tab/toolbar)
-- No grid snapping
-- Simulation propagation is still single-pass BFS; complex graphs with late merge paths can under-propagate downstream load
+## Verification Checklist For Future Agents
+
+After changes:
+
+0. Run automated smoke tests:
+   ```bash
+   npm test
+   ```
+1. Start server:
+   ```bash
+   PORT=3457 node server.mjs
+   ```
+2. Load app.
+3. Check browser console for errors.
+4. Load "Simple Web App" example.
+5. Zoom in/out. Node internal layout must not reflow.
+6. Run simulation. Flow labels and node stats should update.
+7. Select a node. Properties panel should show icon, properties, simulation stats.
+8. Try sidebar collapse/open.
+9. Try connecting:
+   - click source port, click target port
+   - drag source port to target port
+10. Export/import JSON or Share link if state format changed.
 
 ---
 
-## Components Available (src/components.js)
+## Current Best Mental Model
 
-| Component | Category | Key Properties |
-|-----------|----------|----------------|
-| Users | Source | userCount, requestsPerUser |
-| Device / App | Source | platform, eventsPerInput, batchingMs, offlineBuffer |
-| Event Source | Source | eventRate, eventType, payloadKB |
-| Text Note | Notes | label, text, tone |
-| Virtual Machine | Compute | capacity, cpu, memory, autoScale |
-| Pod / Container | Compute | capacity, image, cpuRequest, autoScale |
-| App Server | Compute | capacity, runtime, workers, autoScale |
-| Load Balancer | Network | capacity, algorithm, stickySession |
-| Database | Storage | capacity, type, readReplicas, replication |
-| Cache | Storage | capacity, type, hitRate, ttl |
-| Message Queue | Messaging | capacity, type, consumers, maxMessages |
-| CDN | Network | capacity, provider, cacheHitRate |
-| Auto Scaler | Ops | scaleUpThreshold, scaleDownThreshold, maxReplicas |
-| Task Scheduler | Ops | scheduleMode, frequency, timezone, maxConcurrency |
-| API Gateway | Network | capacity, type, rateLimit, authType |
-| Firewall / WAF | Security | capacity, type, blockRate |
-| CDC Source DB | Data | engine, tables, changeRate, retentionHours |
-| Debezium Connector | Data | connectorType, tasks, snapshotMode, heartbeatSeconds |
-| Kafka Topic | Messaging | partitions, replicationFactor, retentionDays, cleanupPolicy |
-| Stream Processor | Data | engine, parallelism, checkpointSeconds, stateBackend |
-| Stream Window | Data | windowType, windowSize, slideEvery, allowedLateness |
-| Hook / Webhook | Ops | trigger, delivery, retries, timeoutMs |
-| Data Lake | Data | format, tableFormat, storageTB |
-| Data Warehouse | Data | platform, computeSize, concurrency |
-| Object Storage | Data | provider, storageTB, durability, versioning |
-| Lake Table Format | Data | format, compaction, snapshotRetentionDays |
-| Data Catalog | Data | catalog, schemas, lineage |
-| Batch Processor | Data | engine, workers, schedule |
-| Query Engine | Data | engine, concurrency, cacheEnabled |
-| Orchestrator | Ops | tool, dags, retryPolicy |
-| Data Quality | Data | tool, checks, failurePolicy |
-| App Insights | Observability | provider, samplingRate, retentionDays, alertRules |
-| Log Analytics | Observability | platform, ingestGBDay, retentionDays |
+ArchViz should not become just "draw.io with traffic animation." The winning product shape is:
+
+```text
+Draw rough architecture -> enter traffic -> Run Sim ->
+ArchViz explains bottlenecks -> applies safe fixes -> shows cost impact
+```
+
+Build toward that.

@@ -134,9 +134,54 @@ npm start
 - Added Mobile Event Streaming example: Users → Device/App emits 4 events/sec/user → Hook → Kafka → Window → Flink → Object Storage/Table Format
 - Extended connection rules for app/device emitters, scheduler/hook triggers, Kafka/windowing, and event-stream paths
 
+### Task 16 — UI/UX Stabilization + Agent Handoff
+**Status:** ✅ Done
+**What:**
+- Added professional SVG icons across components and toolbar controls
+- Added accordion palette and close/open sidebar toggle
+- Fixed zoom to behave like Lucid/draw.io: nodes keep internal size and scale via CSS transform
+- Added click-to-connect ports
+- Fixed toolbar/status bar wrapping issues
+- Added `run.sh` and `run.bat` launchers
+- Updated `HANDOFF.md` and `.claude/PLAN.md` around the 10/10 direction: Lucid-grade editing, presentation-ready sharing, explainable diagnostics, one-click fixes, and formula-based cost modeling
+
+### Task 17 — Testability Baseline
+**Status:** ✅ Done
+**What:**
+- Added `test/smoke.test.mjs`
+- Added `npm test`
+- Smoke test covers component/rule/example consistency, required app DOM hooks, Lucid-style zoom invariant, and run script presence
+
+**Verification:** `npm test` passes — 6 tests, 0 failures.
+
 ---
 
 ## Pending Tasks (Next Phases)
+
+### Iteration 1 — Explainable Diagnostics (Next)
+| ID | Task | Priority | Test Gate |
+|----|------|----------|-----------|
+| 1a | Add `diagnoseNode(nodeId)` with status reason, incoming, capacity, upstream contributors, downstream split, and fix hints | Very High | `npm test` + selected-node manual check |
+| 1b | Add `diagnoseEdge(edgeId)` for edge flow, target pressure, and hot-path reason | Very High | `npm test` + selected-edge manual check |
+| 1c | Render Diagnostics section in the properties panel | Very High | Browser check on red/yellow node |
+| 1d | Make suggestion cards consume diagnostics instead of duplicating ad hoc logic | High | Existing examples still show sane hints |
+
+### Iteration 2 — One-Click Fixes
+| ID | Task | Priority | Test Gate |
+|----|------|----------|-----------|
+| 2a | Add suggestion action framework with undo snapshots | Very High | Apply action then undo |
+| 2b | Insert Load Balancer before overloaded compute | Very High | Users → App becomes Users → LB → App |
+| 2c | Route DB reads through Cache | Very High | App → DB + App → Cache becomes App → Cache → DB |
+| 2d | Add compute replicas behind LB | High | New nodes and edges generated safely |
+| 2e | Increase capacity to recommended target | High | Capacity changes and cost updates |
+
+### Iteration 3 — Presentation/Access
+| ID | Task | Priority | Test Gate |
+|----|------|----------|-----------|
+| 3a | PNG/SVG export | Very High | Export file opens correctly |
+| 3b | Presentation mode / hide editor chrome | High | Clean view for screenshots/demo |
+| 3c | Share-link robustness for larger diagrams | High | Import from generated URL |
+| 3d | Keyboard shortcut modal | Medium | `?` opens modal |
 
 ### Phase 9 — Core UX
 | ID | Task | Priority |

@@ -15,7 +15,7 @@
   --muted:    #7d8590;
   --accent:   #58a6ff;
   --green:    #3fb950;
-  --yellow:   #d29922;
+  --yellow:   #e3b341;
   --red:      #f85149;
   --purple:   #bc8cff;
 }
@@ -23,13 +23,15 @@
 body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 13px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
 
 /* ── TOOLBAR ── */
-#toolbar { height: 44px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 4px; padding: 0 12px; flex-shrink: 0; overflow-x: auto; min-width: 0; }
+#toolbar { height: 44px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 4px; padding: 0 12px; flex-shrink: 0; overflow: visible; min-width: 0; position: relative; z-index: 120; }
 #toolbar .logo { font-size: 14px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; margin-right: 8px; }
 #toolbar .sep  { width: 1px; height: 20px; background: var(--border2); margin: 0 4px; }
-.tbtn { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 5px; transition: all 0.15s; white-space: nowrap; }
+.tbtn { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; line-height: 1; }
 .tbtn:hover { background: var(--border); color: var(--text); border-color: var(--border2); }
 .tbtn.active { background: #1f6feb22; color: var(--accent); border-color: #1f6feb55; }
 .tbtn.danger:hover { background: #f8514922; color: var(--red); border-color: #f8514955; }
+.tbtn.icon-only { padding: 0 8px; }
+.more-item { width: 100%; justify-content: flex-start; padding: 0 10px; border-radius: 5px; }
 #example-sel { height: 28px; width: min(34vw, 460px); max-width: 460px; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); padding: 0 8px; font-size: 12px; outline: none; cursor: pointer; }
 #example-sel:focus { border-color: var(--accent); }
 #cost-badge { background: #238636; color: #3fb950; border: 1px solid #2ea043; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; font-family: monospace; flex-shrink: 0; }
@@ -38,21 +40,40 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 #body { display: flex; flex: 1; overflow: hidden; }
 
 /* ── PALETTE ── */
-#palette { width: 200px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-#pal-search { margin: 8px; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 5px 10px; color: var(--text); font-size: 12px; outline: none; }
+#palette { width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: width 0.18s ease, border-color 0.18s ease; }
+#body.palette-collapsed #palette { width: 0; border-right-color: transparent; }
+#btn-sidebar-toggle { position: absolute; left: 8px; top: 52px; z-index: 70; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border2); background: rgba(22,27,34,0.92); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 28px rgba(0,0,0,0.28); }
+#btn-sidebar-toggle:hover { color: var(--text); border-color: var(--accent); }
+#pal-search { margin: 10px 10px 6px; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px; padding: 6px 10px; color: var(--text); font-size: 12px; outline: none; flex-shrink: 0; }
 #pal-search:focus { border-color: var(--accent); }
-#pal-cats { display: flex; flex-wrap: wrap; gap: 3px; padding: 4px 8px 6px; border-bottom: 1px solid var(--border); }
-.pal-cat { font-size: 10px; padding: 2px 7px; border-radius: 12px; border: 1px solid var(--border2); color: var(--muted); cursor: pointer; }
-.pal-cat:hover { border-color: var(--border2); color: var(--text); }
-.pal-cat.active { background: #1f6feb33; border-color: #1f6feb88; color: var(--accent); }
-#pal-list { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
-.pal-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; border: 1px solid transparent; cursor: grab; user-select: none; transition: background 0.12s; }
+#pal-cats { display: none; }
+#pal-list { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 0 8px; }
+#pal-list::-webkit-scrollbar { display: none; }
+
+/* accordion sections */
+.pal-section {}
+.pal-section-header { display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 10px; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: background 0.12s; }
+.pal-section-header:hover { background: rgba(255,255,255,0.03); }
+.pal-section-hicon { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: 0.85; }
+.pal-section-label { font-size: 11px; font-weight: 650; color: var(--text); flex: 1; letter-spacing: 0.01em; }
+.pal-section-count { font-size: 10px; color: var(--muted); background: rgba(255,255,255,0.06); border-radius: 10px; padding: 1px 6px; }
+.pal-section-chevron { color: var(--muted); transition: transform 0.18s; flex-shrink: 0; }
+.pal-section.open .pal-section-chevron { transform: rotate(90deg); }
+.pal-section-body { overflow: hidden; padding: 2px 6px 4px; display: none; }
+.pal-section.open .pal-section-body { display: block; }
+
+.pal-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; border: 1px solid transparent; cursor: grab; user-select: none; transition: background 0.12s; }
 .pal-item:hover { background: var(--bg); border-color: var(--border2); }
 .pal-item:active { cursor: grabbing; }
-.pal-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.pal-icon { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pal-text .name { font-size: 12px; font-weight: 500; color: var(--text); }
 .pal-text .cat  { font-size: 10px; color: var(--muted); }
-#pal-foot { padding: 8px; border-top: 1px solid var(--border); font-size: 10px; color: var(--muted); line-height: 1.5; }
+
+/* flat search results (no accordion) */
+.pal-search-results { padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; }
+.pal-search-results .pal-text .cat { display: block; }
+
+#pal-foot { padding: 8px 12px; border-top: 1px solid var(--border); font-size: 10px; color: var(--muted); line-height: 1.6; flex-shrink: 0; }
 
 /* ── CANVAS ── */
 #canvas-wrap { flex: 1; position: relative; overflow: hidden; background-color: var(--bg); background-image: radial-gradient(circle, #21262d 1px, transparent 1px); background-size: 20px 20px; }
@@ -62,6 +83,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 
 /* ── NODES ── */
 .a-node { position: absolute; width: 160px; background: var(--surface); border: 1.5px solid var(--border2); border-radius: 10px; cursor: pointer; user-select: none; pointer-events: all; transition: box-shadow 0.2s, border-color 0.25s; overflow: hidden; }
+.node-titles { min-width: 0; flex: 1; overflow: hidden; }
 .a-node:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
 .a-node.selected { border-color: var(--accent) !important; box-shadow: 0 0 0 2px #58a6ff44, 0 4px 20px rgba(0,0,0,0.4); }
 .a-node.status-ok   { border-color: var(--green); }
@@ -75,7 +97,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .node-body   { padding: 10px 11px 8px; }
 .node-header { display: flex; align-items: flex-start; gap: 8px; }
 .node-icon-wrap { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
-.node-titles .node-label { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.node-titles .node-label { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .node-label { cursor: text; }
 .node-label-input { width: 108px; background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 5px; padding: 1px 5px; font-size: 12px; font-weight: 600; outline: none; }
 .node-titles .node-type  { font-size: 10px; color: var(--muted); margin-top: 1px; }
@@ -90,8 +112,10 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .node-load-fill { height: 100%; border-radius: 0; transition: width 0.5s ease, background-color 0.3s; }
 
 /* ── PORTS ── */
-.port { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: crosshair; z-index: 30; opacity: 0; pointer-events: all; transition: opacity 0.15s, transform 0.15s; transform: scale(0.8); }
+.port { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: crosshair; z-index: 30; opacity: 0.28; pointer-events: all; transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s; transform: scale(0.75); }
 .a-node:hover .port, .port:hover { opacity: 1; transform: scale(1); }
+.port.pending-src { opacity: 1 !important; transform: scale(1.3) !important; box-shadow: 0 0 0 4px rgba(90,167,255,0.35), 0 0 14px rgba(90,167,255,0.7) !important; animation: port-pulse 1s ease-in-out infinite; }
+@keyframes port-pulse { 0%,100%{box-shadow:0 0 0 4px rgba(90,167,255,0.35),0 0 14px rgba(90,167,255,0.5);} 50%{box-shadow:0 0 0 6px rgba(90,167,255,0.5),0 0 22px rgba(90,167,255,0.9);} }
 .port.port-r { right:  -8px; top: 50%; margin-top: -7px; }
 .port.port-l { left:   -8px; top: 50%; margin-top: -7px; }
 .port.port-t { top:    -8px; left: 50%; margin-left: -7px; }
@@ -100,13 +124,13 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 /* ── EDGES ── */
 .edge-hit  { fill: none; stroke: transparent; stroke-width: 14; cursor: pointer; pointer-events: stroke; }
 .edge-vis  { fill: none; stroke-width: 1.5; pointer-events: none; }
-.edge-anim { stroke-dasharray: 10,5; animation: flowdash 0.7s linear infinite; }
+.edge-anim { stroke-dasharray: 8,8; animation: flowdash 3s linear infinite; }
 .edge-dash { stroke-dasharray: 6,5; }
 .edge-idle { stroke: var(--border2); }
 .edge-ok   { stroke: var(--green); }
 .edge-warn { stroke: var(--yellow); }
 .edge-crit { stroke: var(--red); }
-@keyframes flowdash { to { stroke-dashoffset: -15; } }
+@keyframes flowdash { to { stroke-dashoffset: -16; } }
 
 .edge-del-btn { cursor: pointer; pointer-events: all; opacity: 0; transition: opacity 0.15s; }
 .edge-group:hover .edge-del-btn { opacity: 1; }
@@ -127,7 +151,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .metric span { color: var(--muted); font-size: 10px; }
 
 #canvas-hud { position: absolute; top: 12px; right: 12px; width: 230px; z-index: 45; background: rgba(22,27,34,0.86); border: 1px solid var(--border2); border-radius: 10px; padding: 10px; box-shadow: 0 10px 35px rgba(0,0,0,0.35); backdrop-filter: blur(10px); }
-#canvas-hud .health-ring { width: 58px; height: 58px; box-shadow: inset 0 0 0 7px rgba(22,27,34,0.95); margin: 0; }
+#canvas-hud .health-ring { width: 58px; height: 58px; min-width: 58px; box-shadow: inset 0 0 0 7px rgba(22,27,34,0.95); margin: 0; flex-shrink: 0; }
 #canvas-hud .metric-grid { grid-template-columns: repeat(4, 1fr); gap: 5px; }
 #canvas-hud .metric { padding: 6px 5px; text-align: center; }
 #canvas-hud .metric strong { font-size: 12px; }
@@ -138,7 +162,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .props-head-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
 .props-head-title { font-size: 13px; font-weight: 600; color: var(--text); }
 .props-head-desc  { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
-#props-scroll { flex: 1; overflow-y: auto; padding: 12px; }
+#props-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
 .section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 12px 0 6px; }
 .section-title:first-child { margin-top: 0; }
 .prop-row { margin-bottom: 8px; }
@@ -159,7 +183,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .sim-stat-row span:last-child  { font-family: monospace; color: var(--text); }
 
 #props-foot { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
-.btn-del { width: 100%; padding: 6px; border-radius: 6px; background: transparent; border: 1px solid #f8514944; color: var(--red); font-size: 12px; cursor: pointer; }
+.btn-del { width: 100%; min-height: 30px; padding: 6px; border-radius: 6px; background: transparent; border: 1px solid #f8514944; color: var(--red); font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; line-height: 1; }
 .btn-del:hover { background: #f8514922; }
 
 /* ── SUGGESTIONS ── */
@@ -175,15 +199,14 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .sug-close { margin-left: auto; color: var(--muted); cursor: pointer; font-size: 14px; flex-shrink: 0; }
 
 /* ── STATUS BAR ── */
-#statusbar { height: 36px; background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 16px; padding: 0 14px; flex-shrink: 0; }
-.sb-stat { font-size: 11px; color: var(--muted); }
+#statusbar { height: 38px; background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 14px; flex-shrink: 0; overflow: hidden; }
+.sb-stat { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .sb-stat strong { color: var(--text); }
 #sb-zoom { font-size: 11px; color: var(--muted); font-family: monospace; }
-.sim-bar { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-#users-slider { width: 120px; accent-color: var(--purple); }
-#users-input  { width: 60px; background: var(--bg); border: 1px solid var(--border2); border-radius: 5px; padding: 2px 6px; color: var(--text); font-size: 11px; text-align: center; outline: none; }
-#flow-readout { min-width: 92px; color: var(--text2); font-size: 11px; text-align: right; }
-#btn-sim { height: 24px; padding: 0 12px; border-radius: 5px; border: 1px solid #2ea04388; background: #23863622; color: var(--green); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.sim-bar { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+#users-slider { width: 100px; accent-color: var(--purple); flex-shrink: 0; }
+#users-input  { width: 90px; background: var(--bg); border: 1px solid var(--border2); border-radius: 5px; padding: 2px 6px; color: var(--text); font-size: 11px; text-align: right; outline: none; }
+#btn-sim { height: 24px; min-width: 78px; padding: 0 12px; border-radius: 5px; border: 1px solid #2ea04388; background: #23863622; color: var(--green); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; line-height: 1; flex-shrink: 0; }
 #btn-sim:hover { background: #238636; color: #fff; }
 #btn-sim.running { background: #f8514922; border-color: #f8514988; color: var(--red); }
 #btn-sim.running:hover { background: var(--red); color: #fff; }
@@ -245,6 +268,10 @@ body { background: #090d12; letter-spacing: 0; }
   background: rgba(255,255,255,0.025);
   border-color: rgba(255,255,255,0.045);
 }
+.tbtn.icon-only {
+  width: 32px;
+  padding: 0;
+}
 .tbtn:hover {
   background: rgba(90,167,255,0.12);
   border-color: rgba(90,167,255,0.34);
@@ -266,36 +293,25 @@ body { background: #090d12; letter-spacing: 0; }
   color: #86efac;
 }
 #palette {
-  width: 248px;
+  width: 228px;
   background: linear-gradient(180deg, #131a23, #10161e);
   box-shadow: 1px 0 0 rgba(255,255,255,0.035);
 }
+#body.palette-collapsed #palette { width: 0; }
 #pal-search {
-  margin: 12px;
-  height: 34px;
+  margin: 10px 10px 6px;
+  height: 32px;
   border-radius: 9px;
   background: #0b1118;
   border-color: #2d3a4a;
 }
-#pal-cats {
-  gap: 5px;
-  padding: 0 12px 10px;
-}
-.pal-cat {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.02);
-}
-.pal-cat.active {
-  background: rgba(90,167,255,0.18);
-  box-shadow: inset 0 0 0 1px rgba(90,167,255,0.26);
-}
-#pal-list { padding: 8px 10px 12px; gap: 5px; }
+.pal-section-header:hover { background: rgba(90,167,255,0.05); }
+.pal-section.open > .pal-section-header { background: rgba(90,167,255,0.07); }
 .pal-item {
-  min-height: 44px;
-  border-radius: 9px;
-  padding: 8px;
-  background: rgba(255,255,255,0.018);
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.012);
 }
 .pal-item:hover {
   background: rgba(90,167,255,0.09);
@@ -303,13 +319,13 @@ body { background: #090d12; letter-spacing: 0; }
   transform: translateX(2px);
 }
 .pal-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
-.pal-text .name { font-weight: 650; }
-#pal-foot { padding: 10px 12px; background: rgba(0,0,0,0.12); }
+.pal-text .name { font-weight: 600; }
+#pal-foot { padding: 8px 12px; background: rgba(0,0,0,0.12); }
 #canvas-wrap {
   background-color: #0a0f16;
   background-image:
@@ -440,23 +456,63 @@ textarea.prop-inp {
 
 <!-- TOOLBAR -->
 <div id="toolbar">
-  <div class="logo">🏗️ <span>ArchViz</span></div>
+  <div class="logo">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#5aa7ff"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <span>ArchViz</span>
+  </div>
+  <input id="diagram-title" type="text" value="Untitled Architecture" title="Diagram title" style="height:28px;background:transparent;border:1px solid transparent;border-radius:7px;color:var(--text);font-size:13px;font-weight:600;padding:0 8px;outline:none;min-width:0;width:190px;transition:border-color 0.15s;" onfocus="this.style.borderColor='var(--accent)';this.style.background='var(--bg)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"/>
   <div class="sep"></div>
-  <button class="tbtn" id="btn-undo" title="Undo (Ctrl+Z)">↩ Undo</button>
-  <button class="tbtn" id="btn-redo" title="Redo (Ctrl+Y)">↪ Redo</button>
+  <button class="tbtn icon-only" id="btn-undo" title="Undo (Ctrl+Z)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+  </button>
+  <button class="tbtn icon-only" id="btn-redo" title="Redo (Ctrl+Y)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+  </button>
   <div class="sep"></div>
-  <button class="tbtn" id="btn-layout" title="Auto arrange nodes">⚡ Auto Layout</button>
-  <button class="tbtn" id="btn-fit"    title="Fit all nodes in view">🎯 Fit</button>
+  <button class="tbtn icon-only" id="btn-layout" title="Auto-layout nodes">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+  </button>
+  <button class="tbtn icon-only" id="btn-fit" title="Fit all in view">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+  </button>
+  <button class="tbtn active icon-only" id="btn-snap" title="Toggle snap to grid (G)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
   <div class="sep"></div>
   <select id="example-sel">
     <option value="">Load Example…</option>
   </select>
   <div class="sep"></div>
-  <button class="tbtn danger" id="btn-clear">🗑 Clear</button>
-  <button class="tbtn" id="btn-import">📂 Import JSON</button>
-  <button class="tbtn" id="btn-export">💾 Export JSON</button>
-  <button class="tbtn" id="btn-share">🔗 Share</button>
-  <button class="tbtn active" id="btn-suggestions" title="Show or hide live recommendation cards">💡 Suggestions</button>
+  <button class="tbtn" id="btn-share">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    Share
+  </button>
+  <!-- More menu -->
+  <div style="position:relative">
+    <button class="tbtn" id="btn-more" title="More options">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
+      More
+    </button>
+    <div id="more-menu" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:4px;z-index:500;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+      <button class="tbtn more-item" id="btn-import">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import JSON
+      </button>
+      <button class="tbtn more-item" id="btn-export">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export JSON
+      </button>
+      <button class="tbtn more-item active" id="btn-suggestions" title="Show or hide live recommendation cards">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="3"/></svg>
+        Hints
+      </button>
+      <div style="height:1px;background:var(--border2);margin:4px 0"></div>
+      <button class="tbtn more-item danger" id="btn-clear">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Clear Canvas
+      </button>
+    </div>
+  </div>
   <input id="import-file" type="file" accept="application/json,.json" style="display:none"/>
   <div style="flex:1"></div>
   <div id="cost-badge">$0 / mo</div>
@@ -468,7 +524,6 @@ textarea.prop-inp {
   <!-- PALETTE -->
   <div id="palette">
     <input id="pal-search" type="text" placeholder="Search components…"/>
-    <div id="pal-cats"></div>
     <div id="pal-list"></div>
     <div id="pal-foot">
       Drag to canvas<br/>
@@ -479,11 +534,14 @@ textarea.prop-inp {
 
   <!-- CANVAS -->
   <div id="canvas-wrap">
+    <button id="btn-sidebar-toggle" title="Hide component sidebar" aria-label="Hide component sidebar">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
     <svg id="canvas-svg">
       <defs>
         <marker id="arr"      markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto"><path d="M0,0.5 L0,4.5 L4.5,2.5z" fill="#30363d"/></marker>
         <marker id="arr-ok"   markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto"><path d="M0,0.5 L0,4.5 L4.5,2.5z" fill="#3fb950"/></marker>
-        <marker id="arr-warn" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto"><path d="M0,0.5 L0,4.5 L4.5,2.5z" fill="#d29922"/></marker>
+        <marker id="arr-warn" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto"><path d="M0,0.5 L0,4.5 L4.5,2.5z" fill="#e3b341"/></marker>
         <marker id="arr-crit" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto"><path d="M0,0.5 L0,4.5 L4.5,2.5z" fill="#f85149"/></marker>
         <marker id="arr-blue" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto"><path d="M0,0.5 L0,4.5 L4.5,2.5z" fill="#58a6ff"/></marker>
         <rect id="sel-rect"/>
@@ -498,9 +556,9 @@ textarea.prop-inp {
     <!-- Drop hint -->
     <div id="drop-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
       <div style="text-align:center;color:var(--muted);">
-        <div style="font-size:48px;margin-bottom:10px;opacity:0.3">🏗️</div>
-        <div style="font-size:16px;font-weight:600;opacity:0.5">Drag components here</div>
-        <div style="font-size:12px;margin-top:6px;opacity:0.3">or load an example from the toolbar</div>
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.18;margin-bottom:12px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <div style="font-size:15px;font-weight:600;opacity:0.45">Drag components here</div>
+        <div style="font-size:12px;margin-top:6px;opacity:0.28">or load an example from the toolbar</div>
       </div>
     </div>
 
@@ -520,7 +578,7 @@ textarea.prop-inp {
   <!-- PROPERTIES -->
   <div id="props-panel" class="collapsed">
     <div id="props-empty">
-      <div style="font-size:32px;opacity:0.2">🖱️</div>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.18"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
       <div style="font-size:12px">Click a node to edit</div>
     </div>
     <div id="props-content">
@@ -548,7 +606,10 @@ textarea.prop-inp {
         </div>
       </div>
       <div id="props-foot">
-        <button class="btn-del" id="btn-del-node">🗑 Delete Node</button>
+        <button class="btn-del" id="btn-del-node">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          Delete Node
+        </button>
       </div>
     </div>
   </div>
@@ -566,11 +627,18 @@ textarea.prop-inp {
     <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div> &gt;85%</div>
   </div>
   <div class="sim-bar">
-    <span class="sb-stat">👥</span>
+    <span class="sb-stat"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
     <input id="users-slider" type="range" min="1" max="10000000000" value="100"/>
-    <input id="users-input" type="number" min="1" max="10000000000" value="100"/>
-    <span id="flow-readout">100/s</span>
-    <button id="btn-sim">▶ Run Sim</button>
+    <input id="users-input" type="text" inputmode="numeric" value="100" style="width:110px"/>
+    <select id="sim-speed-sel" title="Simulation speed" style="background:var(--bg2);color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:11px;cursor:pointer;height:26px;">
+      <option value="slow">Slow</option>
+      <option value="normal" selected>Normal</option>
+      <option value="fast">Fast</option>
+    </select>
+    <button id="btn-sim">
+      <svg id="btn-sim-icon" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Run Sim
+    </button>
     <div id="sim-dot"></div>
   </div>
 </div>
@@ -595,6 +663,11 @@ let S = {
   panY:    40,
   simOn:   false,
   simTick: null,
+  simSpeed: (() => { try { return localStorage.getItem('archviz.simspeed') || 'normal'; } catch { return 'normal'; } })(),
+  snapGrid: (() => { try { return localStorage.getItem('archviz.snap') !== 'off'; } catch { return true; } })(),
+  sidebarOpen: (() => { try { return localStorage.getItem('archviz.sidebar') !== 'closed'; } catch { return true; } })(),
+  gridSize: 40,
+  title: 'Untitled Architecture',
   suggestionsOn: (() => {
     try { return localStorage.getItem('archviz.suggestions') !== 'off'; }
     catch { return true; }
@@ -608,10 +681,12 @@ let S = {
 
 // interaction
 let G = {
-  drag:   null,   // { id, sx, sy, ox, oy }
-  pan:    null,   // { sx, sy, ox, oy }
-  conn:   null,   // { srcId, srcPort }
-  dragDef: null,  // defId being dragged from palette
+  drag:        null,   // { id, sx, sy, ox, oy }
+  pan:         null,   // { sx, sy, ox, oy }
+  conn:        null,   // { srcId, srcSide } — active drag-connect or pending-click
+  pendingConn: null,   // { srcId, srcSide } — click mode: waiting for target click
+  dragDef:     null,   // defId being dragged from palette
+  portDragStart: null, // { x, y } for distinguishing click vs drag on port
 };
 
 // DOM
@@ -628,6 +703,60 @@ function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[ch]));
+}
+
+function snapVal(v) {
+  return S.snapGrid ? Math.round(v / S.gridSize) * S.gridSize : v;
+}
+
+function clearPendingConn() {
+  G.pendingConn = null;
+  G.conn = null;
+  G.portDragStart = null;
+  connPrev.style.display = 'none';
+  document.querySelectorAll('.port.pending-src').forEach(el => el.classList.remove('pending-src'));
+}
+
+function updateCanvasGrid() {
+  const sz = S.gridSize * S.zoom;
+  cWrap.style.backgroundSize = `${sz}px ${sz}px, ${sz}px ${sz}px, 100% 100%`;
+  cWrap.style.backgroundPosition = `${S.panX}px ${S.panY}px, ${S.panX}px ${S.panY}px, 0 0`;
+}
+
+function updateSnapButton() {
+  const btn = document.getElementById('btn-snap');
+  if (!btn) return;
+  btn.classList.toggle('active', S.snapGrid);
+  btn.title = S.snapGrid ? 'Snap to grid ON (G to toggle)' : 'Snap to grid OFF (G to toggle)';
+}
+
+function setSnapGrid(on) {
+  S.snapGrid = !!on;
+  try { localStorage.setItem('archviz.snap', S.snapGrid ? 'on' : 'off'); } catch {}
+  updateSnapButton();
+  updateCanvasGrid();
+}
+
+function updateSidebarToggle() {
+  document.getElementById('body').classList.toggle('palette-collapsed', !S.sidebarOpen);
+  const btn = document.getElementById('btn-sidebar-toggle');
+  if (!btn) return;
+  btn.title = S.sidebarOpen ? 'Hide component sidebar' : 'Show component sidebar';
+  btn.setAttribute('aria-label', btn.title);
+  btn.innerHTML = S.sidebarOpen
+    ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>'
+    : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+}
+
+function setSidebarOpen(open) {
+  S.sidebarOpen = !!open;
+  try { localStorage.setItem('archviz.sidebar', S.sidebarOpen ? 'open' : 'closed'); } catch {}
+  updateSidebarToggle();
+  requestAnimationFrame(() => { renderAll(); updateCanvasGrid(); updateEmptyPanel(); });
+}
+
+function getDiagramTitle() {
+  return document.getElementById('diagram-title')?.value || 'Untitled Architecture';
 }
 
 function setExampleSelect(id) {
@@ -663,44 +792,85 @@ function restore(st) {
 }
 
 // ══ PALETTE ══════════════════════════════════════════════════════════════════
-let palCat = 'all';
-function initPalette() {
-  const cats = document.getElementById('pal-cats');
-  CATEGORIES.forEach(c => {
-    const b = document.createElement('button');
-    b.className = 'pal-cat' + (c.id === 'all' ? ' active' : '');
-    b.textContent = c.label; b.dataset.cat = c.id;
-    b.onclick = () => {
-      palCat = c.id;
-      cats.querySelectorAll('.pal-cat').forEach(x => x.classList.toggle('active', x.dataset.cat === c.id));
-      renderPalette();
-    };
-    cats.appendChild(b);
+const CHEVRON = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+// which sections are expanded — all collapsed by default except first category
+const openSections = new Set(['source']);
+
+function makePalItem(def) {
+  const el = document.createElement('div');
+  el.className = 'pal-item'; el.draggable = true; el.dataset.defId = def.id;
+  el.innerHTML = `<div class="pal-icon" style="background:${def.color}22">${def.icon}</div><div class="pal-text"><div class="name">${def.name}</div></div>`;
+  el.addEventListener('dragstart', e => {
+    G.dragDef = def.id;
+    const gh = document.getElementById('drag-ghost');
+    gh.innerHTML = `${def.icon} <span>${def.name}</span>`;
+    gh.style.display = 'flex';
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setDragImage(new Image(), 0, 0);
   });
+  return el;
+}
+
+function initPalette() {
   document.getElementById('pal-search').addEventListener('input', renderPalette);
   renderPalette();
 }
 
 function renderPalette() {
   const list = document.getElementById('pal-list');
-  const q = document.getElementById('pal-search').value.toLowerCase();
+  const q = document.getElementById('pal-search').value.toLowerCase().trim();
   list.innerHTML = '';
-  COMPONENT_DEFS
-    .filter(c => (palCat === 'all' || c.category === palCat) && (!q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)))
-    .forEach(def => {
-      const el = document.createElement('div');
-      el.className = 'pal-item'; el.draggable = true; el.dataset.defId = def.id;
-      el.innerHTML = `<div class="pal-icon" style="background:${def.color}22">${def.icon}</div><div class="pal-text"><div class="name">${def.name}</div><div class="cat">${def.category}</div></div>`;
-      el.addEventListener('dragstart', e => {
-        G.dragDef = def.id;
-        const gh = document.getElementById('drag-ghost');
-        gh.innerHTML = `<span>${def.icon}</span><span>${def.name}</span>`;
-        gh.style.display = 'flex';
-        e.dataTransfer.effectAllowed = 'copy';
-        e.dataTransfer.setDragImage(new Image(), 0, 0);
+
+  if (q) {
+    // Search mode: flat filtered list with category shown
+    const wrap = document.createElement('div');
+    wrap.className = 'pal-search-results';
+    const matches = COMPONENT_DEFS.filter(c =>
+      c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.category.includes(q)
+    );
+    if (matches.length === 0) {
+      wrap.innerHTML = `<div style="padding:16px 8px;text-align:center;color:var(--muted);font-size:11px">No components match "${esc(q)}"</div>`;
+    } else {
+      matches.forEach(def => {
+        const el = makePalItem(def);
+        // show category in search results
+        el.querySelector('.pal-text').innerHTML += `<div class="cat">${def.category}</div>`;
+        wrap.appendChild(el);
       });
-      list.appendChild(el);
-    });
+    }
+    list.appendChild(wrap);
+    return;
+  }
+
+  // Accordion mode: one section per category (skip "all")
+  CATEGORIES.filter(c => c.id !== 'all').forEach(cat => {
+    const defs = COMPONENT_DEFS.filter(c => c.category === cat.id);
+    if (!defs.length) return;
+
+    const section = document.createElement('div');
+    section.className = 'pal-section' + (openSections.has(cat.id) ? ' open' : '');
+
+    const header = document.createElement('div');
+    header.className = 'pal-section-header';
+    header.innerHTML = `
+      <div class="pal-section-hicon" style="background:${defs[0].color}22">${cat.icon}</div>
+      <span class="pal-section-label">${cat.label}</span>
+      <span class="pal-section-count">${defs.length}</span>
+      <span class="pal-section-chevron">${CHEVRON}</span>`;
+    header.onclick = () => {
+      const isOpen = section.classList.toggle('open');
+      if (isOpen) openSections.add(cat.id); else openSections.delete(cat.id);
+    };
+
+    const body = document.createElement('div');
+    body.className = 'pal-section-body';
+    defs.forEach(def => body.appendChild(makePalItem(def)));
+
+    section.appendChild(header);
+    section.appendChild(body);
+    list.appendChild(section);
+  });
 }
 
 // ══ EXAMPLES ═════════════════════════════════════════════════════════════════
@@ -816,12 +986,12 @@ function renderNode(id) {
 
   const noteCls = n.defId === 'textnote' ? ' note-node' : '';
   el.className = 'a-node ' + sCls + noteCls + (S.sel === id ? ' selected' : '');
-  el.style.cssText = `left:${x}px;top:${y}px;width:${n.w * S.zoom}px;`;
+  el.style.cssText = `left:${x}px;top:${y}px;width:${n.w}px;height:${n.h}px;transform:scale(${S.zoom});transform-origin:top left;`;
 
   const label = n.props.label || def.name;
   const safeLabel = esc(label);
   const safeType = esc(def.name);
-  const safeIcon = esc(def.icon);
+  const safeIcon = def.icon; // SVG string — do not escape
   const barColor = pct > 85 ? '#f85149' : pct > 60 ? '#d29922' : '#3fb950';
   // Replicas: read-only nodes use a different accent strip
   const accentColor = n.props._isReplica ? '#a855f7' : def.color;
@@ -872,15 +1042,47 @@ function renderNode(id) {
   el.querySelectorAll('.port').forEach(p => {
     p.onmousedown = e => {
       e.stopPropagation();
+      G.portDragStart = { x: e.clientX, y: e.clientY };
+
+      // If there is already a pending click-connection, complete it on this port
+      if (G.pendingConn) {
+        if (G.pendingConn.srcId !== id) {
+          addEdge(G.pendingConn.srcId, id);
+        }
+        clearPendingConn();
+        e.preventDefault();
+        return;
+      }
+
+      // Start a new connection (drag or click)
       G.conn = { srcId: id, srcSide: p.dataset.side };
       connPrev.style.display = '';
     };
+
     p.onmouseup = e => {
       e.stopPropagation();
-      if (G.conn && G.conn.srcId !== id) {
+      if (!G.conn) return;
+
+      const dist = G.portDragStart
+        ? Math.hypot(e.clientX - G.portDragStart.x, e.clientY - G.portDragStart.y)
+        : 999;
+      G.portDragStart = null;
+
+      if (G.conn.srcId !== id) {
+        // Dragged from another port → complete edge
         addEdge(G.conn.srcId, id);
+        clearPendingConn();
+      } else if (dist < 6) {
+        // Clicked own port (not dragged) → enter pending click mode
+        G.pendingConn = { srcId: id, srcSide: p.dataset.side };
+        // Keep G.conn alive so preview line keeps following the cursor
+        // Highlight the source port
+        document.querySelectorAll('.port.pending-src').forEach(el => el.classList.remove('pending-src'));
+        p.classList.add('pending-src');
+      } else {
+        // Dragged from own port but released on canvas → cancel
+        clearPendingConn();
       }
-      G.conn = null; connPrev.style.display = 'none';
     };
   });
 
@@ -1072,12 +1274,14 @@ function bezier(x1,y1,x2,y2,ss,ts) {
 }
 
 // ══ EDGE RENDER ═══════════════════════════════════════════════════════════════
-function edgeStatus(srcId) {
+function edgeStatus(srcId, tgtId) {
   if (!S.simOn) return { cls:'edge-idle', marker:'arr' };
-  const sim = S.simLoad[srcId];
-  if (!sim || sim.status === 'source') return { cls:'edge-ok', marker:'arr-ok' };
-  if (sim.loadPct > 85) return { cls:'edge-crit', marker:'arr-crit' };
-  if (sim.loadPct > 60) return { cls:'edge-warn', marker:'arr-warn' };
+  // Color by target load — edge is red/yellow only if the destination is stressed
+  const tgt = S.simLoad[tgtId];
+  if (tgt && tgt.status !== 'source') {
+    if (tgt.loadPct > 85) return { cls:'edge-crit', marker:'arr-crit' };
+    if (tgt.loadPct > 60) return { cls:'edge-warn', marker:'arr-warn' };
+  }
   return { cls:'edge-ok', marker:'arr-ok' };
 }
 
@@ -1092,7 +1296,7 @@ function renderEdges() {
     const sn = S.nodes[edge.src], tn = S.nodes[edge.tgt];
     if (!sn || !tn) return;
     const d = bezier(s.x,s.y,t.x,t.y,ss,ts);
-    const { cls, marker } = edgeStatus(edge.src);
+    const { cls, marker } = edgeStatus(edge.src, edge.tgt);
     const isSelected = S.selEdge === edge.id;
 
     const g = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -1151,8 +1355,8 @@ function renderEdges() {
       labelsG.appendChild(txt);
 
       const particleColor = cls === 'edge-crit' ? '#f85149' : cls === 'edge-warn' ? '#d29922' : '#58a6ff';
-      const count = Math.max(1, Math.min(4, Math.ceil(flow / 300)));
-      const dur = Math.max(0.75, 2.4 - Math.min(flow, 1600) / 900);
+      const count = Math.max(1, Math.min(3, Math.ceil(flow / 500)));
+      const dur = Math.max(2.0, 5.0 - Math.min(flow, 1600) / 800);
       for (let i = 0; i < count; i++) {
         const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
         dot.setAttribute('class', 'flow-particle');
@@ -1206,7 +1410,7 @@ function showProps(id) {
   empty.style.display = 'none'; cont.classList.add('show');
 
   document.getElementById('ph-icon').style.background = def.color + '22';
-  document.getElementById('ph-icon').textContent = def.icon;
+  document.getElementById('ph-icon').innerHTML = def.icon;
   document.getElementById('ph-title').textContent = def.name;
   document.getElementById('ph-desc').textContent  = def.description;
 
@@ -1309,7 +1513,7 @@ function refreshSimStats(id) {
   document.getElementById('ss-in').textContent  = sim ? formatFlow(sim.incoming) : '—';
   const capStr = sim ? sim.scaledCap ? `${formatFlow(sim.capacity)} → ${formatFlow(sim.scaledCap)}` : (typeof sim.capacity === 'number' ? formatFlow(sim.capacity) : String(sim.capacity||'—')) : '—';
   document.getElementById('ss-cap').textContent = capStr;
-  document.getElementById('ss-pct').textContent = sim ? Math.round(sim.loadPct) + '%' : '—';
+  document.getElementById('ss-pct').textContent = sim ? (sim.loadPct >= 1000 ? '>' + Math.floor(sim.loadPct/100)*100 + '%' : Math.round(sim.loadPct) + '%') : '—';
   document.getElementById('ss-rep').textContent = sim?.replicas ? sim.replicas + 'x' : '—';
   document.getElementById('ss-st').textContent  = sim ? sim.status : '—';
 }
@@ -1380,32 +1584,60 @@ function runTick() {
   Object.keys(S.nodes).forEach(id => { incoming[id] = 0; });
 
   // Seed sources
-  const queue = []; const visited = new Set();
   Object.values(S.nodes).forEach(n => {
     if (!SOURCE_DEFS.has(n.defId)) return;
-    const rps = sourceRate(n);
-    incoming[n.id] = rps; queue.push(n.id); visited.add(n.id);
+    incoming[n.id] = sourceRate(n);
   });
 
-  // BFS propagation
-  while (queue.length) {
-    const cur = queue.shift(); const n = S.nodes[cur]; if (!n) continue;
-    const inn = incoming[cur] || 0;
-    let pass = inn;
-    if (n.defId==='cdn')       pass = inn*(1-(n.props.cacheHitRate||85)/100);
-    else if (n.defId==='cache') pass = inn*(1-(n.props.hitRate||80)/100);
-    else if (n.defId==='firewall') pass = inn*(1-(n.props.blockRate||5)/100);
-    else if (n.defId==='deviceapp') pass = inn*(n.props.eventsPerInput || 1);
-
-    const down = S.edges.filter(e => e.src===cur && !e.dashed);
-    if (down.length && pass>0) {
-      const share = pass/down.length;
-      down.forEach(edge => {
-        eFlowNew[edge.id] = share;
-        incoming[edge.tgt] = (incoming[edge.tgt]||0) + share;
-        if (!visited.has(edge.tgt)) { visited.add(edge.tgt); queue.push(edge.tgt); }
+  // Multi-pass propagation — iterate until values converge (handles merge paths)
+  const MAX_PASSES = 8;
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    const prevFlow = { ...eFlowNew };
+    // Process nodes in topological order approximation: by BFS layer from sources
+    const order = [];
+    const inDeg = {};
+    Object.keys(S.nodes).forEach(id => { inDeg[id] = 0; });
+    S.edges.forEach(e => { if (!e.dashed && S.nodes[e.src] && S.nodes[e.tgt]) inDeg[e.tgt]++; });
+    const q = Object.keys(S.nodes).filter(id => inDeg[id] === 0 || SOURCE_DEFS.has(S.nodes[id]?.defId));
+    const seen = new Set(q);
+    let head = [...q];
+    while (head.length) {
+      const nxt = [];
+      head.forEach(id => {
+        order.push(id);
+        S.edges.filter(e => e.src === id && !e.dashed && S.nodes[e.tgt]).forEach(e => {
+          if (!seen.has(e.tgt)) { seen.add(e.tgt); nxt.push(e.tgt); }
+        });
       });
+      head = nxt;
     }
+    // Any unvisited nodes (cycles/disconnected)
+    Object.keys(S.nodes).forEach(id => { if (!seen.has(id)) order.push(id); });
+
+    // Reset non-source incoming for this pass
+    Object.keys(S.nodes).forEach(id => { if (!SOURCE_DEFS.has(S.nodes[id]?.defId)) incoming[id] = 0; });
+
+    order.forEach(cur => {
+      const n = S.nodes[cur]; if (!n) return;
+      const inn = incoming[cur] || 0;
+      let fwd = inn;
+      if (n.defId==='cdn')        fwd = inn*(1-(n.props.cacheHitRate||85)/100);
+      else if (n.defId==='cache') fwd = inn*(1-(n.props.hitRate||80)/100);
+      else if (n.defId==='firewall') fwd = inn*(1-(n.props.blockRate||5)/100);
+      else if (n.defId==='deviceapp') fwd = inn*(n.props.eventsPerInput||1);
+      const down = S.edges.filter(e => e.src===cur && !e.dashed && S.nodes[e.tgt]);
+      if (down.length && fwd > 0) {
+        const share = fwd / down.length;
+        down.forEach(edge => {
+          eFlowNew[edge.id] = share;
+          incoming[edge.tgt] = (incoming[edge.tgt] || 0) + share;
+        });
+      }
+    });
+
+    // Check convergence
+    const changed = Object.keys(eFlowNew).some(k => Math.abs((eFlowNew[k]||0) - (prevFlow[k]||0)) > 0.5);
+    if (!changed) break;
   }
   S.eFlow = eFlowNew;
 
@@ -1476,11 +1708,12 @@ function clearSuggestionCards() {
   document.querySelectorAll('#suggestions .sug-card:not(.toast-card)').forEach(el => el.remove());
 }
 
+const HINTS_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="3"/></svg>`;
 function updateSuggestionsToggle() {
   const btn = document.getElementById('btn-suggestions');
   if (!btn) return;
   btn.classList.toggle('active', S.suggestionsOn);
-  btn.textContent = S.suggestionsOn ? '💡 Suggestions' : '💡 Suggestions Off';
+  btn.innerHTML = HINTS_SVG + (S.suggestionsOn ? ' Hints' : ' Hints Off');
   btn.title = S.suggestionsOn ? 'Hide live recommendation cards' : 'Show live recommendation cards';
 }
 
@@ -1508,30 +1741,80 @@ function buildSuggestions() {
       const key = n.id + '-crit';
       if (!dismissedSugs.has(key)) {
         let fix = 'Add a Load Balancer upstream to distribute traffic, or enable ⚡ Auto Scaling in the properties panel.';
-        if (n.defId === 'database') fix = 'Set "Read Replicas" > 0 in properties — replicas appear automatically. Add a Cache layer to reduce DB pressure.';
-        if (n.defId === 'loadbalancer') fix = 'Increase throughput capacity, or add more downstream servers connected to this Load Balancer.';
-        if (n.defId === 'appserver' || n.defId === 'vm' || n.defId === 'pod')
-          fix = 'Enable ⚡ Auto Scaling in this node\'s properties, or drag a Load Balancer before it and add more server instances.';
-        cards.push({ key, type:'crit', icon:'🔴', title:`${label} is critical — ${Math.round(sim.loadPct)}% load`, msg: fix });
+
+        if (n.defId === 'cache') {
+          // Check if cache is wired correctly: App Server → Cache → Database (pass-through)
+          const hasDownstreamDB = S.edges.some(e => e.src === n.id && S.nodes[e.tgt]?.defId === 'database');
+          const upstreamAppDirect = S.edges.some(e => e.tgt === n.id);
+          if (!hasDownstreamDB) {
+            fix = 'Wire Cache → Database so cache misses flow through (only ~20% at 80% hit rate reaches DB). Delete any direct App Server → Database edge. Current topology bypasses the cache.';
+          } else {
+            fix = 'Cache is absorbing all reads. Increase Capacity in properties (Redis cluster handles 100K+ req/s), or add a second Cache node behind a Load Balancer for horizontal scaling.';
+          }
+        }
+        else if (n.defId === 'database') {
+          const repCount = Object.values(S.nodes).filter(r => r.props._replicaOf === n.id).length;
+          const hasCacheUpstream = S.edges.some(e => e.tgt === n.id && S.nodes[e.src]?.defId === 'cache');
+          const hasDirectAppServer = S.edges.some(e => e.tgt === n.id && ['appserver','vm','pod'].includes(S.nodes[e.src]?.defId));
+          if (hasDirectAppServer && !hasCacheUpstream) {
+            fix = `App Server is hitting the DB directly. Add a Cache node between them: App Server → Cache → Database. With 80% hit rate, only 20% of reads reach the DB — a 5× reduction in load.`;
+          } else if (hasCacheUpstream && repCount === 0) {
+            fix = 'Cache is in place. Now set "Read Replicas" > 0 in DB properties — replicas appear automatically and split read load.';
+          } else if (repCount > 0) {
+            fix = `${repCount} replica(s) added. If still overloaded, increase each replica's capacity or add more replicas. Consider connection pooling (PgBouncer/RDS Proxy) to reduce connection overhead.`;
+          } else {
+            fix = 'Set "Read Replicas" > 0 in properties — replicas appear automatically. Add a Cache layer upstream to absorb repeated reads before they reach the DB.';
+          }
+        }
+        else if (n.defId === 'loadbalancer') {
+          fix = 'Increase throughput capacity in properties, or add more downstream servers connected to this Load Balancer.';
+        }
+        else if (['appserver','vm','pod'].includes(n.defId)) {
+          fix = 'Enable ⚡ Auto Scaling in this node\'s properties panel, or drag a Load Balancer upstream and add more instances behind it.';
+        }
+        else if (n.defId === 'queue') {
+          fix = 'Increase consumer count in properties, or add more worker nodes (App Server / Pod) downstream. Queues absorb spikes — make sure consumers can drain fast enough.';
+        }
+        else if (n.defId === 'apigateway') {
+          fix = 'API Gateway is the bottleneck. Increase capacity or add a Load Balancer with multiple API Gateway instances. Consider rate-limiting upstream (CDN / WAF) to protect it.';
+        }
+
+        const pct = sim.loadPct;
+        const pctLabel = pct >= 1000 ? `>${Math.floor(pct/100)*100}%` : `${Math.round(pct)}%`;
+        cards.push({ key, type:'crit', icon:'🔴', title:`${label} overloaded — ${pctLabel} load`, msg: fix });
       }
     } else if (sim.loadPct > 60 && sim.loadPct <= 85) {
       const key = n.id + '-warn';
-      if (!dismissedSugs.has(key))
-        cards.push({ key, type:'warn', icon:'🟡', title:`${label} — ${Math.round(sim.loadPct)}% load (warning)`, msg: 'Consider enabling Auto Scaling or adding capacity before traffic peaks.' });
+      if (!dismissedSugs.has(key)) {
+        let warn = 'Approaching capacity. Enable Auto Scaling or add capacity before traffic peaks.';
+        if (n.defId === 'database') warn = 'DB nearing capacity. Pre-emptively add Read Replicas or a Cache layer before load spikes.';
+        if (n.defId === 'cache') warn = 'Cache nearing capacity. Consider upgrading to a Redis cluster or adding a second cache node.';
+        cards.push({ key, type:'warn', icon:'🟡', title:`${label} — ${Math.round(sim.loadPct)}% load`, msg: warn });
+      }
     }
 
-    if (n.defId === 'database' && !n.props._isReplica) {
+    if (n.defId === 'database' && !n.props._isReplica && sim.loadPct <= 85) {
       const repCount = Object.values(S.nodes).filter(r => r.props._replicaOf === n.id).length;
       if (sim.loadPct > 60 && repCount === 0) {
         const key = n.id + '-db-rep';
         if (!dismissedSugs.has(key))
-          cards.push({ key, type:'info', icon:'💡', title:`${label}: Add Read Replicas`, msg: 'Set "Read Replicas" > 0 in the properties panel — replica nodes will appear on canvas automatically.' });
+          cards.push({ key, type:'info', icon:'💡', title:`${label}: Add Read Replicas`, msg: 'Set "Read Replicas" > 0 in the properties panel — replica nodes will appear on canvas automatically and split read load.' });
       }
-      if (repCount > 0 && sim.loadPct > 85) {
-        const key = n.id + '-db-cache';
-        if (!dismissedSugs.has(key))
-          cards.push({ key, type:'info', icon:'⚡', title:`${label} still overloaded with ${repCount} replica(s)`, msg: 'Add a Cache layer (Redis/Memcached) in front of the DB to absorb repeated reads without hitting replicas.' });
-      }
+    }
+  });
+
+  // Topology: compute node hit directly by a source without a Load Balancer
+  const computeDefs = new Set(['appserver','vm','pod']);
+  Object.values(S.nodes).forEach(n => {
+    if (!computeDefs.has(n.defId)) return;
+    const sim = S.simLoad[n.id]; if (!sim || sim.loadPct <= 60) return;
+    const srcEdges = S.edges.filter(e => e.tgt === n.id && SOURCE_DEFS.has(S.nodes[e.src]?.defId));
+    const hasLBUpstream = S.edges.some(e => e.tgt === n.id && S.nodes[e.src]?.defId === 'loadbalancer');
+    if (srcEdges.length > 0 && !hasLBUpstream) {
+      const key = n.id + '-no-lb';
+      const label = n.props.label || COMPONENT_DEFS.find(d=>d.id===n.defId)?.name;
+      if (!dismissedSugs.has(key))
+        cards.push({ key, type:'info', icon:'💡', title:`Add a Load Balancer before ${label}`, msg: `Traffic hits ${label} directly from the source. Add a Load Balancer between them: Users → Load Balancer → ${label}. This lets you run multiple ${label} instances and distributes load evenly.` });
     }
   });
 
@@ -1572,12 +1855,18 @@ function buildSuggestions() {
 const slider = document.getElementById('users-slider');
 const uInp   = document.getElementById('users-input');
 const dot    = document.getElementById('sim-dot');
-const flowReadout = document.getElementById('flow-readout');
+const flowReadout = { textContent: '' }; // removed from DOM
 
+function fmtComma(n) {
+  return Math.round(n).toLocaleString('en-US');
+}
+function parseComma(s) {
+  return Number(String(s).replace(/,/g, '')) || 0;
+}
 function syncSlider(v) {
   const next = Math.max(1, Math.round(v || 1));
   slider.value = Math.min(next, Number(slider.max));
-  uInp.value = next;
+  uInp.value = fmtComma(next);
   flowReadout.textContent = formatFlow(next);
 }
 function applyUsers(v) {
@@ -1587,18 +1876,31 @@ function applyUsers(v) {
   flowReadout.textContent = formatFlow(computeTotalRPS());
 }
 slider.oninput = () => { syncSlider(+slider.value); applyUsers(+slider.value); };
-uInp.oninput   = () => { syncSlider(+uInp.value); applyUsers(+uInp.value); };
+uInp.oninput = () => {
+  const raw = parseComma(uInp.value);
+  if (raw > 0) { syncSlider(raw); applyUsers(raw); }
+};
+uInp.onblur = () => {
+  const raw = parseComma(uInp.value);
+  uInp.value = fmtComma(Math.max(1, raw));
+};
+uInp.onkeydown = e => {
+  if (e.key === 'Enter') uInp.blur();
+};
 
 document.getElementById('btn-sim').onclick = () => {
   S.simOn = !S.simOn;
   const btn = document.getElementById('btn-sim');
   if (S.simOn) {
-    btn.textContent = '⏹ Stop'; btn.classList.add('running');
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg><span>Stop</span>`;
+    btn.classList.add('running');
     dot.classList.add('on');
     dismissedSugs.clear();
-    runTick(); S.simTick = setInterval(runTick, 700);
+    const speedMs = { slow: 2500, normal: 1600, fast: 800 }[S.simSpeed || 'normal'] || 1600;
+    runTick(); S.simTick = setInterval(runTick, speedMs);
   } else {
-    btn.textContent = '▶ Run Sim'; btn.classList.remove('running');
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Run Sim</span>`;
+    btn.classList.remove('running');
     dot.classList.remove('on');
     clearInterval(S.simTick); S.simLoad={}; S.eFlow={};
     clearSuggestionCards();
@@ -1688,8 +1990,8 @@ cWrap.addEventListener('drop', e => {
   if (!G.dragDef) return;
   document.getElementById('drag-ghost').style.display='none';
   const rect = cWrap.getBoundingClientRect();
-  const cx = (e.clientX - rect.left - S.panX) / S.zoom - 80;
-  const cy = (e.clientY - rect.top  - S.panY) / S.zoom - 44;
+  const cx = snapVal((e.clientX - rect.left - S.panX) / S.zoom - 80);
+  const cy = snapVal((e.clientY - rect.top  - S.panY) / S.zoom - 44);
 
   // Check if dropping onto an existing edge (split it)
   const hitEdge = findEdgeNear(e.clientX - rect.left, e.clientY - rect.top);
@@ -1723,8 +2025,8 @@ window.addEventListener('mousemove', e => {
   // Node drag
   if (G.drag) {
     const n = S.nodes[G.drag.id]; if (!n) return;
-    n.x = G.drag.ox + (e.clientX-G.drag.sx)/S.zoom;
-    n.y = G.drag.oy + (e.clientY-G.drag.sy)/S.zoom;
+    n.x = snapVal(G.drag.ox + (e.clientX-G.drag.sx)/S.zoom);
+    n.y = snapVal(G.drag.oy + (e.clientY-G.drag.sy)/S.zoom);
     const el = document.getElementById('node-'+G.drag.id);
     if (el) { const {x,y}=nodeScreenPos(n); el.style.left=x+'px'; el.style.top=y+'px'; }
     renderEdges(); return;
@@ -1733,7 +2035,7 @@ window.addEventListener('mousemove', e => {
   if (G.pan) {
     S.panX = G.pan.ox + (e.clientX-G.pan.sx);
     S.panY = G.pan.oy + (e.clientY-G.pan.sy);
-    renderAll(); updateZoomLabel(); return;
+    renderAll(); updateZoomLabel(); updateCanvasGrid(); return;
   }
   // Connection preview
   if (G.conn) {
@@ -1749,11 +2051,14 @@ window.addEventListener('mousemove', e => {
 
 window.addEventListener('mouseup', () => {
   if (G.drag) { snapshot(); G.drag=null; }
-  G.pan=null; G.conn=null; connPrev.style.display='none';
+  G.pan=null;
+  // Don't clear conn if we're in pending click-connect mode
+  if (!G.pendingConn) { G.conn=null; connPrev.style.display='none'; }
 });
 
 cWrap.addEventListener('mousedown', e => {
   if (e.target===cWrap || e.target===cSvg || e.target.id==='canvas-nodes') {
+    if (G.pendingConn) { clearPendingConn(); return; }
     deselect();
     G.pan = { sx:e.clientX, sy:e.clientY, ox:S.panX, oy:S.panY };
   }
@@ -1780,7 +2085,8 @@ window.addEventListener('keydown', e => {
     else if (S.selEdge) deleteEdge(S.selEdge);
     e.preventDefault();
   }
-  if (e.key==='Escape') deselect();
+  if (e.key==='Escape') { clearPendingConn(); deselect(); }
+  if (e.key==='g' || e.key==='G') { setSnapGrid(!S.snapGrid); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey) { undo(); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && (e.key==='y'||(e.key==='z'&&e.shiftKey))) { redo(); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='a') {
@@ -1805,6 +2111,7 @@ function fitView() {
 
 function updateZoomLabel() {
   document.getElementById('sb-zoom').textContent = Math.round(S.zoom*100)+'%';
+  updateCanvasGrid();
 }
 
 function updateStats() {
@@ -1879,6 +2186,7 @@ function normalizeImportedArchitecture(payload) {
     eSeq: maxEdge,
     view: payload.view || {},
     users: payload.users,
+    title: payload.title || '',
     activeExample: payload.activeExample || ''
   };
 }
@@ -1901,6 +2209,11 @@ function importArchitecture(payload) {
   if (Number.isFinite(next.users)) {
     syncSlider(next.users);
   }
+  if (next.title) {
+    const titleEl = document.getElementById('diagram-title');
+    if (titleEl) titleEl.value = next.title;
+    document.title = next.title + ' — ArchViz';
+  }
   setExampleSelect(S.activeExample);
   cNodes.innerHTML = '';
   edgesG.innerHTML = '';
@@ -1914,6 +2227,7 @@ function importArchitecture(payload) {
 function architecturePayload() {
   return {
     version: 1,
+    title: getDiagramTitle(),
     activeExample: S.activeExample,
     users: Number(uInp.value || computeTotalRPS()),
     view: { zoom: S.zoom, panX: S.panX, panY: S.panY },
@@ -2025,13 +2339,41 @@ document.getElementById('btn-export').onclick = () => {
 };
 document.getElementById('btn-share').onclick = shareArchitecture;
 document.getElementById('btn-suggestions').onclick = () => setSuggestionsOn(!S.suggestionsOn);
+document.getElementById('btn-snap').onclick = () => setSnapGrid(!S.snapGrid);
+document.getElementById('btn-sidebar-toggle').onclick = () => setSidebarOpen(!S.sidebarOpen);
+
+// More menu toggle
+const moreMenu = document.getElementById('more-menu');
+document.getElementById('btn-more').onclick = e => {
+  e.stopPropagation();
+  moreMenu.style.display = moreMenu.style.display === 'none' ? 'flex' : 'none';
+  if (moreMenu.style.display === 'flex') moreMenu.style.flexDirection = 'column';
+};
+document.addEventListener('click', () => { moreMenu.style.display = 'none'; });
+
+// Speed selector
+const speedSel = document.getElementById('sim-speed-sel');
+speedSel.value = S.simSpeed;
+speedSel.onchange = () => {
+  S.simSpeed = speedSel.value;
+  try { localStorage.setItem('archviz.simspeed', S.simSpeed); } catch {}
+  // Restart tick at new speed if sim is running
+  if (S.simOn) {
+    clearInterval(S.simTick);
+    const speedMs = { slow: 2500, normal: 1600, fast: 800 }[S.simSpeed] || 1600;
+    S.simTick = setInterval(runTick, speedMs);
+  }
+};
 
 // ══ BOOT ══════════════════════════════════════════════════════════════════════
 initPalette();
 initExamples();
 snapshot(); // empty state as base history
 updateSuggestionsToggle();
+updateSnapButton();
+updateSidebarToggle();
 updateZoomLabel();
+updateCanvasGrid();
 syncSlider(Number(uInp.value || 100));
 updateEmptyPanel();
 loadFromHash();
