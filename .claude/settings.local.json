@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/ballavamsi/.nvm/alias/**)",
+      "Bash(command -v node)",
+      "Bash(find /opt /usr/local /Users/ballavamsi -name \"node\" -type f 2>/dev/null | head -5)",
+      "Bash(ls /Users/ballavamsi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/)",
+      "Bash(find /Users/ballavamsi/.cache/codex-runtimes -name \"npm\" -o -name \"npx\" 2>/dev/null | head -10 *)",
+      "Bash(mkdir -p /Users/ballavamsi/Downloads/architecture-test/.claude /Users/ballavamsi/Downloads/architecture-test/src)"
+    ]
+  }
+}

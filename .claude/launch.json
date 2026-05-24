@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "arch-viz",
+      "runtimeExecutable": "/Users/ballavamsi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "runtimeArgs": ["-e", "const h=require('http'),fs=require('fs'),path=require('path');const s=h.createServer((req,res)=>{let f=path.join('/Users/ballavamsi/Downloads/architecture-test',req.url==='/'?'index.html':req.url);const ext=path.extname(f);const t={'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json'}[ext]||'text/plain';try{res.writeHead(200,{'Content-Type':t,'Access-Control-Allow-Origin':'*'});fs.createReadStream(f).pipe(res);}catch(e){res.writeHead(404);res.end();}});s.listen(3456,()=>console.log('Server running on 3456'));"],
+      "port": 3456
+    }
+  ]
+}
