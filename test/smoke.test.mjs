@@ -76,6 +76,12 @@ test('examples reference valid nodes and edges', () => {
 
 test('index.html contains required app hooks', () => {
   const html = readFileSync(rootFile('index.html'), 'utf8');
+  // App logic may live in index.html directly OR in the extracted src/app.js
+  const appJs = existsSync(rootFile('src/app.js'))
+    ? readFileSync(rootFile('src/app.js'), 'utf8')
+    : '';
+  const appSource = html + appJs;
+
   const requiredIds = [
     'toolbar',
     'palette',
@@ -98,10 +104,10 @@ test('index.html contains required app hooks', () => {
   }
 
   assert.match(html, /Archi-Flow/, 'app should use Archi-Flow branding');
-  assert.match(html, /function diagramSvgString\(\)/, 'app should support diagram image export');
-  assert.match(html, /function exportPdfReport\(\)/, 'app should support PDF report export');
-  assert.match(html, /transform:scale\(\$\{S\.zoom\}\)/, 'nodes should use transform scaling for zoom');
-  assert.doesNotMatch(html, /width:\$\{n\.w \* S\.zoom\}px/, 'nodes should not resize width directly during zoom');
+  assert.match(appSource, /function diagramSvgString\(\)/, 'app should support diagram image export');
+  assert.match(appSource, /function exportPdfReport\(\)/, 'app should support PDF report export');
+  assert.match(appSource, /transform:scale\(\$\{S\.zoom\}\)/, 'nodes should use transform scaling for zoom');
+  assert.doesNotMatch(appSource, /width:\$\{n\.w \* S\.zoom\}px/, 'nodes should not resize width directly during zoom');
 });
 
 test('run scripts exist for macOS/Linux and Windows', () => {
