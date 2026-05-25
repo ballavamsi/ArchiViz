@@ -29,6 +29,8 @@ function track(event, params) {
 <meta name="twitter:title" content="Archi-Flow — Architecture Diagram"/>
 <meta name="twitter:description" content="Interactive cloud architecture diagram with live traffic simulation."/>
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- Supabase JS client for persistent short links -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <!-- Y.js CRDT + WebRTC provider for free P2P collaboration -->
 <script src="https://unpkg.com/yjs@13.6.15/dist/yjs.js"></script>
 <script src="https://unpkg.com/lib0@0.2.93/dist/lib0.js"></script>
@@ -1033,6 +1035,18 @@ textarea.prop-inp {
 }
 .more-item { border-radius: 7px !important; font-size: 12px; font-weight: 500; padding: 7px 11px !important; color: var(--text2); }
 .more-item:hover { background: rgba(79,156,249,0.1) !important; color: var(--text) !important; }
+
+/* ── SHORT LINK ── */
+.shortlink-box { margin-top:10px;padding:10px 12px;background:rgba(52,208,88,0.06);border:1px solid rgba(52,208,88,0.22);border-radius:10px;display:flex;flex-direction:column;gap:8px; }
+.shortlink-box .sl-label { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--green); }
+.shortlink-row { display:flex;gap:6px;align-items:center; }
+.shortlink-row input { flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:6px 9px;color:var(--text);font-size:12px;font-family:monospace;outline:none; }
+.shortlink-row button { padding:6px 12px;border-radius:7px;border:none;background:var(--green);color:#000;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0; }
+.shortlink-row button:hover { background:#3de065; }
+.shortlink-row button:disabled { opacity:.5;cursor:default; }
+.sl-saving { font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px; }
+@keyframes sl-spin { to { transform:rotate(360deg); } }
+.sl-spinner { width:11px;height:11px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:sl-spin .7s linear infinite;flex-shrink:0; }
 
 /* ── MY DIAGRAMS PANEL ── */
 #my-diagrams-modal { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(4px); }
@@ -3658,10 +3672,23 @@ async function shareArchitecture() {
   overlay.innerHTML = `
     <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;min-width:300px;max-width:380px;display:flex;flex-direction:column;gap:12px">
       <div style="font-size:15px;font-weight:700;color:#e6edf3">Share Architecture</div>
-      <div style="font-size:12px;color:#8b949e;line-height:1.6">The architecture is <b style="color:#e6edf3">encoded in the URL</b> — no server, no account. Anyone with the link can view and edit. <span style="color:#f5b731">⚠ Long URLs may be truncated by some apps</span> — use <b style="color:#e6edf3">Export JSON</b> (More menu) for a permanent backup.</div>
+      <div style="font-size:12px;color:#8b949e;line-height:1.6">The architecture is <b style="color:#e6edf3">encoded in the URL</b> — no server, no account needed.</div>
+      ${sbReady() ? `
+      <div class="shortlink-box" id="sh-short-box">
+        <div class="sl-label">✦ Permanent short link</div>
+        <div id="sh-short-state" class="sl-saving"><div class="sl-spinner"></div> Saving to cloud…</div>
+        <div class="shortlink-row" id="sh-short-row" style="display:none">
+          <input id="sh-short-url" readonly/>
+          <button id="sh-short-copy">Copy</button>
+        </div>
+        <div style="font-size:10px;color:#6b7f96">Short link never expires · stored on Supabase free tier</div>
+      </div>` : `
+      <div style="padding:8px 10px;background:rgba(245,183,49,0.06);border:1px solid rgba(245,183,49,0.15);border-radius:8px;font-size:11px;color:#8b949e;line-height:1.55">
+        <span style="color:#f5b731">⚠ Short links not configured.</span> The link below encodes the full diagram — may be long.
+      </div>`}
       <button id="sh-copy" style="display:flex;align-items:center;gap:8px;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:10px 14px;color:#e6edf3;cursor:pointer;font-size:13px;text-align:left">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Copy share link
+        Copy full URL
       </button>
       <button id="sh-linkedin" style="display:flex;align-items:center;gap:8px;background:#0a66c2;border:1px solid #0a66c2;border-radius:8px;padding:10px 14px;color:#fff;cursor:pointer;font-size:13px;text-align:left">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
@@ -3678,6 +3705,9 @@ async function shareArchitecture() {
   const close = () => document.body.removeChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
   document.getElementById('sh-close').onclick = close;
+
+  // Kick off short-link save in background immediately
+  initShortLink();
 
   document.getElementById('sh-copy').onclick = async () => {
     try { await navigator.clipboard.writeText(url); pushToast('Share link copied!', 'info'); }
@@ -3802,7 +3832,104 @@ syncSlider(Number(uInp.value || 100));
 updateEmptyPanel();
 positionSugTray();
 initSugTrayObserver();
-loadFromHash();
+// Short-path load runs after all functions are defined (bottom of script)
+// loadFromHash() is called there too — see "startup" block below
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SUPABASE SHORT LINKS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function sbReady() {
+  const env = window.__ENV__ || {};
+  return !!(env.SUPABASE_URL && env.SUPABASE_ANON_KEY);
+}
+
+let _sb = null;
+function getSB() {
+  if (_sb) return _sb;
+  const env = window.__ENV__ || {};
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
+  try {
+    _sb = window.supabase.createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+  } catch(e) { console.warn('Supabase init failed', e); }
+  return _sb;
+}
+
+// Generate a random 8-char alphanumeric ID
+function genShortId() {
+  const chars = 'abcdefghijkmnpqrstuvwxyz23456789'; // no confusable chars (0/O, 1/l)
+  let id = '';
+  const arr = crypto.getRandomValues(new Uint8Array(8));
+  arr.forEach(b => { id += chars[b % chars.length]; });
+  return id;
+}
+
+// Save diagram to Supabase, return short URL
+async function saveShortLink(payload) {
+  const sb = getSB();
+  if (!sb) throw new Error('Supabase not configured');
+  const id    = genShortId();
+  const title = getDiagramTitle() || 'Untitled';
+  const { error } = await sb.from('diagrams').insert({ id, title, payload });
+  if (error) throw error;
+  const shortUrl = `${location.origin}/s/${id}`;
+  track('short_link_created', { id, node_count: Object.keys(S.nodes).length });
+  return shortUrl;
+}
+
+// Load diagram from Supabase by short ID
+async function loadShortLink(id) {
+  const sb = getSB();
+  if (!sb) return null;
+  const { data, error } = await sb.from('diagrams').select('payload,title').eq('id', id).single();
+  if (error || !data) return null;
+  // Fire view count increment (best-effort, non-blocking)
+  sb.rpc('increment_views', { diagram_id: id }).catch(() => {});
+  return data;
+}
+
+// Check URL on load: /s/[id] → load from Supabase
+async function loadFromShortPath() {
+  const m = location.pathname.match(/^\/s\/([a-z0-9]{8})$/i);
+  if (!m) return false;
+  const id = m[1];
+  try {
+    const data = await loadShortLink(id);
+    if (data) {
+      importArchitecture(data.payload);
+      pushToast(`Loaded shared diagram${data.title ? ': "' + data.title + '"' : ''}.`, 'info');
+      // Replace URL so reloads don't re-fetch but the path stays clean
+      history.replaceState(null, '', location.pathname);
+      return true;
+    }
+  } catch(e) { console.warn('Short link load failed', e); }
+  pushToast('Could not load shared diagram — link may be invalid.', 'warn');
+  return false;
+}
+
+// Wire up short link saving inside share modal
+async function initShortLink() {
+  if (!sbReady()) return;
+  const stateEl = document.getElementById('sh-short-state');
+  const rowEl   = document.getElementById('sh-short-row');
+  const urlInp  = document.getElementById('sh-short-url');
+  const copyBtn = document.getElementById('sh-short-copy');
+  if (!stateEl) return;
+  try {
+    const shortUrl = await saveShortLink(architecturePayload());
+    stateEl.style.display = 'none';
+    if (rowEl) rowEl.style.display = 'flex';
+    if (urlInp) urlInp.value = shortUrl;
+    if (copyBtn) copyBtn.onclick = async () => {
+      try { await navigator.clipboard.writeText(shortUrl); pushToast('Short link copied!', 'info'); }
+      catch { prompt('Copy this short link:', shortUrl); }
+      track('short_link_copied', {});
+    };
+  } catch(e) {
+    if (stateEl) stateEl.innerHTML = '<span style="color:var(--red);font-size:11px">⚠ Could not save — check Supabase config</span>';
+    console.warn('Short link save failed', e);
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // REAL-TIME COLLABORATION  (Y.js + y-webrtc, 100% free P2P)
@@ -4177,9 +4304,14 @@ setInterval(() => {
   if (C.active && C.awareness) renderRemoteCursors(C.awareness.getStates());
 }, 80);
 
-// Auto-join collab if URL has collab param
-const _collabParam = new URLSearchParams(location.search).get('collab');
-if (_collabParam) { setTimeout(() => joinCollab(_collabParam), 600); }
+// ── Startup: load diagram (short path > hash) then maybe join collab ──────────
+(async () => {
+  const loaded = await loadFromShortPath();
+  if (!loaded) loadFromHash();
+  // Auto-join collab if URL has collab param
+  const _collabParam = new URLSearchParams(location.search).get('collab');
+  if (_collabParam) setTimeout(() => joinCollab(_collabParam), 600);
+})();
 </script>
 
 <!-- My Diagrams Modal -->

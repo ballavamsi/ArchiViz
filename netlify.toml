@@ -2,6 +2,12 @@
   publish = "dist"
   command = "npm test && npm run build"
 
+# Short link routes: /s/[8-char-id] → SPA handles fetch from Supabase
+[[redirects]]
+  from = "/s/*"
+  to   = "/index.html"
+  status = 200
+
 # Single-page app: serve index.html for all routes
 [[redirects]]
   from = "/*"
