@@ -4112,27 +4112,45 @@ function applyYState() {
   if (C._applying) return;
   C._applying = true;
   try {
-    // Nodes
+    // ── Nodes ──────────────────────────────────────────────────────────
     const remoteNodes = {};
     C.yNodes.forEach((val, key) => { remoteNodes[key] = val; });
-    // Remove nodes that disappeared remotely
-    Object.keys(S.nodes).forEach(id => { if (!remoteNodes[id]) { const el=document.getElementById('node-'+id); if(el) el.remove(); delete S.nodes[id]; } });
-    // Add / update nodes
+
+    // Remove nodes that disappeared remotely (remove DOM element too)
+    Object.keys(S.nodes).forEach(id => {
+      if (!remoteNodes[id]) {
+        const el = document.getElementById('node-' + id);
+        if (el) el.remove();
+        delete S.nodes[id];
+      }
+    });
+
+    // Add / update nodes — always overwrite so property edits (label, rps…) show
+    let changed = false;
     Object.entries(remoteNodes).forEach(([id, data]) => {
       const existing = S.nodes[id];
       if (!existing || JSON.stringify(existing) !== JSON.stringify(data)) {
-        S.nodes[id] = data;
-        S.nSeq = Math.max(S.nSeq, parseInt(id.replace(/\D/g,''))||0);
+        S.nodes[id] = { ...data };   // spread so it's a new object reference
+        S.nSeq = Math.max(S.nSeq, parseInt(id.replace(/\D/g,'')) || 0);
+        changed = true;
       }
     });
-    // Edges
-    const remoteEdges = C.yEdges.toArray();
-    S.edges = remoteEdges.map(e => ({...e}));
-    S.eSeq = S.edges.reduce((m,e) => Math.max(m, parseInt(e.id?.replace(/\D/g,'')||0)), S.eSeq);
 
-    renderAll(); updateStats(); updateCost();
+    // ── Edges ──────────────────────────────────────────────────────────
+    const remoteEdges = C.yEdges.toArray();
+    // Always replace edges list so additions / deletions are reflected
+    S.edges = remoteEdges.map(e => ({ ...e }));
+    S.eSeq  = S.edges.reduce((m, e) => Math.max(m, parseInt(e.id?.replace(/\D/g,'') || 0)), S.eSeq);
+
+    // Re-render everything — positions, labels, edges, stats
+    renderAll();
+    updateStats();
+    updateCost();
     if (S.sel) refreshSimStats(S.sel);
     buildSuggestions();
+
+    // Keep props panel in sync if the selected node was updated
+    if (S.sel && remoteNodes[S.sel]) selectNode(S.sel);
   } finally {
     C._applying = false;
   }
@@ -4191,7 +4209,7 @@ async function joinCollab(roomId) {
 
   try {
     C.provider = new WebrtcProvider('archiviz-' + roomId, C.doc, {
-      signaling: ['wss://signaling.yjs.dev', 'wss://y-webrtc-signaling-eu.herokuapp.com'],
+      signaling: ['wss://signaling.yjs.dev'],
       maxConns: 12,
     });
   } catch(e) {
@@ -4207,12 +4225,21 @@ async function joinCollab(roomId) {
 
   C.awareness.setLocalStateField('user', { id: ME.id, name, color, initials: collabInitials(name) });
 
-  // Push our current diagram to the room (first joiner wins since Y.js merges)
-  pushToY(null);
+  // Observe remote changes — use observeDeep so property edits (label, rps, etc.) propagate
+  C.yNodes.observeDeep(() => { if (!C._applying) applyYState(); });
+  C.yEdges.observeDeep(() => { if (!C._applying) applyYState(); });
 
-  // Observe remote changes
-  C.yNodes.observe(() => { if (!C._applying) applyYState(); });
-  C.yEdges.observe(() => { if (!C._applying) applyYState(); });
+  // Smart initial push:
+  // - If WE have a diagram, push it after a short delay (lets WebRTC connect first).
+  //   If peer already had data, Y.js CRDT merges both — no data is lost.
+  // - If WE have nothing, don't push at all; we'll receive the peer's state via observe.
+  const hasLocalDiagram = Object.keys(S.nodes).length > 0;
+  if (hasLocalDiagram) {
+    // Wait ~1.5 s for initial WebRTC sync, then push our content
+    setTimeout(() => { if (C.active) pushToY(null); }, 1500);
+  }
+  // Either way, apply whatever arrived from peers after connection settles
+  setTimeout(() => { if (C.active && !C._applying) applyYState(); }, 2500);
 
   // Observe peer presence
   C.awareness.on('change', updateCollabPresence);
