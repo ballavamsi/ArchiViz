@@ -297,15 +297,7 @@ body {
 .btn-del { width: 100%; min-height: 30px; padding: 6px; border-radius: 6px; background: transparent; border: 1px solid #f8514944; color: var(--red); font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; line-height: 1; }
 .btn-del:hover { background: #f8514922; }
 
-/* ── SUGGESTIONS ── */
-#suggestions { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); max-width: 460px; width: 90%; z-index: 100; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
-.sug-card { background: #1c2128; border: 1px solid var(--border2); border-radius: 8px; padding: 8px 12px; display: flex; align-items: flex-start; gap: 8px; pointer-events: all; box-shadow: 0 4px 16px rgba(0,0,0,0.5); animation: slide-up 0.3s ease; }
-@keyframes slide-up { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
-.sug-card.warn  { border-left: 3px solid var(--yellow); }
-.sug-card.crit  { border-left: 3px solid var(--red); }
-.sug-card.info  { border-left: 3px solid var(--accent); }
-.sug-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
-.sug-body .sug-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.sug-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
 .sug-body .sug-msg   { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .sug-close { margin-left: auto; color: var(--muted); cursor: pointer; font-size: 14px; flex-shrink: 0; }
 
@@ -835,27 +827,96 @@ textarea.prop-inp {
 .btn-del:hover { background: rgba(246,96,96,0.14); border-color: rgba(246,96,96,0.55); }
 
 /* ── SUGGESTIONS ── */
+/* ── NOTIFICATION TRAY (right side, below HUD) ── */
 #suggestions {
-  bottom: 14px;
-  max-width: 480px;
+  position: absolute;
+  top: 14px;   /* will be pushed below HUD via JS */
+  right: 14px;
+  width: 258px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 99;
+  pointer-events: none;
+  /* Override old bottom/left/transform */
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  max-width: none;
+}
+/* Collapsed tray pill */
+#sug-tray-badge {
+  display: none;
+  align-items: center;
   gap: 7px;
+  background: rgba(11,17,27,0.90);
+  border: 1px solid rgba(100,130,165,0.22);
+  border-radius: 20px;
+  padding: 5px 12px 5px 8px;
+  cursor: pointer;
+  pointer-events: all;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  transition: background 0.15s;
+  user-select: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
 }
+#sug-tray-badge:hover { background: rgba(20,28,42,0.95); }
+#sug-tray-badge .badge-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--yellow); flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+#sug-tray-badge.has-crit .badge-dot { background: var(--red); }
+
+/* Individual notification card */
 .sug-card {
-  background: rgba(11,16,24,0.95);
-  border: 1px solid var(--border2);
+  background: rgba(11,16,24,0.94);
+  border: 1px solid rgba(100,130,165,0.15);
   border-radius: 12px;
-  padding: 11px 14px;
-  gap: 10px;
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.04);
-  backdrop-filter: blur(20px);
+  padding: 10px 12px;
+  gap: 9px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  pointer-events: all;
+  cursor: grab;
+  /* Slide-in from right */
+  animation: sug-slide-in 0.28s cubic-bezier(0.34,1.3,0.64,1) both;
+  touch-action: pan-y;
+  will-change: transform, opacity;
+  transition: transform 0.18s, opacity 0.18s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
 }
-.sug-card.warn  { border-left: 3px solid var(--yellow); background: rgba(11,16,24,0.95); }
-.sug-card.crit  { border-left: 3px solid var(--red);    background: rgba(12,10,14,0.96); }
-.sug-card.info  { border-left: 3px solid var(--accent); background: rgba(10,14,22,0.95); }
+.sug-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); }
+.sug-card.warn  { border-left: 3px solid var(--yellow); }
+.sug-card.crit  { border-left: 3px solid var(--red); }
+.sug-card.info  { border-left: 3px solid var(--accent); }
+/* Swipe-out state */
+.sug-card.swiping-out { transition: transform 0.22s ease-in, opacity 0.22s ease-in; transform: translateX(110%) !important; opacity: 0; pointer-events: none; }
+
+@keyframes sug-slide-in {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+/* Progress bar — auto-dismiss timer */
+.sug-card .sug-timer {
+  position: absolute; bottom: 0; left: 0; height: 2px;
+  background: var(--accent); opacity: 0.4;
+  transition: width linear;
+  border-radius: 0 0 0 12px;
+}
+.sug-card.warn .sug-timer  { background: var(--yellow); }
+.sug-card.crit .sug-timer  { background: var(--red); }
+
 .sug-body { flex: 1; min-width: 0; }
-.sug-body .sug-title { font-size: 12px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
-.sug-body .sug-msg   { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
-.sug-close { color: var(--muted); font-size: 16px; opacity: 0.5; transition: opacity 0.12s; cursor: pointer; flex-shrink: 0; margin-left: auto; }
+.sug-body .sug-title { font-size: 11.5px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; line-height: 1.3; }
+.sug-body .sug-msg   { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+.sug-close { color: var(--muted); opacity: 0.45; transition: opacity 0.12s; cursor: pointer; flex-shrink: 0; margin-left: auto; padding: 2px 0 2px 6px; line-height: 1; font-size: 15px; }
 .sug-close:hover { opacity: 1; }
 
 /* ── STATUS BAR ── */
@@ -1159,7 +1220,12 @@ textarea.prop-inp {
 
     <!-- Suggestions overlay -->
     <div id="canvas-hud"></div>
-    <div id="suggestions"></div>
+    <div id="suggestions">
+      <div id="sug-tray-badge" onclick="expandSugTray()">
+        <span class="badge-dot"></span>
+        <span id="sug-badge-txt">0 alerts</span>
+      </div>
+    </div>
 
     <!-- Canvas mini controls -->
     <div id="canvas-controls">
@@ -2225,6 +2291,7 @@ function updateEmptyPanel() {
       <div class="metric"><strong>${esc(compactNum(totalRps))}</strong><span>Events/s</span></div>
       <div class="metric" style="${critical > 0 ? 'border-color:rgba(248,81,73,0.4);background:rgba(248,81,73,0.1)' : ''}"><strong style="color:${critical > 0 ? '#f85149' : warning > 0 ? '#f5b731' : 'var(--text)'}">${critical || warning || 0}</strong><span>${critical > 0 ? 'Critical' : warning > 0 ? 'Warning' : 'Issues'}</span></div>
     </div>`;
+  requestAnimationFrame(positionSugTray);
 }
 
 function buildFields(containerId, props, n, nodeId) {
@@ -2634,12 +2701,99 @@ function buildSuggestions() {
     const div = document.createElement('div');
     div.className = `sug-card ${c.type}`;
     div.dataset.key = c.key;
-    div.innerHTML = `<div class="sug-icon">${esc(c.icon)}</div><div class="sug-body"><div class="sug-title">${esc(c.title)}</div><div class="sug-msg">${esc(c.msg)}</div></div><div class="sug-close">×</div>`;
-    div.querySelector('.sug-close').onclick = () => { dismissedSugs.add(c.key); div.remove(); };
+    div.innerHTML = `<div class="sug-icon">${esc(c.icon)}</div><div class="sug-body"><div class="sug-title">${esc(c.title)}</div><div class="sug-msg">${esc(c.msg)}</div></div><div class="sug-close" title="Dismiss">×</div><div class="sug-timer" style="width:100%"></div>`;
+    const dismissCard = () => { dismissedSugs.add(c.key); swipeOutCard(div); };
+    div.querySelector('.sug-close').onclick = e => { e.stopPropagation(); dismissCard(); };
+    attachSwipeToDismiss(div, dismissCard);
     // Insert at correct position
     const after = [...panel.querySelectorAll('.sug-card:not(.toast-card)')][i];
     if (after) panel.insertBefore(div, after); else panel.appendChild(div);
   });
+
+  updateSugTray();
+  positionSugTray();
+}
+
+// Swipe-right to dismiss (mouse + touch)
+function attachSwipeToDismiss(el, onDismiss) {
+  let startX = null, startY = null, dragging = false;
+  const onStart = e => {
+    const t = e.touches?.[0] || e;
+    startX = t.clientX; startY = t.clientY; dragging = true;
+  };
+  const onMove = e => {
+    if (!dragging || startX === null) return;
+    const t = e.touches?.[0] || e;
+    const dx = t.clientX - startX;
+    const dy = Math.abs(t.clientY - startY);
+    if (dy > 18) { dragging = false; return; }     // vertical scroll — ignore
+    if (dx < 0) return;                              // left drag — ignore
+    el.style.transition = 'none';
+    el.style.transform  = `translateX(${dx}px)`;
+    el.style.opacity    = String(Math.max(0, 1 - dx / 140));
+    if (e.cancelable) e.preventDefault();
+  };
+  const onEnd = e => {
+    if (!dragging) return; dragging = false;
+    const t = e.changedTouches?.[0] || e;
+    const dx = t.clientX - startX;
+    el.style.transition = '';
+    if (dx > 80) { onDismiss(); }
+    else { el.style.transform = ''; el.style.opacity = ''; }
+    startX = null;
+  };
+  el.addEventListener('mousedown',  onStart);
+  el.addEventListener('touchstart', onStart, { passive: true });
+  document.addEventListener('mousemove', onMove);
+  el.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('mouseup', onEnd);
+  el.addEventListener('touchend', onEnd);
+}
+
+function swipeOutCard(el) {
+  el.classList.add('swiping-out');
+  setTimeout(() => { el.remove(); updateSugTray(); }, 230);
+}
+
+// Position the tray below the HUD widget
+function positionSugTray() {
+  const hud = document.getElementById('canvas-hud');
+  const panel = document.getElementById('suggestions');
+  if (!hud || !panel) return;
+  const hudBottom = hud.offsetTop + hud.offsetHeight;
+  panel.style.top = (hudBottom + 8) + 'px';
+}
+
+// Update the collapsed badge state
+function updateSugTray() {
+  const panel  = document.getElementById('suggestions');
+  const badge  = document.getElementById('sug-tray-badge');
+  const cards  = [...panel.querySelectorAll('.sug-card:not(.toast-card)')];
+  const hasCrit = cards.some(c => c.classList.contains('crit'));
+  if (cards.length === 0) {
+    badge.style.display = 'none';
+    return;
+  }
+  badge.classList.toggle('has-crit', hasCrit);
+  const txt = document.getElementById('sug-badge-txt');
+  if (txt) txt.textContent = cards.length === 1 ? '1 alert' : `${cards.length} alerts`;
+}
+
+function expandSugTray() {
+  const panel = document.getElementById('suggestions');
+  const cards = [...panel.querySelectorAll('.sug-card:not(.toast-card)')];
+  cards.forEach(c => { c.style.display = ''; });
+  const badge = document.getElementById('sug-tray-badge');
+  if (badge) badge.style.display = 'none';
+}
+
+// Reposition tray whenever HUD size changes (e.g. when sim starts)
+let _sugTrayRO;
+function initSugTrayObserver() {
+  const hud = document.getElementById('canvas-hud');
+  if (!hud || typeof ResizeObserver === 'undefined') return;
+  _sugTrayRO = new ResizeObserver(() => positionSugTray());
+  _sugTrayRO.observe(hud);
 }
 
 // ══ SIM CONTROLS ══════════════════════════════════════════════════════════════
@@ -3468,6 +3622,8 @@ updateZoomLabel();
 updateCanvasGrid();
 syncSlider(Number(uInp.value || 100));
 updateEmptyPanel();
+positionSugTray();
+initSugTrayObserver();
 loadFromHash();
 </script>
 </body>
