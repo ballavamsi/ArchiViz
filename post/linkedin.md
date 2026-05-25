@@ -2,26 +2,17 @@
 
 ---
 
-## 🎬 Video Recording Script (record this exact sequence)
+## 🎬 Carousel PDF slides recap (7 slides)
 
-**Tool:** Loom / QuickTime / OBS — record the browser tab only  
-**Duration target:** 60–90 seconds  
-**URL:** https://archi-flow.netlify.app
-
-### Steps to record:
-1. Open the app fresh (clear tab, no collab URL)
-2. Click **Load Example → Mobile Event Streaming**
-   *(most impressive — 11 nodes, Kafka, Flink, Lakehouse)*
-3. Click **Fit** to centre everything nicely
-4. Slowly pan + zoom so viewers can read the node labels
-5. Click **Run Sim** — watch particles flow along all edges
-6. Drag the **Users slider** slowly: 1,000 → 100,000 → 1,000,000
-   *(watch nodes turn yellow → red as load explodes)*
-7. Click the **App Server** node — show properties panel open on the right
-8. Enable **Auto Scaling** toggle in the properties panel
-   *(watch it scale up replicas, node turns green)*
-9. Leave users at 1M — show it stays green with autoscaling active
-10. End on the full diagram with live traffic flowing — cinematic
+| # | Slide | Key message |
+|---|---|---|
+| 1 | Cover | "Simulate 1M users hitting your architecture. Before it happens in production at 3 AM." |
+| 2 | The Problem | 50K users hit checkout → app server melted → revenue gone → 3 AM alert |
+| 3 | How It Works | 4 steps: Drag → Run Sim → Crank load → Fix with Auto Scaling |
+| 4 | Screenshot: Build | Drag & drop architecture canvas |
+| 5 | Screenshot: Break | Nodes turn red under 10K users |
+| 6 | Screenshot: Fix | Auto Scale enabled → all green |
+| 7 | CTA | archi-flow.onrender.com |
 
 ---
 
@@ -32,20 +23,21 @@
 
 Meet **Archi-Flow** 👇
 
-🎥 *(attach your screen recording here)*
+*(attach the carousel PDF here)*
 
-What you're watching:
-- A real microservices pipeline: Users → Mobile App → Kafka → Flink → Lakehouse
-- Users cranked from 1,000 → **1,000,000/sec**
-- Kafka turns yellow. Then red. Pipeline at 94% capacity.
-- One click: **Auto Scaling enabled**
-- Green. Stable. Crisis averted — before it ever happened in production.
+**Swipe through ↑**
+
+Here's what those 7 slides show:
+
+→ Slide 2: The story everyone recognises — 3 AM, production on fire, too late to fix  
+→ Slide 3: The fix — design, simulate, break it yourself, fix it before it ships  
+→ Slides 4–6: Real demo — drag 7 microservices, crank to 10K users, watch red, enable Auto Scale, back to green
 
 This is what 3 weeks of evenings and weekends look like.
 
-Free. No login. No server. Runs entirely in your browser.
+Free. Runs in your browser. Sign in with Google.
 
-👉 https://archi-flow.netlify.app
+👉 https://archi-flow.onrender.com
 
 If this saves even one engineer from a 3 AM incident, it was worth building.
 
@@ -64,18 +56,17 @@ App server: melted. Revenue: gone. Sleep: gone.
 
 I've been that engineer.
 
-So I built **Archi-Flow** — a free tool that simulates exactly that *before* it happens.
+So I built **Archi-Flow** — a free visual simulator that lets you stress-test your architecture *before* it goes live.
 
-Here's what it does:
+Here's the full workflow (swipe the carousel ↑):
 
-→ Drag components onto a canvas: Load Balancer, Kafka, Flink, Redis, RDS, CDN — 28 total  
-→ Connect them like a real architecture  
-→ Hit **Run Sim** — watch live traffic flow  
-→ Crank users to **1,000,000/sec** — watch which nodes turn red  
-→ Enable **Auto Scaling** — watch it recover in real-time
+→ **Drag** components onto a canvas: API Gateway, Auth Service, Order Service, Message Queue, Database — 28 total  
+→ **Connect** them like a real microservices architecture  
+→ **Hit Simulate** — watch live traffic flow through every edge  
+→ **Crank users to 10,000/sec** — watch which nodes turn red  
+→ **Enable Auto Scaling** — watch replicas spin up, crisis averted
 
-No account. No credit card. No infrastructure.
-It runs entirely in your browser.
+No credit card. Sign in with Google and start building in seconds.
 
 Best part? You can share a live session link and design *together* — peer-to-peer collab, no server, free forever.
 
@@ -83,7 +74,7 @@ Architecture decisions are permanent. Whiteboard diagrams are useless.
 
 If a picture is worth a thousand words, a live simulation is worth a thousand architecture reviews.
 
-👉 Try it free: https://archi-flow.netlify.app
+👉 Try it free: https://archi-flow.onrender.com
 
 \#SystemDesign \#SoftwareArchitecture \#CloudComputing \#BuildInPublic \#SideProject \#Microservices \#Engineering
 
@@ -91,20 +82,20 @@ If a picture is worth a thousand words, a live simulation is worth a thousand ar
 
 ## ✍️ Post — Version C: Punchy (800 chars)
 
-> **I simulated 1,000,000 users/sec hitting my architecture.**
-> **It broke. Instantly. That was the point.**
+> **I simulated 10,000 users/sec hitting a microservices architecture.**
+> **It broke in 3 seconds. That was the point.**
 
 Built a free browser tool called **Archi-Flow**:
 
-✅ Design cloud architectures visually
-✅ Simulate live traffic — Kafka, Redis, Flink, RDS included
-✅ Crank to 1M users — watch bottlenecks turn red
-✅ Enable auto-scaling — watch nodes recover live
-✅ Collab with teammates — zero server, zero cost, zero login
+✅ Design cloud architectures visually — 28 components  
+✅ Simulate live traffic — API Gateway, Kafka, Redis, RDS included  
+✅ Crank to 10K users/sec — watch bottlenecks turn red  
+✅ Enable auto-scaling — watch nodes recover live  
+✅ Collab with teammates — zero extra cost, sign in with Google
 
 **Find the weakest node in 10 minutes. Not after a 3 AM incident.**
 
-→ https://archi-flow.netlify.app
+→ https://archi-flow.onrender.com
 
 What's your worst scaling incident? 👇
 
@@ -112,9 +103,16 @@ What's your worst scaling incident? 👇
 
 ---
 
+## 📌 First comment (put link here to avoid reach penalty)
+
+> 🔗 Try it live → https://archi-flow.onrender.com
+> Sign in with Google — free, runs in your browser, no setup.
+
+---
+
 ## 📊 Metrics & Analytics Guide
 
-### GA4 events already tracked (tag: G-9QP10BN1F4)
+### GA4 events already tracked
 | Event | Signal |
 |---|---|
 | `example_loaded` | Tried a demo |
@@ -123,8 +121,6 @@ What's your worst scaling incident? 👇
 | `collab_session_started` | Power user |
 | `short_link_created` | Diagram saved to Supabase |
 | `diagram_exported` | Deep engagement |
-
-View in GA4: **Reports → Events** → sort by count
 
 ### Conversion funnel to watch:
 ```
@@ -136,10 +132,10 @@ Tuesday–Thursday, 8–10 AM your local timezone.
 Reply to every comment in the **first 60 minutes** — LinkedIn's algorithm rewards early engagement heavily.
 
 ### Amplify strategy:
-1. Post the **video** (video gets 3–5× more reach than images on LinkedIn)
+1. Post the **carousel PDF** (carousels get 3–5× more reach than text on LinkedIn)
 2. Put the link in the **first comment**, not the post body (avoids reach penalty)
 3. Tag 2–3 engineering friends, ask for genuine feedback
 4. Cross-post to: **r/programming**, **r/webdev**, **Hacker News (Show HN)**, **Dev.to**
 
 ### Show HN title:
-> "Show HN: I built a free browser tool to simulate 1M users hitting your architecture"
+> "Show HN: I built a free browser tool to simulate 10K users hitting your microservices architecture"
