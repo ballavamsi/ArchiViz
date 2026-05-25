@@ -3,3 +3,11 @@ package-lock.json
 dist/
 .netlify/
 .DS_Store
+
+# Playwright browser binaries
+node_modules/
+
+# LinkedIn post assets (large files — kept locally)
+post/archi-flow-demo.mp4
+post/archi-flow-demo.webm
+post/archi-flow-linkedin-post.pdf
