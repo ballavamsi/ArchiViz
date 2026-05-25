@@ -202,8 +202,7 @@ async function handleAPI(pathname, method, req, res) {
   // GET /api/components
   if (pathname === '/api/components' && method === 'GET') {
     const mod = await import(`${__dir}/src/components.js`);
-    const defs = (mod.COMPONENT_DEFS||[]).map(({ icon, ...rest }) => rest); // strip SVGs
-    json(res, 200, { defs, categories: mod.CATEGORIES||[] });
+    json(res, 200, { defs: mod.COMPONENT_DEFS||[], categories: mod.CATEGORIES||[] });
     return true;
   }
 

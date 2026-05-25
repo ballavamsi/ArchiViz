@@ -2637,22 +2637,40 @@ speedSel.onchange = () => {
 };
 
 // ══ BOOT SEQUENCE ═════════════════════════════════════════════════════════════
-// Load component defs, rules and examples from the server BEFORE rendering
-// anything — this ensures the palette and examples are populated on first paint.
-await _loadServerData();
-
-// ══ AUTH GATE ═════════════════════════════════════════════════════════════════
-// Shows a Google SSO login overlay before the app is usable.
-// Skipped gracefully when Supabase is not configured (local dev).
+// Single async IIFE — loads server data first, then handles auth, then boots.
+// Never uses top-level await (confuses obfuscator + some older runtimes).
 (async () => {
+  // 1. Load component defs, rules and examples from server before rendering
+  await _loadServerData();
+
+  // 2. Boot the app immediately so palette/canvas appear
+  initPalette();
+  initExamples();
+  snapshot();
+  updateSuggestionsToggle();
+  updateSnapButton();
+  updateSidebarToggle();
+  updateZoomLabel();
+  updateCanvasGrid();
+  syncSlider(Number(uInp.value || 100));
+  updateEmptyPanel();
+  positionSugTray();
+  initSugTrayObserver();
+
+  // 3. Load saved diagram from URL (short path or hash)
+  const loaded = await loadFromShortPath();
+  if (!loaded) loadFromHash();
+
+  const _collabParam = new URLSearchParams(location.search).get('collab');
+  if (_collabParam) setTimeout(() => showCollabInvite(_collabParam), 700);
+
+  // 4. Auth gate — Google SSO (skipped if Supabase not configured)
   const sb = getSB();
-  if (!sb) return; // dev mode — no auth
+  if (!sb) return;
 
-  // Check current session
   const { data: { session } } = await sb.auth.getSession();
-  if (session) return; // already logged in → app boots normally
+  if (session) return;
 
-  // Block the UI while not authenticated
   const gate = document.createElement('div');
   gate.id = 'auth-gate';
   gate.innerHTML = `
@@ -2692,21 +2710,7 @@ await _loadServerData();
   });
 })();
 
-// ══ BOOT ══════════════════════════════════════════════════════════════════════
-initPalette();
-initExamples();
-snapshot(); // empty state as base history
-updateSuggestionsToggle();
-updateSnapButton();
-updateSidebarToggle();
-updateZoomLabel();
-updateCanvasGrid();
-syncSlider(Number(uInp.value || 100));
-updateEmptyPanel();
-positionSugTray();
-initSugTrayObserver();
-// Short-path load runs after all functions are defined (bottom of script)
-// loadFromHash() is called there too — see "startup" block below
+// (boot moved into the IIFE above)
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SUPABASE SHORT LINKS
@@ -3273,17 +3277,7 @@ setInterval(() => {
   if (C.active && C.awareness) renderRemoteCursors(C.awareness.getStates());
 }, 80);
 
-// ── Startup: load diagram (short path > hash) then maybe show collab invite ───
-(async () => {
-  const loaded = await loadFromShortPath();
-  if (!loaded) loadFromHash();
-
-  const _collabParam = new URLSearchParams(location.search).get('collab');
-  if (_collabParam) {
-    // Show invite modal instead of silently auto-joining
-    setTimeout(() => showCollabInvite(_collabParam), 700);
-  }
-})();
+// (startup moved into the boot IIFE above)
 
 function showCollabInvite(roomId) {
   // If already active in this room skip
