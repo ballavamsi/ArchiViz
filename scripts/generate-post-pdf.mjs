@@ -315,7 +315,7 @@ ${slide('linear-gradient(135deg,#07060f 0%,#0e0c1e 60%,#110c20 100%)', `
     <div class="cta-label">Try it free — right now</div>
     <div class="cta-h">Stop guessing.<br/>Start <span>simulating.</span></div>
     <div class="cta-sub">No login. No install. No credit card.<br/>Just open the browser and build.</div>
-    <div class="cta-btn">archi-flow.netlify.app</div>
+    <div class="cta-btn">archi-flow.onrender.com</div>
     <div class="cta-tags">
       #SystemDesign &nbsp;·&nbsp; #SoftwareArchitecture &nbsp;·&nbsp; #BuildInPublic<br/>
       #AWS &nbsp;·&nbsp; #Kafka &nbsp;·&nbsp; #OpenSource &nbsp;·&nbsp; #Engineering
