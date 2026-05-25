@@ -1034,6 +1034,34 @@ textarea.prop-inp {
 .more-item { border-radius: 7px !important; font-size: 12px; font-weight: 500; padding: 7px 11px !important; color: var(--text2); }
 .more-item:hover { background: rgba(79,156,249,0.1) !important; color: var(--text) !important; }
 
+/* ── MY DIAGRAMS PANEL ── */
+#my-diagrams-modal { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(4px); }
+#my-diagrams-modal.open { display:flex; }
+.diagrams-box { background:#0f1520;border:1px solid rgba(79,156,249,0.25);border-radius:16px;padding:22px;width:400px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+.diagrams-box h2 { font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:7px; }
+.diagrams-box .sub { font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:14px; }
+.save-row { display:flex;gap:7px;margin-bottom:14px; }
+.save-row input { flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none; }
+.save-row input:focus { border-color:var(--accent); }
+.save-row button { background:var(--accent);color:#fff;border:none;border-radius:8px;padding:0 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap; }
+.save-row button:hover { background:var(--accent2); }
+#my-diagrams-list { flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px;min-height:0; }
+#my-diagrams-list::-webkit-scrollbar { width:4px; }
+#my-diagrams-list::-webkit-scrollbar-thumb { background:var(--border2);border-radius:2px; }
+.diag-row { display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:9px;transition:background 0.12s; }
+.diag-row:hover { background:rgba(255,255,255,0.06); }
+.diag-row.auto-row { border-color:rgba(79,156,249,0.2); }
+.diag-icon { font-size:14px;flex-shrink:0; }
+.diag-info { flex:1;min-width:0; }
+.diag-name { font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.diag-ts   { font-size:10px;color:var(--muted);margin-top:1px; }
+.diag-btn  { padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;flex-shrink:0;transition:all 0.12s; }
+.diag-btn:hover { background:rgba(79,156,249,0.15);border-color:var(--accent);color:var(--accent); }
+.diag-btn.del { border-color:transparent;color:var(--muted);padding:4px 7px; }
+.diag-btn.del:hover { color:var(--red);background:rgba(248,81,73,0.1);border-color:rgba(248,81,73,0.3); }
+.storage-notice { margin-top:12px;padding:9px 11px;background:rgba(245,183,49,0.06);border:1px solid rgba(245,183,49,0.2);border-radius:8px;font-size:10.5px;color:var(--muted);line-height:1.55; }
+.storage-notice b { color:var(--yellow); }
+
 /* ── COLLABORATION ── */
 .tbtn-collab { border-color: rgba(168,85,247,0.4) !important; color: #c084fc !important; background: rgba(168,85,247,0.08) !important; font-weight: 600; gap: 6px; }
 .tbtn-collab:hover { background: rgba(168,85,247,0.18) !important; box-shadow: 0 0 14px rgba(168,85,247,0.25) !important; }
@@ -1174,6 +1202,10 @@ textarea.prop-inp {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
     </button>
     <div id="more-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:500;min-width:168px;padding:5px;">
+      <button class="tbtn more-item" id="btn-my-diagrams">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        My Diagrams
+      </button>
       <button class="tbtn more-item" id="btn-import">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Import JSON
@@ -1691,6 +1723,7 @@ function addNode(defId, x, y) {
   const id  = 'n' + (++S.nSeq);
   S.nodes[id] = { id, defId, x, y, w: def.size?.w || 160, h: def.size?.h || 88, props: { ...def.defaults } };
   track('node_added', { component_type: defId, component_name: def?.name || defId });
+  autoSave();
   renderNode(id);
   // Pop-in animation for newly dropped nodes
   const newEl = document.getElementById('node-' + id);
@@ -2028,6 +2061,7 @@ function addEdge(src, tgt, opts = {}) {
   const newEdge = { id: 'e' + (++S.eSeq), src, tgt, animated: !isDash, dashed: isDash, _new: true };
   S.edges.push(newEdge);
   track('edge_created', { source_type: srcNode?.defId, target_type: tgtNode?.defId, is_dashed: isDash });
+  autoSave();
   renderEdges(); updateStats();
   // Remove _new flag after animation plays
   setTimeout(() => { newEdge._new = false; }, 500);
@@ -2399,6 +2433,7 @@ function buildFields(containerId, props, n, nodeId) {
         const tot = computeTotalRPS(); syncSlider(tot);
       }
       buildSuggestions();
+      autoSave();
     };
     row.appendChild(inp); el.appendChild(row);
   });
@@ -3140,7 +3175,7 @@ window.addEventListener('mousemove', e => {
 });
 
 window.addEventListener('mouseup', () => {
-  if (G.drag) { snapshot(); G.drag=null; }
+  if (G.drag) { snapshot(); autoSave(); G.drag=null; }
   G.pan=null;
   // Don't clear conn if we're in pending click-connect mode
   if (!G.pendingConn) { G.conn=null; connPrev.style.display='none'; }
@@ -3533,6 +3568,80 @@ function updateShareHash() {
   return location.href;
 }
 
+// ══ LOCAL PERSISTENCE ══════════════════════════════════════════════════════════
+// Auto-save to localStorage every time the diagram changes meaningfully.
+// Keeps last 20 diagrams. Each entry: { id, name, ts, payload }
+const LS_KEY  = 'archviz.saved';
+const LS_AUTO = 'archviz.autosave';
+let _autoSaveTimer = null;
+
+function lsGetSaved() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
+}
+function lsSetSaved(list) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(list)); } catch {}
+}
+
+function autoSave() {
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(() => {
+    if (!Object.keys(S.nodes).length) return; // nothing to save
+    const payload = architecturePayload();
+    try { localStorage.setItem(LS_AUTO, JSON.stringify({ ts: Date.now(), payload })); } catch {}
+    updateDiagramsPanel();
+  }, 1800);
+}
+
+function saveNamedDiagram(name) {
+  const list = lsGetSaved();
+  const id   = 'diag_' + Date.now();
+  list.unshift({ id, name: name || getDiagramTitle() || 'Untitled', ts: Date.now(), payload: architecturePayload() });
+  lsSetSaved(list.slice(0, 20)); // keep last 20
+  updateDiagramsPanel();
+  pushToast(`"${name}" saved to browser.`, 'info');
+  track('diagram_saved_local', { name });
+}
+
+function deleteSavedDiagram(id) {
+  lsSetSaved(lsGetSaved().filter(d => d.id !== id));
+  updateDiagramsPanel();
+}
+
+function loadSavedDiagram(d) {
+  importArchitecture(d.payload);
+  pushToast(`Loaded "${d.name}".`, 'info');
+  track('diagram_loaded_local', { name: d.name });
+}
+
+function updateDiagramsPanel() {
+  const panel = document.getElementById('my-diagrams-list');
+  if (!panel) return;
+  const list   = lsGetSaved();
+  const auto   = (() => { try { return JSON.parse(localStorage.getItem(LS_AUTO)||'null'); } catch { return null; } })();
+  const fmt    = ts => new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  let html = '';
+  if (auto && auto.ts) {
+    html += `<div class="diag-row auto-row" data-autosave="1">
+      <div class="diag-icon">⏱</div>
+      <div class="diag-info"><div class="diag-name">Auto-save</div><div class="diag-ts">${fmt(auto.ts)}</div></div>
+      <button class="diag-btn" onclick="loadSavedDiagram(JSON.parse(localStorage.getItem('archviz.autosave')).payload && {payload:JSON.parse(localStorage.getItem('archviz.autosave')).payload,name:'Auto-save'})">Load</button>
+    </div>`;
+  }
+  if (!list.length && !auto) {
+    html = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:18px 0">No saved diagrams yet.<br>Build something and click Save.</div>';
+  }
+  list.forEach(d => {
+    html += `<div class="diag-row" data-id="${esc(d.id)}">
+      <div class="diag-icon">📐</div>
+      <div class="diag-info"><div class="diag-name">${esc(d.name)}</div><div class="diag-ts">${fmt(d.ts)}</div></div>
+      <button class="diag-btn" onclick="loadSavedDiagram(lsGetSaved().find(x=>x.id==='${esc(d.id)}'))">Load</button>
+      <button class="diag-btn del" onclick="if(confirm('Delete?')){deleteSavedDiagram('${esc(d.id)}')}" title="Delete">×</button>
+    </div>`;
+  });
+  panel.innerHTML = html;
+}
+
 function shareToLinkedIn() {
   const url = updateShareHash();
   const title = encodeURIComponent(getDiagramTitle() + ' — Architecture Diagram (Archi-Flow)');
@@ -3549,7 +3658,7 @@ async function shareArchitecture() {
   overlay.innerHTML = `
     <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;min-width:300px;max-width:380px;display:flex;flex-direction:column;gap:12px">
       <div style="font-size:15px;font-weight:700;color:#e6edf3">Share Architecture</div>
-      <div style="font-size:12px;color:#8b949e">Share a resumable link — anyone who opens it can see and continue editing this exact design.</div>
+      <div style="font-size:12px;color:#8b949e;line-height:1.6">The architecture is <b style="color:#e6edf3">encoded in the URL</b> — no server, no account. Anyone with the link can view and edit. <span style="color:#f5b731">⚠ Long URLs may be truncated by some apps</span> — use <b style="color:#e6edf3">Export JSON</b> (More menu) for a permanent backup.</div>
       <button id="sh-copy" style="display:flex;align-items:center;gap:8px;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:10px 14px;color:#e6edf3;cursor:pointer;font-size:13px;text-align:left">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Copy share link
@@ -3613,6 +3722,13 @@ document.getElementById('btn-fit').onclick    = fitView;
 document.getElementById('cc-fit').onclick     = fitView;
 document.getElementById('cc-zoomin').onclick  = () => { S.zoom=Math.min(2.5,S.zoom*1.2); renderAll(); updateZoomLabel(); };
 document.getElementById('cc-zoomout').onclick = () => { S.zoom=Math.max(0.25,S.zoom/1.2); renderAll(); updateZoomLabel(); };
+document.getElementById('btn-my-diagrams').onclick = () => {
+  updateDiagramsPanel();
+  document.getElementById('my-diagrams-modal').classList.add('open');
+  document.getElementById('more-menu').style.display = 'none';
+};
+document.getElementById('my-diagrams-modal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+
 document.getElementById('btn-clear').onclick  = () => {
   track('canvas_cleared', { node_count: Object.keys(S.nodes).length, edge_count: S.edges.length });
   clearCanvas(false);
@@ -4065,6 +4181,27 @@ setInterval(() => {
 const _collabParam = new URLSearchParams(location.search).get('collab');
 if (_collabParam) { setTimeout(() => joinCollab(_collabParam), 600); }
 </script>
+
+<!-- My Diagrams Modal -->
+<div id="my-diagrams-modal">
+  <div class="diagrams-box">
+    <h2>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      My Diagrams
+    </h2>
+    <p class="sub">Diagrams are saved to <b>this browser</b>. Use Export JSON to back them up or share them permanently.</p>
+    <div class="save-row">
+      <input id="save-diag-name" placeholder="Name this diagram…"/>
+      <button onclick="saveNamedDiagram(document.getElementById('save-diag-name').value.trim()||getDiagramTitle())">Save current</button>
+    </div>
+    <div id="my-diagrams-list"></div>
+    <div class="storage-notice">
+      <b>⚠ Browser-only storage.</b> Clearing browser data will erase saved diagrams.
+      Use <b>Export JSON</b> to keep a permanent backup — or <b>Share link</b> to embed the diagram in a URL (no server needed, but long URLs may get truncated by some apps).
+    </div>
+    <button class="collab-btn secondary" onclick="document.getElementById('my-diagrams-modal').classList.remove('open')" style="margin-top:10px">Close</button>
+  </div>
+</div>
 
 <!-- Collab Modal -->
 <div id="collab-modal">
