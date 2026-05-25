@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "clean-css-cli": "^5.6.3",
+    "playwright": "^1.60.0",
     "terser": "^5.48.0"
   }
 }
