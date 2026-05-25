@@ -1,22 +1,19 @@
 import { cp, mkdir, rm, readFile, writeFile } from 'node:fs/promises';
+import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 const outDir = new URL('../dist/', import.meta.url);
 const root   = new URL('../',     import.meta.url);
+const outPath = fileURLToPath(outDir);
+const rootPath = fileURLToPath(root);
 
 await rm(outDir,   { recursive: true, force: true });
 await mkdir(outDir,{ recursive: true });
+await mkdir(new URL('src/', outDir), { recursive: true });
 
-// ── Copy static assets ────────────────────────────────────────────
-const dirs = ['src'];
-for (const dir of dirs) {
-  await cp(new URL(dir, root), new URL(dir, outDir), { recursive: true });
-}
-await cp(new URL('README.md', root), new URL('README.md', outDir));
-
-// ── Inject runtime env vars into index.html ───────────────────────
+// ── Inject runtime env vars into index.html ───────────────────────────────
 // Netlify exposes SUPABASE_URL and SUPABASE_ANON_KEY as build env vars.
-// We embed them as a small window.__ENV__ shim so the static file can
-// use them without a server or API route.
 const supabaseUrl     = process.env.SUPABASE_URL     || '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
@@ -32,8 +29,44 @@ window.__ENV__ = {
 // Insert right after <head> so it's available before any other script
 html = html.replace('<head>', `<head>\n${envScript}`);
 
+// Point the stylesheet and script tags at the hashed/minified outputs
+html = html.replace('href="src/app.css"',  'href="src/app.min.css"');
+html = html.replace('src="src/app.js"',    'src="src/app.min.js"');
+
 await writeFile(new URL('index.html', outDir), html, 'utf8');
 
-console.log('Static site built to dist/');
+// ── Copy src JS modules (components, examples, rules) ─────────────────────
+// These are imported by app.js — copy them as-is (they're small data files)
+const srcFiles = ['components.js', 'examples.js', 'rules.js'];
+for (const f of srcFiles) {
+  await cp(
+    new URL(`src/${f}`, root),
+    new URL(`src/${f}`, outDir)
+  );
+}
+
+// ── Minify CSS ────────────────────────────────────────────────────────────
+console.log('Minifying CSS…');
+execSync(
+  `npx cleancss -o "${outPath}src/app.min.css" "${rootPath}src/app.css"`,
+  { stdio: 'inherit' }
+);
+
+// ── Minify JS (app.js bundles imports from ./components.js etc.) ──────────
+// terser can minify ES modules with --module flag
+console.log('Minifying JS…');
+execSync(
+  `npx terser "${rootPath}src/app.js" \
+    --module \
+    --compress passes=2,drop_console=false,pure_getters=true \
+    --mangle \
+    --output "${outPath}src/app.min.js"`,
+  { stdio: 'inherit' }
+);
+
+// ── Copy README ───────────────────────────────────────────────────────────
+await cp(new URL('README.md', root), new URL('README.md', outDir));
+
+console.log('\n✅ Built to dist/');
 if (!supabaseUrl)     console.warn('⚠  SUPABASE_URL not set — short links disabled');
 if (!supabaseAnonKey) console.warn('⚠  SUPABASE_ANON_KEY not set — short links disabled');
