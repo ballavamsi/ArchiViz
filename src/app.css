@@ -1455,3 +1455,76 @@ textarea.prop-inp {
 
 @keyframes fadeIn  { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* ── Cookie consent banner ──────────────────────────────────────────────────── */
+#cookie-banner {
+  position: fixed;
+  bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 99997;
+  width: min(560px, calc(100vw - 32px));
+  animation: cookieFadeIn 0.35s ease;
+}
+
+.cb-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px);
+  flex-wrap: wrap;
+}
+
+.cb-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+  font-size: 12px;
+  color: #8b949e;
+  line-height: 1.55;
+}
+
+.cb-emoji { font-size: 18px; flex-shrink: 0; margin-top: -1px; }
+
+.cb-link { color: #4f9cf9; text-decoration: none; }
+.cb-link:hover { text-decoration: underline; }
+
+.cb-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cb-btn {
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.cb-deny {
+  background: transparent;
+  border-color: #30363d;
+  color: #8b949e;
+}
+.cb-deny:hover { background: rgba(255,255,255,0.05); border-color: #6b7f96; color: #c9d1d9; }
+
+.cb-accept {
+  background: #4f9cf9;
+  color: #fff;
+  border-color: #4f9cf9;
+}
+.cb-accept:hover { background: #3b82f6; border-color: #3b82f6; }
+
+@keyframes cookieFadeIn  { from { opacity:0; transform:translateX(-50%) translateY(12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+@keyframes cookieFadeOut { from { opacity:1; transform:translateX(-50%) translateY(0); } to { opacity:0; transform:translateX(-50%) translateY(12px); } }

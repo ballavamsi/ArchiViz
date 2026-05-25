@@ -4,19 +4,88 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Archi-Flow — Live Architecture Simulator</title>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-9QP10BN1F4"></script>
+<!-- ── Analytics (loaded only after cookie consent) ──────────────────────── -->
 <script>
+(function () {
+  const GA_ID   = 'G-9QP10BN1F4';
+  const KEY     = 'archiviz.cookie.consent'; // 'granted' | 'denied' | null
+
+  // ── gtag stub (queues calls until the real gtag loads) ──────────────────
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-9QP10BN1F4');
-</script>
-<script>
-// ── Analytics helper — safe wrapper so gtag errors never break the app ──
-function track(event, params) {
-  try { if (typeof gtag === 'function') gtag('event', event, params || {}); } catch(e) {}
-}
+  function gtag() { dataLayer.push(arguments); }
+  window.gtag = gtag;
+
+  // Set default consent state — denied until user accepts
+  gtag('consent', 'default', {
+    analytics_storage:    'denied',
+    ad_storage:           'denied',
+    wait_for_update:      500,
+  });
+
+  // ── Safe track() wrapper ────────────────────────────────────────────────
+  window.track = function (event, params) {
+    try { gtag('event', event, params || {}); } catch (e) {}
+  };
+
+  // ── Load GA script ──────────────────────────────────────────────────────
+  function loadGA() {
+    if (document.getElementById('ga-script')) return;
+    const s = document.createElement('script');
+    s.id    = 'ga-script';
+    s.async = true;
+    s.src   = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    document.head.appendChild(s);
+    gtag('js', new Date());
+    gtag('config', GA_ID, { anonymize_ip: true });
+  }
+
+  // ── Grant / deny consent ────────────────────────────────────────────────
+  window._grantConsent = function () {
+    localStorage.setItem(KEY, 'granted');
+    gtag('consent', 'update', { analytics_storage: 'granted', ad_storage: 'denied' });
+    loadGA();
+    hideBanner();
+  };
+  window._denyConsent = function () {
+    localStorage.setItem(KEY, 'denied');
+    gtag('consent', 'update', { analytics_storage: 'denied', ad_storage: 'denied' });
+    hideBanner();
+  };
+
+  function hideBanner() {
+    const b = document.getElementById('cookie-banner');
+    if (b) { b.style.animation = 'cookieFadeOut 0.3s forwards'; setTimeout(() => b.remove(), 320); }
+  }
+
+  // ── On load: check saved preference ────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', function () {
+    const saved = localStorage.getItem(KEY);
+    if (saved === 'granted') { loadGA(); return; }
+    if (saved === 'denied')  { return; }
+    // No preference yet — show banner
+    showCookieBanner();
+  });
+
+  function showCookieBanner() {
+    if (document.getElementById('cookie-banner')) return;
+    const b = document.createElement('div');
+    b.id = 'cookie-banner';
+    b.innerHTML = `
+      <div class="cb-inner">
+        <div class="cb-text">
+          <span class="cb-emoji">🍪</span>
+          <span>We use analytics cookies to understand how you use Archi-Flow and improve it.
+            <a href="/privacy" target="_blank" class="cb-link">Privacy policy</a>
+          </span>
+        </div>
+        <div class="cb-actions">
+          <button class="cb-btn cb-deny"  onclick="_denyConsent()">Decline</button>
+          <button class="cb-btn cb-accept" onclick="_grantConsent()">Accept</button>
+        </div>
+      </div>`;
+    document.body.appendChild(b);
+  }
+})();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
