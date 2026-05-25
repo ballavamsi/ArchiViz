@@ -1,0 +1,21 @@
+# Dependencies — reinstalled inside builder stage
+node_modules
+
+# Dev/test artifacts
+dist
+post
+test
+scripts/record-demo.mjs
+scripts/generate-post-pdf.mjs
+signaling
+
+# Git / IDE
+.git
+.gitignore
+.DS_Store
+*.md
+!README.md
+
+# Fly / Netlify config not needed inside container
+.netlify
+netlify
