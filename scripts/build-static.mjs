@@ -37,15 +37,9 @@ html = html.replace('src="src/app.js"',    'src="src/app.min.js"');
 
 await writeFile(new URL('index.html', outDir), html, 'utf8');
 
-// ── Copy src JS modules (components, examples, rules) ─────────────────────
-// These are imported by app.js — copy them as-is (they're small data files)
-const srcFiles = ['components.js', 'examples.js', 'rules.js'];
-for (const f of srcFiles) {
-  await cp(
-    new URL(`src/${f}`, root),
-    new URL(`src/${f}`, outDir)
-  );
-}
+// components.js, examples.js and rules.js are intentionally NOT copied to dist/.
+// They are served server-side via /api/components, /api/examples and /api/rules
+// so they cannot be downloaded directly by visitors.
 
 // ── Minify CSS ────────────────────────────────────────────────────────────
 console.log('Minifying CSS…');

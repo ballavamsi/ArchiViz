@@ -5,9 +5,14 @@ import { readFile }           from 'node:fs/promises';
 import { fileURLToPath }      from 'node:url';
 import path                   from 'node:path';
 
-const root = process.cwd();
-const port = Number(process.env.PORT || 3456);
-const __dir = path.dirname(fileURLToPath(import.meta.url));
+const __dir  = path.dirname(fileURLToPath(import.meta.url));
+const port   = Number(process.env.PORT || 3456);
+
+// In production (NODE_ENV=production) serve only the built dist/ folder —
+// raw source files (src/app.js, components.js, etc.) are never reachable.
+// In dev mode serve the project root so unbuilt files work without a build step.
+const isProd  = process.env.NODE_ENV === 'production';
+const root    = isProd ? path.join(__dir, 'dist') : __dir;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -194,6 +199,13 @@ async function handleAPI(pathname, method, req, res) {
   if (pathname === '/api/rules' && method === 'GET') {
     const mod = await import(`${__dir}/src/rules.js`);
     json(res, 200, { rules: mod.ARCH_RULES||{} });
+    return true;
+  }
+
+  // GET /api/examples
+  if (pathname === '/api/examples' && method === 'GET') {
+    const mod = await import(`${__dir}/src/examples.js`);
+    json(res, 200, { examples: mod.EXAMPLES||[] });
     return true;
   }
 

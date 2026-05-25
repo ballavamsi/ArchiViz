@@ -1,6 +1,50 @@
-import { COMPONENT_DEFS, CATEGORIES } from './components.js';
-import { EXAMPLES } from './examples.js';
-import { validateConnection } from './rules.js';
+// Component definitions, categories, examples and rules are loaded from the
+// server API at boot time — they are never bundled into the client JS file.
+// This prevents the palette schema, connection rules, and example blueprints
+// from being downloaded directly by visitors.
+
+let COMPONENT_DEFS = [];
+let CATEGORIES     = [];
+let EXAMPLES       = [];
+let _ARCH_RULES    = {};
+
+async function _loadServerData() {
+  try {
+    const [compRes, rulesRes, exRes] = await Promise.all([
+      fetch('/api/components'),
+      fetch('/api/rules'),
+      fetch('/api/examples'),
+    ]);
+    if (compRes.ok)  { const d = await compRes.json();  COMPONENT_DEFS = d.defs || [];  CATEGORIES = d.categories || []; }
+    if (rulesRes.ok) { const d = await rulesRes.json(); _ARCH_RULES    = d.rules || {}; }
+    if (exRes.ok)    { const d = await exRes.json();    EXAMPLES       = d.examples || []; }
+  } catch (e) {
+    console.warn('Failed to load server data, falling back to static imports', e);
+    // Fallback for local dev without the server running
+    try {
+      const [cm, em, rm] = await Promise.all([
+        import('./components.js'), import('./examples.js'), import('./rules.js')
+      ]);
+      COMPONENT_DEFS = cm.COMPONENT_DEFS || [];
+      CATEGORIES     = cm.CATEGORIES     || [];
+      EXAMPLES       = em.EXAMPLES       || [];
+      _ARCH_RULES    = rm.ARCH_RULES     || {};
+    } catch { console.error('Static import fallback also failed'); }
+  }
+}
+
+function validateConnection(sourceDef, targetDef) {
+  if (!sourceDef || !targetDef) return { ok: false, message: 'Unknown component type.' };
+  const allowed = _ARCH_RULES[sourceDef] || [];
+  if (allowed.includes(targetDef)) return { ok: true };
+  if (targetDef === 'autoscaler' && ['appserver', 'vm', 'pod'].includes(sourceDef)) {
+    return { ok: true, dashed: true };
+  }
+  return {
+    ok: false,
+    message: `${sourceDef} → ${targetDef} is not a standard architecture pattern.`
+  };
+}
 
 // ══ STATE ════════════════════════════════════════════════════════════════════
 let S = {
@@ -2591,6 +2635,11 @@ speedSel.onchange = () => {
     S.simTick = setInterval(runTick, speedMs);
   }
 };
+
+// ══ BOOT SEQUENCE ═════════════════════════════════════════════════════════════
+// Load component defs, rules and examples from the server BEFORE rendering
+// anything — this ensures the palette and examples are populated on first paint.
+await _loadServerData();
 
 // ══ AUTH GATE ═════════════════════════════════════════════════════════════════
 // Shows a Google SSO login overlay before the app is usable.
