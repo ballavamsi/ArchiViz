@@ -3055,6 +3055,46 @@ window.addEdge = function(src, tgt, opts) {
   if (C.active) pushToY(null);
 };
 
+// Helper for scripts: connect two nodes by their label text
+window.connectByLabel = function(srcLabel, tgtLabel) {
+  const nodes = Object.values(S.nodes);
+  const s = nodes.find(n => n.props.label === srcLabel);
+  const t = nodes.find(n => n.props.label === tgtLabel);
+  if (!s || !t) { console.warn('connectByLabel: node not found', srcLabel, tgtLabel); return false; }
+  _origAddEdge(s.id, t.id, { skipRules: true });
+  renderEdges(); updateStats();
+  return true;
+};
+
+// Helper: get all nodes as [{id, label, defId}]
+window.getNodes = function() {
+  return Object.values(S.nodes).map(n => ({ id: n.id, label: n.props.label, defId: n.defId }));
+};
+
+// Helper: force re-render edges
+window.forceRenderEdges = function() { renderEdges(); updateStats(); };
+
+// Helper: rename a node by ID
+window.renameNodeById = function(id, label) {
+  const n = S.nodes[id];
+  if (!n) return false;
+  n.props.label = label;
+  renderNode(id);
+  autoSave();
+  return true;
+};
+
+// Helper: set any node prop by key
+window.setNodeProp = function(id, key, value) {
+  const n = S.nodes[id];
+  if (!n) return false;
+  n.props[key] = value;
+  renderNode(id);
+  if (S.simOn) runTick();
+  autoSave();
+  return true;
+};
+
 // Wrap deleteEdge
 const _origDeleteEdge = deleteEdge;
 window.deleteEdge = function(id) {
