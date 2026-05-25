@@ -2726,7 +2726,7 @@ async function joinCollab(roomId) {
 
   try {
     C.provider = new WebrtcProvider('archiviz-' + roomId, C.doc, {
-      signaling: ['wss://signaling.yjs.dev'],
+      signaling: (window.__ENV__?.SIGNALING_URL ? [window.__ENV__.SIGNALING_URL] : []).concat(['wss://signaling.yjs.dev']),
       maxConns: 12,
     });
   } catch(e) {

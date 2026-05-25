@@ -13,9 +13,10 @@ await mkdir(outDir,{ recursive: true });
 await mkdir(new URL('src/', outDir), { recursive: true });
 
 // ── Inject runtime env vars into index.html ───────────────────────────────
-// Netlify exposes SUPABASE_URL and SUPABASE_ANON_KEY as build env vars.
+// Netlify exposes these as build env vars (set in Site settings → Env vars).
 const supabaseUrl     = process.env.SUPABASE_URL     || '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+const signalingUrl    = process.env.SIGNALING_URL    || '';   // wss://your-render-app.onrender.com
 
 let html = await readFile(new URL('index.html', root), 'utf8');
 
@@ -23,6 +24,7 @@ const envScript = `<script>
 window.__ENV__ = {
   SUPABASE_URL:      ${JSON.stringify(supabaseUrl)},
   SUPABASE_ANON_KEY: ${JSON.stringify(supabaseAnonKey)},
+  SIGNALING_URL:     ${JSON.stringify(signalingUrl)},
 };
 </script>`;
 
@@ -70,3 +72,4 @@ await cp(new URL('README.md', root), new URL('README.md', outDir));
 console.log('\n✅ Built to dist/');
 if (!supabaseUrl)     console.warn('⚠  SUPABASE_URL not set — short links disabled');
 if (!supabaseAnonKey) console.warn('⚠  SUPABASE_ANON_KEY not set — short links disabled');
+if (!signalingUrl)    console.warn('⚠  SIGNALING_URL not set — collab will use unreliable public server');

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: archi-flow-signaling
+    runtime: node
+    rootDir: signaling
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+    # Free tier — stays alive as long as there is traffic
+    plan: free
