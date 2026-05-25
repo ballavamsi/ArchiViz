@@ -12,6 +12,12 @@
   gtag('js', new Date());
   gtag('config', 'G-9QP10BN1F4');
 </script>
+<script>
+// ── Analytics helper — safe wrapper so gtag errors never break the app ──
+function track(event, params) {
+  try { if (typeof gtag === 'function') gtag('event', event, params || {}); } catch(e) {}
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -1527,6 +1533,7 @@ function initExamples() {
 
 function loadExample(id) {
   const ex = EXAMPLES.find(e => e.id === id); if (!ex) return;
+  track('example_loaded', { example_id: id, example_name: ex.name || id });
   clearCanvas(true);
   S.activeExample = id;
   setExampleSelect(id);
@@ -1555,6 +1562,7 @@ function addNode(defId, x, y) {
   const def = COMPONENT_DEFS.find(d => d.id === defId);
   const id  = 'n' + (++S.nSeq);
   S.nodes[id] = { id, defId, x, y, w: def.size?.w || 160, h: def.size?.h || 88, props: { ...def.defaults } };
+  track('node_added', { component_type: defId, component_name: def?.name || defId });
   renderNode(id);
   // Pop-in animation for newly dropped nodes
   const newEl = document.getElementById('node-' + id);
@@ -1565,6 +1573,8 @@ function addNode(defId, x, y) {
 }
 
 function deleteNode(id) {
+  const defId = S.nodes[id]?.defId;
+  track('node_deleted', { component_type: defId });
   snapshot();
   delete S.nodes[id];
   S.edges = S.edges.filter(e => e.src !== id && e.tgt !== id);
@@ -1889,6 +1899,7 @@ function addEdge(src, tgt, opts = {}) {
   setExampleSelect('');
   const newEdge = { id: 'e' + (++S.eSeq), src, tgt, animated: !isDash, dashed: isDash, _new: true };
   S.edges.push(newEdge);
+  track('edge_created', { source_type: srcNode?.defId, target_type: tgtNode?.defId, is_dashed: isDash });
   renderEdges(); updateStats();
   // Remove _new flag after animation plays
   setTimeout(() => { newEdge._new = false; }, 500);
@@ -2676,6 +2687,12 @@ document.getElementById('btn-sim').onclick = () => {
   S.simOn = !S.simOn;
   const btn = document.getElementById('btn-sim');
   if (S.simOn) {
+    track('simulation_started', {
+      node_count: Object.keys(S.nodes).length,
+      edge_count: S.edges.length,
+      example: S.activeExample || 'custom',
+      speed: S.simSpeed || 'normal'
+    });
     btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg><span>Stop</span>`;
     btn.classList.add('running');
     dot.classList.add('on');
@@ -2683,6 +2700,16 @@ document.getElementById('btn-sim').onclick = () => {
     const speedMs = { slow: 2500, normal: 1600, fast: 800 }[S.simSpeed || 'normal'] || 1600;
     runTick(); S.simTick = setInterval(runTick, speedMs);
   } else {
+    const loads = Object.values(S.simLoad).filter(x => typeof x.loadPct === 'number');
+    const maxLoad = loads.length ? Math.max(...loads.map(x => x.loadPct)) : 0;
+    const criticalCount = loads.filter(x => x.loadPct > 85).length;
+    track('simulation_stopped', {
+      node_count: Object.keys(S.nodes).length,
+      edge_count: S.edges.length,
+      max_load_pct: Math.round(maxLoad),
+      critical_nodes: criticalCount,
+      example: S.activeExample || 'custom'
+    });
     btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Run Sim</span>`;
     btn.classList.remove('running');
     dot.classList.remove('on');
@@ -3330,10 +3357,12 @@ async function shareArchitecture() {
   document.getElementById('sh-copy').onclick = async () => {
     try { await navigator.clipboard.writeText(url); pushToast('Share link copied!', 'info'); }
     catch { prompt('Copy this share link', url); }
+    track('share_link_copied', { node_count: Object.keys(S.nodes).length });
     close();
   };
 
   document.getElementById('sh-linkedin').onclick = () => {
+    track('share_linkedin_clicked', { node_count: Object.keys(S.nodes).length });
     shareToLinkedIn();
     close();
   };
@@ -3342,6 +3371,7 @@ async function shareArchitecture() {
     document.getElementById('sh-native').onclick = async () => {
       try { await shareDiagram(); pushToast('Share sheet opened.', 'info'); }
       catch { await navigator.clipboard.writeText(url); pushToast('Share link copied!', 'info'); }
+      track('share_native', { node_count: Object.keys(S.nodes).length });
       close();
     };
   }
@@ -3367,12 +3397,16 @@ document.getElementById('btn-fit').onclick    = fitView;
 document.getElementById('cc-fit').onclick     = fitView;
 document.getElementById('cc-zoomin').onclick  = () => { S.zoom=Math.min(2.5,S.zoom*1.2); renderAll(); updateZoomLabel(); };
 document.getElementById('cc-zoomout').onclick = () => { S.zoom=Math.max(0.25,S.zoom/1.2); renderAll(); updateZoomLabel(); };
-document.getElementById('btn-clear').onclick  = () => clearCanvas(false);
+document.getElementById('btn-clear').onclick  = () => {
+  track('canvas_cleared', { node_count: Object.keys(S.nodes).length, edge_count: S.edges.length });
+  clearCanvas(false);
+};
 document.getElementById('btn-import').onclick = () => document.getElementById('import-file').click();
 document.getElementById('import-file').onchange = async e => {
   const file = e.target.files?.[0]; if (!file) return;
   try {
     importArchitecture(JSON.parse(await file.text()));
+    track('diagram_imported', { file_name: file.name });
   } catch (err) {
     alert('Could not import JSON: ' + err.message);
   } finally {
@@ -3380,12 +3414,22 @@ document.getElementById('import-file').onchange = async e => {
   }
 };
 document.getElementById('btn-export').onclick = () => {
+  track('diagram_exported', { format: 'json', node_count: Object.keys(S.nodes).length, edge_count: S.edges.length });
   const blob=new Blob([JSON.stringify(architecturePayload(),null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='architecture.json'; a.click();
 };
-document.getElementById('btn-export-svg').onclick = exportDiagramSvg;
-document.getElementById('btn-export-pdf').onclick = exportPdfReport;
-document.getElementById('btn-share').onclick = shareArchitecture;
+document.getElementById('btn-export-svg').onclick = () => {
+  track('diagram_exported', { format: 'svg', node_count: Object.keys(S.nodes).length });
+  exportDiagramSvg();
+};
+document.getElementById('btn-export-pdf').onclick = () => {
+  track('diagram_exported', { format: 'pdf', node_count: Object.keys(S.nodes).length });
+  exportPdfReport();
+};
+document.getElementById('btn-share').onclick = () => {
+  track('share_opened', { node_count: Object.keys(S.nodes).length, edge_count: S.edges.length });
+  shareArchitecture();
+};
 document.getElementById('btn-suggestions').onclick = () => setSuggestionsOn(!S.suggestionsOn);
 document.getElementById('btn-snap').onclick = () => setSnapGrid(!S.snapGrid);
 document.getElementById('btn-sidebar-toggle').onclick = () => setSidebarOpen(!S.sidebarOpen);
