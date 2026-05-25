@@ -2669,7 +2669,11 @@ speedSel.onchange = () => {
   if (!sb) return;
 
   const { data: { session } } = await sb.auth.getSession();
-  if (session) return;
+  if (session) {
+    // Already logged in — set up user profile immediately
+    _onUserLoggedIn(session.user);
+    return;
+  }
 
   const gate = document.createElement('div');
   gate.id = 'auth-gate';
@@ -2701,14 +2705,106 @@ speedSel.onchange = () => {
     });
   };
 
-  // Listen for auth state change (e.g. OAuth redirect back)
+  // Listen for auth state change (OAuth redirect back)
   sb.auth.onAuthStateChange((event, sess) => {
     if (sess) {
       const el = document.getElementById('auth-gate');
       if (el) el.remove();
+      _onUserLoggedIn(sess.user, event === 'SIGNED_IN');
     }
   });
 })();
+
+// ── User session helpers ───────────────────────────────────────────────────
+function _onUserLoggedIn(user, isNewLogin = false) {
+  const name   = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'there';
+  const avatar = user.user_metadata?.avatar_url || null;
+  const firstName = name.split(' ')[0];
+
+  // Pre-populate collab display name from Google account
+  if (!localStorage.getItem('archviz.collab.name')) {
+    saveCollabName(name);
+    ME.name = name;
+  }
+  // Also fill the collab name input if it exists
+  const nameInp = document.getElementById('collab-name-inp');
+  if (nameInp && !nameInp.value) nameInp.value = ME.name || name;
+
+  // Inject user avatar + sign-out into toolbar
+  _injectUserChip(name, firstName, avatar, user.email);
+
+  // Show welcome toast / popup on first login
+  if (isNewLogin) {
+    setTimeout(() => _showWelcomePopup(firstName), 600);
+  }
+}
+
+function _injectUserChip(name, firstName, avatar, email) {
+  if (document.getElementById('user-chip')) return; // already injected
+  const chip = document.createElement('div');
+  chip.id = 'user-chip';
+  chip.title = `${name}\n${email}`;
+  chip.innerHTML = avatar
+    ? `<img src="${avatar}" class="user-avatar" referrerpolicy="no-referrer"/>`
+    : `<div class="user-avatar-initials">${(firstName[0]||'?').toUpperCase()}</div>`;
+
+  const menu = document.createElement('div');
+  menu.id = 'user-menu';
+  menu.innerHTML = `
+    <div class="user-menu-name">${name}</div>
+    <div class="user-menu-email">${email}</div>
+    <hr class="user-menu-divider"/>
+    <button id="user-signout-btn" class="user-menu-item user-menu-signout">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign out
+    </button>`;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;display:flex;align-items:center;margin-left:4px';
+  wrap.appendChild(chip);
+  wrap.appendChild(menu);
+
+  // Toggle menu on chip click
+  chip.onclick = (e) => { e.stopPropagation(); menu.classList.toggle('open'); };
+  document.addEventListener('click', () => menu.classList.remove('open'), { capture: false });
+
+  // Sign out
+  document.getElementById && setTimeout(() => {
+    const signOutBtn = menu.querySelector('#user-signout-btn');
+    if (signOutBtn) signOutBtn.onclick = async () => {
+      const sb = getSB();
+      if (sb) await sb.auth.signOut();
+      location.reload();
+    };
+  }, 100);
+
+  // Insert before the notifications bell
+  const toolbar = document.getElementById('btn-notif')?.closest('div')?.parentElement;
+  if (toolbar) toolbar.insertBefore(wrap, document.getElementById('btn-notif').closest('div'));
+}
+
+function _showWelcomePopup(firstName) {
+  const pop = document.createElement('div');
+  pop.id = 'welcome-popup';
+  pop.innerHTML = `
+    <div class="welcome-card">
+      <div class="welcome-emoji">👋</div>
+      <h2 class="welcome-title">Welcome, ${firstName}!</h2>
+      <p class="welcome-body">You're now inside <strong>Archi-Flow</strong> — a visual simulator for designing and stress-testing system architectures.</p>
+      <div class="welcome-tips">
+        <div class="welcome-tip"><span class="tip-icon">🧩</span><span>Drag components from the left palette onto the canvas</span></div>
+        <div class="welcome-tip"><span class="tip-icon">🔗</span><span>Hover a node edge to draw connections</span></div>
+        <div class="welcome-tip"><span class="tip-icon">⚡</span><span>Hit <strong>Simulate</strong> to send traffic and watch bottlenecks appear</span></div>
+        <div class="welcome-tip"><span class="tip-icon">📐</span><span>Try an example from the <strong>Examples</strong> dropdown to get started fast</span></div>
+      </div>
+      <button id="welcome-close-btn" class="welcome-close-btn">Start building →</button>
+    </div>`;
+  document.body.appendChild(pop);
+
+  const close = () => { pop.style.animation = 'fadeOut 0.2s forwards'; setTimeout(() => pop.remove(), 200); };
+  document.getElementById('welcome-close-btn').onclick = close;
+  pop.addEventListener('click', e => { if (e.target === pop) close(); });
+}
 
 // (boot moved into the IIFE above)
 
