@@ -2666,6 +2666,10 @@ function applyYState() {
     if (S.sel) refreshSimStats(S.sel);
     buildSuggestions();
 
+    // Hide/show empty state based on whether we have nodes
+    document.getElementById('canvas-empty').style.display =
+      Object.keys(S.nodes).length ? 'none' : '';
+
     // Keep props panel in sync if the selected node was updated
     if (S.sel && remoteNodes[S.sel]) selectNode(S.sel);
   } finally {
