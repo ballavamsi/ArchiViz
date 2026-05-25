@@ -1261,3 +1261,97 @@ textarea.prop-inp {
   z-index: 449;
 }
 #notif-backdrop.visible { display: block; }
+
+/* ── Auth Gate ──────────────────────────────────────────────────────────────── */
+#auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: linear-gradient(135deg, #0a0f1a 0%, #0d1627 50%, #0a1020 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.auth-gate-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(79,156,249,0.2);
+  border-radius: 20px;
+  padding: 40px 36px;
+  width: 360px;
+  max-width: 94vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(79,156,249,0.08);
+  backdrop-filter: blur(20px);
+}
+
+.auth-gate-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(79,156,249,0.1);
+  border: 1px solid rgba(79,156,249,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.auth-gate-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #eaf0fb;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.auth-gate-sub {
+  font-size: 13px;
+  color: #6b7f96;
+  margin: 0 0 14px;
+  text-align: center;
+}
+
+.auth-google-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #eaf0fb;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.auth-google-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+}
+
+.auth-google-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-gate-footer {
+  font-size: 10.5px;
+  color: #4a5568;
+  text-align: center;
+  margin: 6px 0 0;
+  line-height: 1.6;
+}
+
+.auth-gate-footer a {
+  color: #4f9cf9;
+  text-decoration: none;
+}

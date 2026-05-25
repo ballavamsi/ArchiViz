@@ -1,6 +1,7 @@
 [build]
   publish = "dist"
   command = "npm test && npm run build"
+  functions = "netlify/functions"
 
 # Short link routes: /s/[8-char-id] → SPA handles fetch from Supabase
 [[redirects]]

@@ -62,9 +62,22 @@ execSync(
     --module \
     --compress passes=2,drop_console=false,pure_getters=true \
     --mangle \
-    --output "${outPath}src/app.min.js"`,
+    --output "${outPath}src/app.terser.js"`,
   { stdio: 'inherit' }
 );
+
+// ── Obfuscate JS (on top of Terser minification) ───────────────────────────
+console.log('Obfuscating JS…');
+execSync(
+  `node "${rootPath}scripts/obfuscate.mjs" \
+    "${outPath}src/app.terser.js" \
+    "${outPath}src/app.min.js"`,
+  { stdio: 'inherit' }
+);
+
+// Clean up the intermediate terser file
+import { unlink } from 'node:fs/promises';
+await unlink(`${outPath}src/app.terser.js`).catch(() => {});
 
 // ── Copy README ───────────────────────────────────────────────────────────
 await cp(new URL('README.md', root), new URL('README.md', outDir));
