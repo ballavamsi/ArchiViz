@@ -29,6 +29,10 @@ function track(event, params) {
 <meta name="twitter:title" content="Archi-Flow — Architecture Diagram"/>
 <meta name="twitter:description" content="Interactive cloud architecture diagram with live traffic simulation."/>
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- Y.js CRDT + WebRTC provider for free P2P collaboration -->
+<script src="https://unpkg.com/yjs@13.6.15/dist/yjs.js"></script>
+<script src="https://unpkg.com/lib0@0.2.93/dist/lib0.js"></script>
+<script src="https://unpkg.com/y-webrtc@10.4.0/dist/y-webrtc.js"></script>
 <style>
 :root {
   --bg:       #080d14;
@@ -1030,6 +1034,57 @@ textarea.prop-inp {
 .more-item { border-radius: 7px !important; font-size: 12px; font-weight: 500; padding: 7px 11px !important; color: var(--text2); }
 .more-item:hover { background: rgba(79,156,249,0.1) !important; color: var(--text) !important; }
 
+/* ── COLLABORATION ── */
+.tbtn-collab { border-color: rgba(168,85,247,0.4) !important; color: #c084fc !important; background: rgba(168,85,247,0.08) !important; font-weight: 600; gap: 6px; }
+.tbtn-collab:hover { background: rgba(168,85,247,0.18) !important; box-shadow: 0 0 14px rgba(168,85,247,0.25) !important; }
+.tbtn-collab.live { border-color: rgba(52,208,88,0.4) !important; color: var(--green) !important; background: rgba(52,208,88,0.08) !important; animation: collab-pulse 2.4s ease-in-out infinite; }
+@keyframes collab-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(52,208,88,0);} 50%{box-shadow:0 0 10px rgba(52,208,88,0.3);} }
+.collab-dot { width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0; }
+
+/* User presence avatars in toolbar */
+#collab-users { display:flex;align-items:center;gap:-4px;margin-right:4px; }
+.collab-avatar {
+  width:26px;height:26px;border-radius:50%;border:2px solid var(--surface);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#fff;cursor:default;
+  margin-left:-6px;transition:transform 0.15s;flex-shrink:0;
+  box-shadow:0 2px 6px rgba(0,0,0,0.4);
+}
+.collab-avatar:first-child { margin-left:0; }
+.collab-avatar:hover { transform:translateY(-2px) scale(1.1);z-index:10; }
+
+/* Remote cursor overlay on canvas */
+.remote-cursor {
+  position:absolute;pointer-events:none;z-index:500;
+  transition:left 0.12s linear,top 0.12s linear;
+}
+.remote-cursor svg { filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+.remote-cursor-label {
+  position:absolute;left:16px;top:2px;
+  font-size:10px;font-weight:600;color:#fff;white-space:nowrap;
+  padding:2px 6px;border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* Collab modal */
+#collab-modal { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(4px); }
+#collab-modal.open { display:flex; }
+.collab-box { background:#0f1520;border:1px solid rgba(168,85,247,0.3);border-radius:16px;padding:24px;width:360px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,0.6),0 0 0 1px rgba(168,85,247,0.1); }
+.collab-box h2 { font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px; }
+.collab-box p  { font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:16px; }
+.collab-input { width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;font-family:monospace;outline:none;margin-bottom:10px; }
+.collab-input:focus { border-color:#a78bfa; }
+.collab-btn { width:100%;padding:9px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:7px; }
+.collab-btn.primary { background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff; }
+.collab-btn.primary:hover { background:linear-gradient(135deg,#6d28d9,#9333ea);box-shadow:0 4px 16px rgba(139,92,246,0.4); }
+.collab-btn.secondary { background:rgba(255,255,255,0.05);border:1px solid var(--border2);color:var(--text2); }
+.collab-btn.secondary:hover { background:rgba(255,255,255,0.09); }
+.collab-btn.danger { background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red); }
+.collab-btn.danger:hover { background:rgba(248,81,73,0.2); }
+.collab-peers { display:flex;flex-direction:column;gap:6px;margin:12px 0; }
+.collab-peer-row { display:flex;align-items:center;gap:8px;padding:6px 9px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:11.5px;color:var(--text2); }
+.collab-peer-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+
 /* ── CONN VALIDATION TOAST ── */
 .toast-card {
   background: rgba(15,22,32,0.96);
@@ -1101,6 +1156,13 @@ textarea.prop-inp {
   <div style="flex:1"></div>
 
   <!-- Right actions -->
+  <div id="collab-users" title="Connected collaborators"></div>
+  <button class="tbtn tbtn-collab" id="btn-collab" title="Start or join a live collaboration session">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span id="btn-collab-txt">Live</span>
+    <span class="collab-dot" id="collab-indicator" style="display:none"></span>
+  </button>
+  <div class="sep"></div>
   <button class="tbtn tbtn-share" id="btn-share">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
     Share
@@ -3625,6 +3687,429 @@ updateEmptyPanel();
 positionSugTray();
 initSugTrayObserver();
 loadFromHash();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REAL-TIME COLLABORATION  (Y.js + y-webrtc, 100% free P2P)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const COLLAB_COLORS = ['#f87171','#fb923c','#facc15','#4ade80','#34d399','#38bdf8','#818cf8','#e879f9','#f472b6','#a78bfa'];
+function collabColor(seed) {
+  let h = 0; for (let i=0; i<seed.length; i++) h = (h*31+seed.charCodeAt(i))>>>0;
+  return COLLAB_COLORS[h % COLLAB_COLORS.length];
+}
+function collabInitials(name) {
+  return name.trim().split(/\s+/).map(w=>w[0]?.toUpperCase()||'').join('').slice(0,2) || '?';
+}
+
+// Persisted identity
+function getCollabIdentity() {
+  try {
+    let id = localStorage.getItem('archviz.collab.id');
+    let name = localStorage.getItem('archviz.collab.name') || '';
+    if (!id) { id = Math.random().toString(36).slice(2,10); localStorage.setItem('archviz.collab.id',id); }
+    return { id, name };
+  } catch { return { id: Math.random().toString(36).slice(2,10), name: '' }; }
+}
+function saveCollabName(n) { try { localStorage.setItem('archviz.collab.name', n); } catch {} }
+
+const ME = getCollabIdentity();
+
+// Pre-populate name input
+const _nameInp = document.getElementById('collab-name-inp');
+if (_nameInp && ME.name) _nameInp.value = ME.name;
+
+const C = {          // collab runtime state
+  active: false,
+  roomId: null,
+  doc: null,
+  provider: null,
+  yNodes: null,      // Y.Map  nodeId → node JSON
+  yEdges: null,      // Y.Array of edge JSON
+  awareness: null,
+  _applying: false,  // guard re-entrant sync
+};
+
+// ── Apply remote Y.js state into S ─────────────────────────────────
+function applyYState() {
+  if (C._applying) return;
+  C._applying = true;
+  try {
+    // Nodes
+    const remoteNodes = {};
+    C.yNodes.forEach((val, key) => { remoteNodes[key] = val; });
+    // Remove nodes that disappeared remotely
+    Object.keys(S.nodes).forEach(id => { if (!remoteNodes[id]) { const el=document.getElementById('node-'+id); if(el) el.remove(); delete S.nodes[id]; } });
+    // Add / update nodes
+    Object.entries(remoteNodes).forEach(([id, data]) => {
+      const existing = S.nodes[id];
+      if (!existing || JSON.stringify(existing) !== JSON.stringify(data)) {
+        S.nodes[id] = data;
+        S.nSeq = Math.max(S.nSeq, parseInt(id.replace(/\D/g,''))||0);
+      }
+    });
+    // Edges
+    const remoteEdges = C.yEdges.toArray();
+    S.edges = remoteEdges.map(e => ({...e}));
+    S.eSeq = S.edges.reduce((m,e) => Math.max(m, parseInt(e.id?.replace(/\D/g,'')||0)), S.eSeq);
+
+    renderAll(); updateStats(); updateCost();
+    if (S.sel) refreshSimStats(S.sel);
+    buildSuggestions();
+  } finally {
+    C._applying = false;
+  }
+}
+
+// ── Push local S into Y.js ──────────────────────────────────────────
+function pushToY(nodeId) {
+  if (!C.active || C._applying) return;
+  C.doc.transact(() => {
+    if (nodeId) {
+      // Single node update
+      if (S.nodes[nodeId]) C.yNodes.set(nodeId, JSON.parse(JSON.stringify(S.nodes[nodeId])));
+      else C.yNodes.delete(nodeId);
+    } else {
+      // Full sync (edges changed, or initial push)
+      // Nodes
+      const existingKeys = new Set(); C.yNodes.forEach((_,k) => existingKeys.add(k));
+      Object.entries(S.nodes).forEach(([id,n]) => { C.yNodes.set(id, JSON.parse(JSON.stringify(n))); existingKeys.delete(id); });
+      existingKeys.forEach(k => C.yNodes.delete(k));
+      // Edges
+      C.yEdges.delete(0, C.yEdges.length);
+      C.yEdges.insert(0, S.edges.map(e => JSON.parse(JSON.stringify(e))));
+    }
+  });
+}
+
+// ── Join / create a session ─────────────────────────────────────────
+function joinCollab(roomId) {
+  if (C.active) leaveCollab();
+  if (typeof Y === 'undefined' || typeof WebrtcProvider === 'undefined') {
+    pushToast('Collab libs not loaded yet — try again in a moment.', 'warn'); return;
+  }
+
+  C.roomId = roomId;
+  C.doc    = new Y.Doc();
+  C.yNodes = C.doc.getMap('nodes');
+  C.yEdges = C.doc.getArray('edges');
+
+  try {
+    C.provider = new WebrtcProvider('archiviz-' + roomId, C.doc, {
+      signaling: ['wss://signaling.yjs.dev', 'wss://y-webrtc-signaling-eu.herokuapp.com'],
+      maxConns: 12,
+    });
+  } catch(e) {
+    pushToast('Could not connect — check your network.', 'warn'); return;
+  }
+
+  C.awareness = C.provider.awareness;
+
+  const name  = document.getElementById('collab-name-inp')?.value.trim() || ME.name || 'Guest';
+  const color = collabColor(ME.id);
+  saveCollabName(name);
+  ME.name = name;
+
+  C.awareness.setLocalStateField('user', { id: ME.id, name, color, initials: collabInitials(name) });
+
+  // Push our current diagram to the room (first joiner wins since Y.js merges)
+  pushToY(null);
+
+  // Observe remote changes
+  C.yNodes.observe(() => { if (!C._applying) applyYState(); });
+  C.yEdges.observe(() => { if (!C._applying) applyYState(); });
+
+  // Observe peer presence
+  C.awareness.on('change', updateCollabPresence);
+
+  // Track local mouse for remote cursors
+  document.getElementById('canvas-wrap').addEventListener('mousemove', onLocalCursorMove);
+
+  C.active = true;
+  updateCollabUI();
+  updateCollabPresence();
+  pushToast(`Live session started — share the link!`, 'info');
+  track('collab_session_started', { room: roomId });
+}
+
+function leaveCollab() {
+  if (!C.active) return;
+  document.getElementById('canvas-wrap').removeEventListener('mousemove', onLocalCursorMove);
+  C.awareness?.destroy();
+  C.provider?.destroy();
+  C.doc?.destroy();
+  C.active=false; C.roomId=null; C.doc=null; C.provider=null; C.yNodes=null; C.yEdges=null; C.awareness=null;
+  document.getElementById('remote-cursors').innerHTML = '';
+  updateCollabUI();
+  // Clean up URL
+  const u = new URL(location.href);
+  u.searchParams.delete('collab');
+  history.replaceState(null,'', u.toString());
+  pushToast('Left collaboration session.','info');
+  track('collab_session_left', {});
+}
+
+// ── Cursor broadcast ───────────────────────────────────────────────
+function onLocalCursorMove(e) {
+  if (!C.awareness) return;
+  const rect = document.getElementById('canvas-wrap').getBoundingClientRect();
+  // Canvas coordinates (not screen)
+  const cx = (e.clientX - rect.left - S.panX) / S.zoom;
+  const cy = (e.clientY - rect.top  - S.panY) / S.zoom;
+  C.awareness.setLocalStateField('cursor', { cx, cy });
+}
+
+// ── Render remote cursors ──────────────────────────────────────────
+function renderRemoteCursors(states) {
+  const container = document.getElementById('remote-cursors');
+  if (!container) return;
+  const seen = new Set();
+  states.forEach((state, clientId) => {
+    if (clientId === C.awareness.clientID) return;
+    const user   = state.user;
+    const cursor = state.cursor;
+    if (!user || !cursor) return;
+    seen.add(String(clientId));
+    // Screen position
+    const sx = cursor.cx * S.zoom + S.panX;
+    const sy = cursor.cy * S.zoom + S.panY;
+    let el = container.querySelector(`[data-client="${clientId}"]`);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'remote-cursor';
+      el.dataset.client = clientId;
+      el.innerHTML = `
+        <svg width="14" height="20" viewBox="0 0 14 20" fill="${user.color}"><path d="M0 0L0 16L4 12L7 19L9 18L6 11L11 11Z" stroke="#000" stroke-width="0.8"/></svg>
+        <div class="remote-cursor-label" style="background:${user.color}">${esc(user.name || '?')}</div>`;
+      container.appendChild(el);
+    }
+    el.style.left = sx + 'px';
+    el.style.top  = sy + 'px';
+  });
+  // Remove stale cursors
+  [...container.querySelectorAll('.remote-cursor')].forEach(el => {
+    if (!seen.has(el.dataset.client)) el.remove();
+  });
+}
+
+// ── Update presence UI ─────────────────────────────────────────────
+function updateCollabPresence() {
+  if (!C.awareness) return;
+  const states   = C.awareness.getStates();
+  const peers    = [];
+  states.forEach((state, clientId) => {
+    if (clientId === C.awareness.clientID) return;
+    if (state.user) peers.push({ ...state.user, clientId });
+  });
+  const myState  = states.get(C.awareness.clientID);
+  const me       = myState?.user;
+  const allUsers = me ? [{ ...me, self: true }, ...peers] : peers;
+
+  // Toolbar avatars
+  const bar = document.getElementById('collab-users');
+  if (bar) {
+    bar.innerHTML = allUsers.slice(0,5).map(u =>
+      `<div class="collab-avatar" style="background:${u.color}" title="${esc(u.name||'?')}${u.self?' (you)':''}">${esc(collabInitials(u.name||'?'))}</div>`
+    ).join('');
+  }
+
+  // Peer count in modal
+  const countEl = document.getElementById('collab-peer-count');
+  if (countEl) countEl.textContent = allUsers.length;
+
+  // Peer list in modal
+  const listEl = document.getElementById('collab-peers-list');
+  if (listEl) {
+    listEl.innerHTML = allUsers.map(u =>
+      `<div class="collab-peer-row"><div class="collab-peer-dot" style="background:${u.color}"></div><span style="flex:1">${esc(u.name||'?')}</span>${u.self?'<span style="font-size:10px;color:var(--muted)">(you)</span>':''}</div>`
+    ).join('') || '<div style="font-size:11px;color:var(--muted)">Waiting for others to join…</div>';
+  }
+
+  // Render remote cursors
+  renderRemoteCursors(states);
+}
+
+// ── Collab UI state ────────────────────────────────────────────────
+function updateCollabUI() {
+  const btn  = document.getElementById('btn-collab');
+  const dot  = document.getElementById('collab-indicator');
+  const txt  = document.getElementById('btn-collab-txt');
+  if (C.active) {
+    btn.classList.add('live');
+    if (dot) dot.style.display = '';
+    if (txt) txt.textContent = 'Live';
+    // Update modal link
+    const u = new URL(location.href);
+    u.searchParams.set('collab', C.roomId);
+    const link = u.toString();
+    history.replaceState(null,'', link);
+    const out = document.getElementById('collab-link-out');
+    if (out) out.value = link;
+    document.getElementById('collab-start-panel').style.display = 'none';
+    document.getElementById('collab-live-panel').style.display  = '';
+  } else {
+    btn.classList.remove('live');
+    if (dot) dot.style.display = 'none';
+    if (txt) txt.textContent = 'Live';
+    document.getElementById('collab-start-panel').style.display = '';
+    document.getElementById('collab-live-panel').style.display  = 'none';
+  }
+}
+
+// ── Modal wiring ───────────────────────────────────────────────────
+document.getElementById('btn-collab').onclick = () => {
+  document.getElementById('collab-modal').classList.add('open');
+  if (C.active) updateCollabPresence();
+};
+document.getElementById('collab-btn-close').onclick = () => document.getElementById('collab-modal').classList.remove('open');
+document.getElementById('collab-modal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+
+document.getElementById('collab-btn-start').onclick = () => {
+  const room = Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,6);
+  joinCollab(room);
+  document.getElementById('collab-modal').classList.remove('open');
+  // Re-open to show live panel
+  setTimeout(() => document.getElementById('collab-modal').classList.add('open'), 200);
+};
+
+document.getElementById('collab-btn-join').onclick = () => {
+  const raw = document.getElementById('collab-join-inp').value.trim();
+  if (!raw) { pushToast('Paste a session link or room ID.','warn'); return; }
+  let roomId = raw;
+  try {
+    const u = new URL(raw);
+    roomId = u.searchParams.get('collab') || raw;
+  } catch {}
+  joinCollab(roomId);
+  document.getElementById('collab-modal').classList.remove('open');
+  setTimeout(() => document.getElementById('collab-modal').classList.add('open'), 200);
+};
+
+document.getElementById('collab-btn-copy').onclick = async () => {
+  const link = document.getElementById('collab-link-out').value;
+  try { await navigator.clipboard.writeText(link); pushToast('Session link copied!','info'); }
+  catch { prompt('Copy this link:', link); }
+  track('collab_link_copied', { room: C.roomId });
+};
+
+document.getElementById('collab-btn-leave').onclick = () => {
+  leaveCollab();
+  document.getElementById('collab-modal').classList.remove('open');
+};
+
+// ── Hook mutations to broadcast ────────────────────────────────────
+// Wrap addNode
+const _origAddNode = addNode;
+window.addNode = function(defId, x, y) {
+  const id = _origAddNode(defId, x, y);
+  if (C.active) pushToY(id);
+  return id;
+};
+
+// Wrap deleteNode
+const _origDeleteNode = deleteNode;
+window.deleteNode = function(id) {
+  _origDeleteNode(id);
+  if (C.active) pushToY(id); // node gone → will delete from yNodes
+};
+
+// Wrap addEdge
+const _origAddEdge = addEdge;
+window.addEdge = function(src, tgt, opts) {
+  _origAddEdge(src, tgt, opts);
+  if (C.active) pushToY(null);
+};
+
+// Wrap deleteEdge
+const _origDeleteEdge = deleteEdge;
+window.deleteEdge = function(id) {
+  _origDeleteEdge(id);
+  if (C.active) pushToY(null);
+};
+
+// Wrap clearCanvas
+const _origClearCanvas = clearCanvas;
+window.clearCanvas = function(silent) {
+  _origClearCanvas(silent);
+  if (C.active) pushToY(null);
+};
+
+// Hook prop changes — patch buildFields to broadcast after oninput
+const _origBuildFields = buildFields;
+window.buildFields = function(containerId, props, n, nodeId) {
+  _origBuildFields(containerId, props, n, nodeId);
+  // After original builds fields, wrap each oninput to also push
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.querySelectorAll('.prop-inp').forEach(inp => {
+    const origHandler = inp.oninput;
+    const origChange  = inp.onchange;
+    if (origHandler) inp.oninput = function(e) { origHandler.call(this,e); if(C.active) pushToY(nodeId); };
+    if (origChange)  inp.onchange = function(e) { origChange.call(this,e); if(C.active) pushToY(nodeId); };
+  });
+};
+
+// Hook drag end to broadcast moved node positions
+const _origMouseUp = window.onmouseup;
+document.addEventListener('mouseup', () => {
+  if (C.active && G.drag) {
+    setTimeout(() => pushToY(G.drag?.id || null), 50);
+  }
+});
+
+// ── Cursor refresh loop ────────────────────────────────────────────
+setInterval(() => {
+  if (C.active && C.awareness) renderRemoteCursors(C.awareness.getStates());
+}, 80);
+
+// Auto-join collab if URL has collab param
+const _collabParam = new URLSearchParams(location.search).get('collab');
+if (_collabParam) { setTimeout(() => joinCollab(_collabParam), 600); }
+</script>
+
+<!-- Collab Modal -->
+<div id="collab-modal">
+  <div class="collab-box">
+    <h2>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Live Collaboration
+    </h2>
+    <p id="collab-modal-desc">Invite others to edit this diagram with you in real-time. Free &amp; peer-to-peer — no server, no account needed.</p>
+
+    <!-- Not in session -->
+    <div id="collab-start-panel">
+      <div style="margin-bottom:10px">
+        <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Your display name</div>
+        <input class="collab-input" id="collab-name-inp" placeholder="e.g. Alex" style="margin-bottom:0"/>
+      </div>
+      <button class="collab-btn primary" id="collab-btn-start">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Start new session
+      </button>
+      <div style="text-align:center;font-size:10px;color:var(--muted);margin:8px 0">— or join an existing session —</div>
+      <input class="collab-input" id="collab-join-inp" placeholder="Paste session link or room ID"/>
+      <button class="collab-btn secondary" id="collab-btn-join">Join session</button>
+    </div>
+
+    <!-- In session -->
+    <div id="collab-live-panel" style="display:none">
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Share this link</div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <input class="collab-input" id="collab-link-out" readonly style="margin-bottom:0;flex:1;font-size:11px"/>
+        <button class="collab-btn secondary" id="collab-btn-copy" style="width:auto;padding:0 12px;margin:0;white-space:nowrap">Copy</button>
+      </div>
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Connected (<span id="collab-peer-count">1</span>)</div>
+      <div class="collab-peers" id="collab-peers-list"></div>
+      <button class="collab-btn danger" id="collab-btn-leave" style="margin-top:8px">Leave session</button>
+    </div>
+
+    <button class="collab-btn secondary" id="collab-btn-close" style="margin-top:4px">Close</button>
+  </div>
+</div>
+
+<!-- Remote cursors container (inside canvas-wrap) -->
+<script>
+// Add cursor container to canvas wrap after DOM ready
+document.getElementById('canvas-wrap').insertAdjacentHTML('beforeend', '<div id="remote-cursors" style="position:absolute;inset:0;pointer-events:none;z-index:490;overflow:hidden"></div>');
 </script>
 </body>
 </html>
