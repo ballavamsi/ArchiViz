@@ -620,21 +620,90 @@ function deleteEdge(id) {
 }
 
 function pushToast(message, type = 'info') {
-  const panel = document.getElementById('suggestions');
-  const key = 'toast-' + Date.now();
-  const div = document.createElement('div');
-  div.className = `sug-card toast-card ${type === 'warn' ? 'warn' : type === 'error' ? 'crit' : 'info'}`;
-  div.dataset.key = key;
-  const iconSvg = type === 'warn'
-    ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17" stroke-width="3"/></svg>`
-    : type === 'error'
-    ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
-    : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="3"/></svg>`;
-  div.innerHTML = `<div class="sug-icon">${iconSvg}</div><div class="sug-body"><div class="sug-msg" style="font-size:11.5px;color:var(--text2)">${esc(message)}</div></div><div class="sug-close" style="opacity:0.5;font-size:16px;line-height:1">×</div>`;
-  div.querySelector('.sug-close').onclick = () => div.remove();
-  panel.prepend(div);
-  setTimeout(() => { div.style.opacity='0'; div.style.transform='translateY(4px)'; div.style.transition='opacity 0.3s,transform 0.3s'; setTimeout(()=>div.remove(),300); }, 4200);
+  addNotification(message, type);
 }
+
+// ── Notification panel ────────────────────────────────────────────────
+let _notifCount = 0;
+
+function addNotification(message, type = 'info', title = null) {
+  const list = document.getElementById('notif-list');
+  const empty = document.getElementById('notif-empty');
+  if (!list) return;
+  if (empty) empty.style.display = 'none';
+
+  const icon = type === 'warn' ? '⚠️' : type === 'crit' || type === 'error' ? '🔴' : 'ℹ️';
+  const cls  = type === 'error' ? 'crit' : type;
+
+  const card = document.createElement('div');
+  card.className = `notif-card ${cls}`;
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  card.innerHTML = `
+    <div class="notif-card-icon">${icon}</div>
+    <div class="notif-card-body">
+      ${title ? `<div class="notif-card-title">${esc(title)}</div>` : ''}
+      <div class="notif-card-msg">${esc(message)}</div>
+      <div class="notif-card-time">${timeStr}</div>
+    </div>
+    <button class="notif-card-close" title="Dismiss">×</button>`;
+
+  card.querySelector('.notif-card-close').onclick = () => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(12px)';
+    card.style.transition = 'opacity 0.2s, transform 0.2s';
+    setTimeout(() => { card.remove(); _updateNotifBadge(); }, 200);
+  };
+
+  list.prepend(card);
+  _notifCount++;
+  _updateNotifBadge();
+}
+
+function _updateNotifBadge() {
+  const list  = document.getElementById('notif-list');
+  const badge = document.getElementById('notif-badge');
+  const empty = document.getElementById('notif-empty');
+  if (!list || !badge) return;
+  const count = list.querySelectorAll('.notif-card').length;
+  _notifCount = count;
+  if (count === 0) {
+    badge.style.display = 'none';
+    if (empty) empty.style.display = '';
+  } else {
+    badge.style.display = '';
+    badge.textContent = count > 99 ? '99+' : String(count);
+  }
+}
+
+function _openNotifPanel() {
+  document.getElementById('notif-panel')?.classList.add('open');
+  document.getElementById('notif-backdrop')?.classList.add('visible');
+}
+
+function _closeNotifPanel() {
+  document.getElementById('notif-panel')?.classList.remove('open');
+  document.getElementById('notif-backdrop')?.classList.remove('visible');
+}
+
+function _initNotifPanel() {
+  document.getElementById('btn-notif')?.addEventListener('click', e => {
+    e.stopPropagation();
+    const panel = document.getElementById('notif-panel');
+    if (panel?.classList.contains('open')) _closeNotifPanel();
+    else _openNotifPanel();
+  });
+  document.getElementById('notif-close')?.addEventListener('click', _closeNotifPanel);
+  document.getElementById('notif-backdrop')?.addEventListener('click', _closeNotifPanel);
+  document.getElementById('notif-clear-all')?.addEventListener('click', () => {
+    const list = document.getElementById('notif-list');
+    list?.querySelectorAll('.notif-card').forEach(c => c.remove());
+    _updateNotifBadge();
+  });
+}
+_initNotifPanel();
 
 // ══ PORT POSITIONS ════════════════════════════════════════════════════════════
 function portXY(nodeId, side) {
@@ -1330,30 +1399,47 @@ function buildSuggestions() {
     }
   }
 
-  const visible = cards.slice(0, 3);
+  const visible = cards.slice(0, 6);
 
-  // Diff: remove cards no longer needed
-  [...panel.querySelectorAll('.sug-card:not(.toast-card)')].forEach(el => {
-    if (!visible.find(c => c.key === el.dataset.key)) el.remove();
-  });
+  // Sync with notification panel — keyed cards so we don't duplicate
+  const notifList = document.getElementById('notif-list');
+  if (notifList) {
+    // Remove hint cards that are no longer relevant
+    [...notifList.querySelectorAll('.notif-card[data-sug-key]')].forEach(el => {
+      if (!visible.find(c => c.key === el.dataset.sugKey)) {
+        el.remove();
+      }
+    });
+    // Add new hint cards
+    visible.forEach(c => {
+      if (notifList.querySelector(`.notif-card[data-sug-key="${c.key}"]`)) return;
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const card = document.createElement('div');
+      card.className = `notif-card ${c.type}`;
+      card.dataset.sugKey = c.key;
+      card.innerHTML = `
+        <div class="notif-card-icon">${c.icon}</div>
+        <div class="notif-card-body">
+          <div class="notif-card-title">${esc(c.title)}</div>
+          <div class="notif-card-msg">${esc(c.msg)}</div>
+          <div class="notif-card-time">${timeStr}</div>
+        </div>
+        <button class="notif-card-close" title="Dismiss">×</button>`;
+      card.querySelector('.notif-card-close').onclick = () => {
+        dismissedSugs.add(c.key);
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(12px)';
+        card.style.transition = 'opacity 0.2s, transform 0.2s';
+        setTimeout(() => { card.remove(); _updateNotifBadge(); }, 200);
+      };
+      notifList.appendChild(card);
+    });
+    _updateNotifBadge();
+  }
 
-  // Diff: add new cards not yet shown
-  visible.forEach((c, i) => {
-    if ([...panel.querySelectorAll('.sug-card:not(.toast-card)')].some(el => el.dataset.key === c.key)) return;
-    const div = document.createElement('div');
-    div.className = `sug-card ${c.type}`;
-    div.dataset.key = c.key;
-    div.innerHTML = `<div class="sug-icon">${esc(c.icon)}</div><div class="sug-body"><div class="sug-title">${esc(c.title)}</div><div class="sug-msg">${esc(c.msg)}</div></div><div class="sug-close" title="Dismiss">×</div><div class="sug-timer" style="width:100%"></div>`;
-    const dismissCard = () => { dismissedSugs.add(c.key); swipeOutCard(div); };
-    div.querySelector('.sug-close').onclick = e => { e.stopPropagation(); dismissCard(); };
-    attachSwipeToDismiss(div, dismissCard);
-    // Insert at correct position
-    const after = [...panel.querySelectorAll('.sug-card:not(.toast-card)')][i];
-    if (after) panel.insertBefore(div, after); else panel.appendChild(div);
-  });
-
-  updateSugTray();
-  positionSugTray();
+  // Keep legacy #suggestions empty (no overlay cards)
+  [...panel.querySelectorAll('.sug-card:not(.toast-card)')].forEach(el => el.remove());
 }
 
 // Swipe-right to dismiss (mouse + touch)
