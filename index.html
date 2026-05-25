@@ -32,9 +32,23 @@ function track(event, params) {
 <!-- Supabase JS client for persistent short links -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <!-- Y.js CRDT + WebRTC provider for free P2P collaboration -->
-<script src="https://unpkg.com/yjs@13.6.15/dist/yjs.js"></script>
-<script src="https://unpkg.com/lib0@0.2.93/dist/lib0.js"></script>
-<script src="https://unpkg.com/y-webrtc@10.4.0/dist/y-webrtc.js"></script>
+<!-- Y.js + y-webrtc loaded as ESM, then exposed on window for the main script -->
+<script type="module">
+  try {
+    const [Y, ywRtc] = await Promise.all([
+      import('https://esm.sh/yjs@13'),
+      import('https://esm.sh/y-webrtc@10')
+    ]);
+    window.Y = Y;
+    window.WebrtcProvider = ywRtc.WebrtcProvider;
+    window._collabLibsReady = true;
+    window.dispatchEvent(new CustomEvent('collab-libs-ready'));
+  } catch(e) {
+    console.warn('Collab libs failed to load:', e);
+    window._collabLibsReady = false;
+    window.dispatchEvent(new CustomEvent('collab-libs-failed'));
+  }
+</script>
 <style>
 :root {
   --bg:       #080d14;
@@ -4024,12 +4038,30 @@ function pushToY(nodeId) {
   });
 }
 
+// Wait for ESM collab libs to finish loading (they load async in a module script)
+function waitForCollabLibs() {
+  if (window._collabLibsReady === true)  return Promise.resolve(true);
+  if (window._collabLibsReady === false) return Promise.resolve(false);
+  return new Promise(resolve => {
+    const done = ok => resolve(ok);
+    window.addEventListener('collab-libs-ready',  () => done(true),  { once: true });
+    window.addEventListener('collab-libs-failed', () => done(false), { once: true });
+    setTimeout(() => done(false), 12000); // 12s hard timeout
+  });
+}
+
 // ── Join / create a session ─────────────────────────────────────────
-function joinCollab(roomId) {
+async function joinCollab(roomId) {
   if (C.active) leaveCollab();
-  if (typeof Y === 'undefined' || typeof WebrtcProvider === 'undefined') {
-    pushToast('Collab libs not loaded yet — try again in a moment.', 'warn'); return;
+  const btn = document.getElementById('btn-collab');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  const loaded = await waitForCollabLibs();
+  if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  if (!loaded || typeof window.Y === 'undefined' || typeof window.WebrtcProvider === 'undefined') {
+    pushToast('Could not load collaboration library — check your network and try again.', 'warn'); return;
   }
+  const Y = window.Y;
+  const WebrtcProvider = window.WebrtcProvider;
 
   C.roomId = roomId;
   C.doc    = new Y.Doc();
