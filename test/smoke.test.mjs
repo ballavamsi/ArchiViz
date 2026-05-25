@@ -85,6 +85,8 @@ test('index.html contains required app hooks', () => {
     'canvas-nodes',
     'props-panel',
     'btn-sim',
+    'btn-export-pdf',
+    'btn-export-svg',
     'sim-speed-sel',
     'users-input',
     'suggestions',
@@ -96,6 +98,8 @@ test('index.html contains required app hooks', () => {
   }
 
   assert.match(html, /Archi-Flow/, 'app should use Archi-Flow branding');
+  assert.match(html, /function diagramSvgString\(\)/, 'app should support diagram image export');
+  assert.match(html, /function exportPdfReport\(\)/, 'app should support PDF report export');
   assert.match(html, /transform:scale\(\$\{S\.zoom\}\)/, 'nodes should use transform scaling for zoom');
   assert.doesNotMatch(html, /width:\$\{n\.w \* S\.zoom\}px/, 'nodes should not resize width directly during zoom');
 });
