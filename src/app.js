@@ -2784,6 +2784,14 @@ function _injectUserChip(name, firstName, avatar, email) {
 }
 
 function _showWelcomePopup(firstName) {
+  // If cookie consent is already decided, skip the consent section
+  const consentSaved = localStorage.getItem('archiviz.cookie.consent');
+  // Also suppress the standalone cookie banner — we handle it here
+  const existingBanner = document.getElementById('cookie-banner');
+  if (existingBanner) existingBanner.remove();
+
+  const showConsent = !consentSaved;
+
   const pop = document.createElement('div');
   pop.id = 'welcome-popup';
   pop.innerHTML = `
@@ -2797,11 +2805,29 @@ function _showWelcomePopup(firstName) {
         <div class="welcome-tip"><span class="tip-icon">⚡</span><span>Hit <strong>Simulate</strong> to send traffic and watch bottlenecks appear</span></div>
         <div class="welcome-tip"><span class="tip-icon">📐</span><span>Try an example from the <strong>Examples</strong> dropdown to get started fast</span></div>
       </div>
+      ${showConsent ? `
+      <div class="welcome-consent">
+        <span class="welcome-consent-icon">🍪</span>
+        <div class="welcome-consent-text">
+          Allow analytics cookies to help improve Archi-Flow?
+          <a href="/privacy" target="_blank" class="cb-link">Privacy policy</a>
+        </div>
+        <div class="welcome-consent-btns">
+          <button id="welcome-deny-btn"   class="cb-btn cb-deny">Decline</button>
+          <button id="welcome-accept-btn" class="cb-btn cb-accept">Accept</button>
+        </div>
+      </div>` : ''}
       <button id="welcome-close-btn" class="welcome-close-btn">Start building →</button>
     </div>`;
   document.body.appendChild(pop);
 
   const close = () => { pop.style.animation = 'fadeOut 0.2s forwards'; setTimeout(() => pop.remove(), 200); };
+
+  if (showConsent) {
+    document.getElementById('welcome-accept-btn').onclick = () => { window._grantConsent?.(); };
+    document.getElementById('welcome-deny-btn').onclick   = () => { window._denyConsent?.(); };
+  }
+
   document.getElementById('welcome-close-btn').onclick = close;
   pop.addEventListener('click', e => { if (e.target === pop) close(); });
 }

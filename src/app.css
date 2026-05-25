@@ -1528,3 +1528,24 @@ textarea.prop-inp {
 
 @keyframes cookieFadeIn  { from { opacity:0; transform:translateX(-50%) translateY(12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
 @keyframes cookieFadeOut { from { opacity:1; transform:translateX(-50%) translateY(0); } to { opacity:0; transform:translateX(-50%) translateY(12px); } }
+
+/* ── Cookie consent inside welcome popup ───────────────────────────────────── */
+.welcome-consent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(79,156,249,0.06);
+  border: 1px solid rgba(79,156,249,0.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  flex-wrap: wrap;
+}
+.welcome-consent-icon { font-size: 18px; flex-shrink: 0; }
+.welcome-consent-text {
+  flex: 1;
+  min-width: 160px;
+  font-size: 11.5px;
+  color: #8b949e;
+  line-height: 1.5;
+}
+.welcome-consent-btns { display: flex; gap: 8px; flex-shrink: 0; }

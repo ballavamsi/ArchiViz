@@ -67,7 +67,9 @@
   });
 
   function showCookieBanner() {
+    // Don't show standalone banner if welcome popup is handling consent
     if (document.getElementById('cookie-banner')) return;
+    if (document.getElementById('welcome-popup')) return;
     const b = document.createElement('div');
     b.id = 'cookie-banner';
     b.innerHTML = `
