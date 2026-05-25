@@ -2716,6 +2716,12 @@ async function joinCollab(roomId) {
   if (!loaded || typeof window.Y === 'undefined' || typeof window.WebrtcProvider === 'undefined') {
     pushToast('Could not load collaboration library — check your network and try again.', 'warn'); return;
   }
+
+  const signalingUrl = window.__ENV__?.SIGNALING_URL;
+  if (!signalingUrl) {
+    pushToast('Collaboration is not configured — SIGNALING_URL missing.', 'warn'); return;
+  }
+
   const Y = window.Y;
   const WebrtcProvider = window.WebrtcProvider;
 
@@ -2726,7 +2732,7 @@ async function joinCollab(roomId) {
 
   try {
     C.provider = new WebrtcProvider('archiviz-' + roomId, C.doc, {
-      signaling: (window.__ENV__?.SIGNALING_URL ? [window.__ENV__.SIGNALING_URL] : []).concat(['wss://signaling.yjs.dev']),
+      signaling: [signalingUrl],
       maxConns: 12,
     });
   } catch(e) {
