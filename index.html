@@ -1219,7 +1219,7 @@ textarea.prop-inp {
     <span class="collab-dot" id="collab-indicator" style="display:none"></span>
   </button>
   <div class="sep"></div>
-  <button class="tbtn tbtn-share" id="btn-share">
+  <button class="tbtn tbtn-share" id="btn-share" title="Share this diagram (Ctrl+Shift+S)" aria-label="Share diagram">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
     Share
   </button>
@@ -1230,23 +1230,23 @@ textarea.prop-inp {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
     </button>
     <div id="more-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:500;min-width:168px;padding:5px;">
-      <button class="tbtn more-item" id="btn-my-diagrams">
+      <button class="tbtn more-item" id="btn-my-diagrams" title="Browse and restore saved diagrams" aria-label="My saved diagrams">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         My Diagrams
       </button>
-      <button class="tbtn more-item" id="btn-import">
+      <button class="tbtn more-item" id="btn-import" title="Import a diagram from a JSON file" aria-label="Import JSON">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Import JSON
       </button>
-      <button class="tbtn more-item" id="btn-export">
+      <button class="tbtn more-item" id="btn-export" title="Download diagram as JSON for backup or import" aria-label="Export JSON">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Export JSON
       </button>
-      <button class="tbtn more-item" id="btn-export-pdf">
+      <button class="tbtn more-item" id="btn-export-pdf" title="Export a polished PDF report with diagram, capacity table and cost summary" aria-label="Export PDF report">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/></svg>
         Export PDF
       </button>
-      <button class="tbtn more-item" id="btn-export-svg">
+      <button class="tbtn more-item" id="btn-export-svg" title="Export diagram as a high-res SVG/PNG image" aria-label="Export image">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
         Export Image
       </button>
@@ -1255,7 +1255,7 @@ textarea.prop-inp {
         Hints
       </button>
       <div style="height:1px;background:var(--border);margin:4px 2px"></div>
-      <button class="tbtn more-item danger" id="btn-clear">
+      <button class="tbtn more-item danger" id="btn-clear" title="Remove all nodes and edges from the canvas" aria-label="Clear canvas">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg>
         Clear Canvas
       </button>
@@ -3502,41 +3502,162 @@ async function shareDiagram() {
 
 function exportPdfReport() {
   const payload = architecturePayload();
-  const svg = diagramSvgString();
+  const svg     = diagramSvgString();
   const win = window.open('', '_blank');
-  if (!win) {
-    pushToast('Popup blocked. Allow popups, then try Export PDF again.', 'warn');
-    return;
-  }
-  const css = `
-    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;margin:32px;color:#17202a}
-    h1{margin:0 0 4px;font-size:26px} .muted{color:#667085;font-size:12px;margin-bottom:22px}
-    .diagram{border:1px solid #d0d7de;border-radius:10px;overflow:hidden;background:#0a0f16;margin-bottom:24px}
-    .diagram svg{display:block;width:100%;height:auto}
-    table{border-collapse:collapse;width:100%;font-size:12px;margin-bottom:20px}
-    th,td{border:1px solid #d0d7de;padding:7px;text-align:left;vertical-align:top}
-    th{background:#f6f8fa}
-    pre{white-space:pre-wrap;background:#f6f8fa;border:1px solid #d0d7de;border-radius:8px;padding:12px;font-size:10px;max-height:420px;overflow:auto}
-    @media print{body{margin:18mm}.no-print{display:none}.diagram{break-inside:avoid}pre{max-height:none}}
-  `;
-  const rows = payload.nodes.map(n => {
-    const def = COMPONENT_DEFS.find(d => d.id === n.defId);
-    const sim = S.simLoad[n.id];
-    return `<tr><td>${esc(n.props.label || def?.name || n.id)}</td><td>${esc(def?.name || n.defId)}</td><td>${sim ? esc(formatFlow(sim.incoming)) : '—'}</td><td>${sim && typeof sim.capacity === 'number' ? esc(formatFlow(sim.capacity)) : esc(String(sim?.capacity || '—'))}</td><td>${sim ? Math.round(sim.loadPct) + '%' : '—'}</td><td>$${Number(n.props.cost || 0).toLocaleString()}/mo</td></tr>`;
+  if (!win) { pushToast('Popup blocked — allow popups and try again.', 'warn'); return; }
+
+  const totalCost = payload.nodes.reduce((s, n) => s + Number(n.props?.cost || 0), 0);
+  const loads     = Object.values(S.simLoad).filter(x => typeof x.loadPct === 'number');
+  const critical  = loads.filter(x => x.loadPct > 85).length;
+  const warning   = loads.filter(x => x.loadPct > 60 && x.loadPct <= 85).length;
+  const simActive = S.simOn || loads.length > 0;
+
+  // Status badge helper
+  const statusBadge = sim => {
+    if (!sim || !simActive || sim.status === 'source') return '<span class="badge badge-idle">—</span>';
+    if (sim.loadPct > 85) return `<span class="badge badge-crit">${Math.round(sim.loadPct)}% — Critical</span>`;
+    if (sim.loadPct > 60) return `<span class="badge badge-warn">${Math.round(sim.loadPct)}% — High</span>`;
+    return `<span class="badge badge-ok">${Math.round(sim.loadPct)}% — Healthy</span>`;
+  };
+
+  const rows = payload.nodes.filter(n => !n.props?._isReplica).map(n => {
+    const def  = COMPONENT_DEFS.find(d => d.id === n.defId);
+    const sim  = S.simLoad[n.id];
+    const cost = Number(n.props?.cost || 0);
+    return `<tr>
+      <td><strong>${esc(n.props.label || def?.name || n.id)}</strong></td>
+      <td class="type-cell">${esc(def?.name || n.defId)}</td>
+      <td>${sim ? esc(formatFlow(sim.incoming)) : '<span class="dim">—</span>'}</td>
+      <td>${sim && typeof sim.capacity === 'number' ? esc(formatFlow(sim.capacity)) : '<span class="dim">—</span>'}</td>
+      <td>${statusBadge(sim)}</td>
+      <td class="cost-cell">${cost > 0 ? '$' + cost.toLocaleString() + '/mo' : '<span class="dim">—</span>'}</td>
+    </tr>`;
   }).join('');
-  // Avoid the closing tag in template literals — split it so the HTML parser doesn't close the script
-  const autoprint = '<scr' + 'ipt>setTimeout(()=>window.print(),400)</scr' + 'ipt>';
-  const html = `<!doctype html><html><head><title>${esc(payload.title)} — Archi-Flow Report</title><style>${css}</style></head><body>
-    <button class="no-print" onclick="window.print()" style="float:right;padding:8px 12px">Print / Save PDF</button>
-    <h1>${esc(payload.title)}</h1>
-    <div class="muted">Generated by Archi-Flow • ${new Date().toLocaleString()} • ${payload.nodes.length} nodes • ${payload.edges.length} edges</div>
-    <div class="diagram">${svg}</div>
-    <h2>Capacity &amp; Cost Summary</h2>
-    <table><thead><tr><th>Node</th><th>Type</th><th>Incoming</th><th>Capacity</th><th>Load</th><th>Cost</th></tr></thead><tbody>${rows}</tbody></table>
-    <h2>Architecture Config JSON</h2>
-    <pre>${esc(JSON.stringify(payload, null, 2))}</pre>
+
+  const summaryCards = [
+    { label: 'Components', value: payload.nodes.filter(n=>!n.props?._isReplica).length, color: '#4f9cf9' },
+    { label: 'Connections', value: payload.edges.length, color: '#a78bfa' },
+    { label: 'Monthly cost', value: totalCost > 0 ? '$' + totalCost.toLocaleString() : '—', color: '#34d058' },
+    { label: 'Critical', value: critical, color: critical > 0 ? '#f85149' : '#6b7f96' },
+  ].map(c => `<div class="stat-card"><div class="stat-val" style="color:${c.color}">${c.value}</div><div class="stat-lbl">${c.label}</div></div>`).join('');
+
+  const healthBar = simActive ? `
+    <div class="health-section">
+      <div class="health-row">
+        <span class="health-dot" style="background:#34d058"></span> Healthy: ${loads.filter(x=>x.loadPct<=60).length}
+        <span class="health-dot" style="background:#f5b731;margin-left:16px"></span> High load: ${warning}
+        <span class="health-dot" style="background:#f85149;margin-left:16px"></span> Critical: ${critical}
+      </div>
+    </div>` : '';
+
+  const autoprint = '<scr' + 'ipt>setTimeout(()=>window.print(),500)</' + 'script>';
+  const ts = new Date().toLocaleString(undefined, { dateStyle:'medium', timeStyle:'short' });
+
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',system-ui,sans-serif;background:#fff;color:#1a2030;font-size:13px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    /* Header */
+    .header{background:linear-gradient(135deg,#0d1520 0%,#131c2e 100%);color:#fff;padding:28px 36px 24px;display:flex;justify-content:space-between;align-items:flex-start}
+    .header-left .app{font-size:11px;font-weight:600;color:#4f9cf9;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+    .header-left h1{font-size:22px;font-weight:800;color:#eaf0fb;letter-spacing:-.02em;margin-bottom:4px}
+    .header-left .meta{font-size:11px;color:#6b7f96}
+    .header-right{text-align:right}
+    .header-right .date{font-size:11px;color:#6b7f96;margin-bottom:4px}
+    /* Stats row */
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e8ecf2}
+    .stat-card{padding:14px 20px;border-right:1px solid #e8ecf2}
+    .stat-card:last-child{border-right:none}
+    .stat-val{font-size:22px;font-weight:800;letter-spacing:-.03em;margin-bottom:2px}
+    .stat-lbl{font-size:10px;font-weight:600;color:#8896a5;text-transform:uppercase;letter-spacing:.05em}
+    /* Diagram */
+    .section{padding:22px 28px}
+    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8896a5;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+    .section-title::after{content:'';flex:1;height:1px;background:#e8ecf2}
+    .diagram-wrap{border:1px solid #e3e8ef;border-radius:12px;overflow:hidden;background:#080d14}
+    .diagram-wrap svg{display:block;width:100%;height:auto;max-height:420px}
+    /* Health bar */
+    .health-section{padding:10px 28px 18px;background:#f8fafc}
+    .health-row{display:flex;align-items:center;gap:4px;font-size:11px;color:#556070;font-weight:500}
+    .health-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+    /* Table */
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    thead th{background:#f8fafc;padding:9px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8896a5;border-bottom:2px solid #e3e8ef}
+    tbody tr{border-bottom:1px solid #f0f3f7;transition:background .1s}
+    tbody tr:last-child{border-bottom:none}
+    tbody tr:hover{background:#fafbfd}
+    td{padding:10px 12px;vertical-align:middle}
+    td strong{font-weight:600;color:#1a2030}
+    .type-cell{color:#5a6a80;font-size:11px}
+    .cost-cell{font-weight:600;color:#1a2030;font-variant-numeric:tabular-nums}
+    .dim{color:#b0bec8}
+    /* Badges */
+    .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:10.5px;font-weight:600;white-space:nowrap}
+    .badge-ok{background:#eafbf0;color:#1a7a40;border:1px solid #b7e5cb}
+    .badge-warn{background:#fffbeb;color:#92600a;border:1px solid #fde68a}
+    .badge-crit{background:#fff1f0;color:#c0392b;border:1px solid #fecaca}
+    .badge-idle{background:#f3f5f8;color:#8896a5;border:1px solid #e3e8ef}
+    /* Footer */
+    .footer{border-top:1px solid #e8ecf2;padding:14px 28px;display:flex;justify-content:space-between;align-items:center;color:#a0aab5;font-size:10.5px}
+    .footer a{color:#4f9cf9;text-decoration:none}
+    /* Print toolbar */
+    .print-bar{position:fixed;bottom:0;left:0;right:0;background:#0d1520;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;z-index:999;box-shadow:0 -4px 20px rgba(0,0,0,.15)}
+    .print-bar span{color:#8b949e;font-size:12px}
+    .print-btn{background:linear-gradient(135deg,#4f9cf9,#3b82f6);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+    .print-btn:hover{background:linear-gradient(135deg,#3b82f6,#2563eb)}
+    @media print{
+      .print-bar{display:none}
+      body{padding-bottom:0}
+      .diagram-wrap svg{max-height:380px}
+      .section{padding:16px 22px}
+      tr{break-inside:avoid}
+    }
+  `;
+
+  const html = `<!doctype html><html lang="en"><head>
+    <meta charset="UTF-8"/>
+    <title>${esc(payload.title || 'Architecture')} — Report</title>
+    <style>${css}</style>
+  </head><body>
+    <div class="header">
+      <div class="header-left">
+        <div class="app">⬡ Archi-Flow</div>
+        <h1>${esc(payload.title || 'Architecture Diagram')}</h1>
+        <div class="meta">${payload.nodes.length} components · ${payload.edges.length} connections${simActive ? ' · Simulation data included' : ''}</div>
+      </div>
+      <div class="header-right">
+        <div class="date">${ts}</div>
+        <div style="font-size:11px;color:#4f9cf9;margin-top:2px">archi-flow.app</div>
+      </div>
+    </div>
+    <div class="stats">${summaryCards}</div>
+    ${healthBar}
+    <div class="section">
+      <div class="section-title">Architecture Diagram</div>
+      <div class="diagram-wrap">${svg}</div>
+    </div>
+    <div class="section" style="padding-top:0">
+      <div class="section-title">Component Summary</div>
+      <table>
+        <thead><tr><th>Component</th><th>Type</th><th>Traffic In</th><th>Capacity</th><th>Status</th><th>Cost</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${totalCost > 0 ? `<div style="text-align:right;padding:10px 2px 0;font-size:12px;color:#8896a5">Total estimated cost: <strong style="color:#1a2030;font-size:14px">$${totalCost.toLocaleString()}/mo</strong></div>` : ''}
+    </div>
+    <div class="footer">
+      <span>Generated with <a href="https://ballavamsi.com">Archi-Flow</a> by <a href="https://ballavamsi.com">ballavamsi.com</a></span>
+      <span>${ts}</span>
+    </div>
+    <div class="print-bar no-print">
+      <span>Review your report, then save as PDF</span>
+      <button class="print-btn" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Save as PDF
+      </button>
+    </div>
     ${autoprint}
   </body></html>`;
+
   win.document.write(html);
   win.document.close();
 }
@@ -4336,14 +4457,79 @@ setInterval(() => {
   if (C.active && C.awareness) renderRemoteCursors(C.awareness.getStates());
 }, 80);
 
-// ── Startup: load diagram (short path > hash) then maybe join collab ──────────
+// ── Startup: load diagram (short path > hash) then maybe show collab invite ───
 (async () => {
   const loaded = await loadFromShortPath();
   if (!loaded) loadFromHash();
-  // Auto-join collab if URL has collab param
+
   const _collabParam = new URLSearchParams(location.search).get('collab');
-  if (_collabParam) setTimeout(() => joinCollab(_collabParam), 600);
+  if (_collabParam) {
+    // Show invite modal instead of silently auto-joining
+    setTimeout(() => showCollabInvite(_collabParam), 700);
+  }
 })();
+
+function showCollabInvite(roomId) {
+  // If already active in this room skip
+  if (C.active && C.roomId === roomId) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'collab-invite-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10001;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)';
+  overlay.innerHTML = `
+    <div style="background:#0f1520;border:1px solid rgba(168,85,247,0.35);border-radius:18px;padding:28px 26px;width:360px;max-width:94vw;box-shadow:0 24px 64px rgba(0,0,0,0.7),0 0 0 1px rgba(168,85,247,0.12)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="width:36px;height:36px;border-radius:10px;background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#eaf0fb">You're invited to collaborate!</div>
+          <div style="font-size:11px;color:#6b7f96;margin-top:1px">Live session · peer-to-peer · free</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#8b949e;line-height:1.6;margin:12px 0 16px">Someone shared a live diagram session with you. Enter your name to join and edit together in real-time.</p>
+      <div style="font-size:10px;font-weight:600;color:#6b7f96;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Your display name</div>
+      <input id="invite-name-inp" class="collab-input" placeholder="e.g. Alex" autofocus style="margin-bottom:14px"/>
+      <button id="invite-join-btn" class="collab-btn primary" style="margin-bottom:8px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Join session
+      </button>
+      <button id="invite-skip-btn" class="collab-btn secondary" style="font-size:11px;opacity:0.7">Just view without joining</button>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  // Pre-fill saved name
+  const nameInp = document.getElementById('invite-name-inp');
+  if (ME.name) nameInp.value = ME.name;
+  nameInp.focus();
+  nameInp.select();
+
+  const close = () => { if (overlay.parentNode) document.body.removeChild(overlay); };
+
+  document.getElementById('invite-join-btn').onclick = () => {
+    const name = nameInp.value.trim() || 'Guest';
+    saveCollabName(name);
+    ME.name = name;
+    // Pre-fill the main collab modal name input too
+    const mainInp = document.getElementById('collab-name-inp');
+    if (mainInp) mainInp.value = name;
+    close();
+    joinCollab(roomId);
+    // Show live panel after join
+    setTimeout(() => document.getElementById('collab-modal').classList.add('open'), 800);
+  };
+
+  document.getElementById('invite-skip-btn').onclick = () => {
+    close();
+    // Remove collab param from URL so reload doesn't re-prompt
+    const u = new URL(location.href);
+    u.searchParams.delete('collab');
+    history.replaceState(null, '', u.toString());
+  };
+
+  // Enter key submits
+  nameInp.onkeydown = e => { if (e.key === 'Enter') document.getElementById('invite-join-btn').click(); };
+}
 </script>
 
 <!-- My Diagrams Modal -->
