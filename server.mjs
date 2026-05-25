@@ -8,11 +8,23 @@ import path                   from 'node:path';
 const __dir  = path.dirname(fileURLToPath(import.meta.url));
 const port   = Number(process.env.PORT || 3456);
 
-// In production (NODE_ENV=production) serve only the built dist/ folder —
-// raw source files (src/app.js, components.js, etc.) are never reachable.
-// In dev mode serve the project root so unbuilt files work without a build step.
+// Serve from dist/ if it exists (i.e. after a build) — this locks down source
+// files regardless of NODE_ENV. Falls back to project root only in local dev
+// when dist/ hasn't been built yet.
+const distDir = path.join(__dir, 'dist');
 const isProd  = process.env.NODE_ENV === 'production';
-const root    = isProd ? path.join(__dir, 'dist') : __dir;
+let root;
+try {
+  statSync(path.join(distDir, 'index.html'));
+  root = distDir;  // dist/ exists and has index.html — serve only from here
+} catch {
+  root = __dir;    // no dist/ yet — local dev fallback
+}
+if (root === distDir) {
+  console.log('  Serving from dist/ — source files are protected');
+} else {
+  console.warn('  WARNING: dist/ not found, serving from project root (dev mode)');
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
