@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: archi-flow
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free                  # free tier — spins down after 15 min idle
+
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: NODE_ENV
+        value: production
+      # Set these in Render dashboard → Environment → Secret Files
+      # or via render.yaml with sync: false so they aren't committed
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SIGNALING_URL
+        sync: false
+
+    healthCheckPath: /
+    autoDeploy: true            # redeploy on every push to main
