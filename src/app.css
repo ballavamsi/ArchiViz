@@ -1922,10 +1922,10 @@ body[data-theme="light"] .tbtn-collab:hover {
 .user-menu-divider { border-top-color: var(--border); }
 
 body[data-theme="light"] #toolbar .logo span {
-  background: linear-gradient(90deg,#172033,#2563eb);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: linear-gradient(90deg,#172033,#2563eb) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
 }
 body[data-theme="light"] .empty-headline {
   background: linear-gradient(135deg,#172033 0%,#64748b 100%);
