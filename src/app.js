@@ -2793,25 +2793,66 @@ function modelPortXY(nodeId, side) {
 function diagramSvgString() {
   const b = diagramBounds();
   const title = getDiagramTitle();
+  const isLight = effectiveTheme() === 'light';
+
+  // Theme tokens
+  const T = isLight ? {
+    bg:          '#f7f9fc',
+    gridStroke:  '#c8d4e0',
+    gridOpacity: '0.6',
+    nodeFill:    '#ffffff',
+    nodeStroke:  '#d0daea',
+    titleText:   '#172033',
+    subtitleText:'#64748b',
+    nodeLabel:   '#172033',
+    nodeType:    '#64748b',
+    badgeFill:   '#eff6ff',
+    badgeStroke: '#93c5fd',
+    badgeText:   '#2563eb',
+    edgeStroke:  '#3b82f6',
+    labelFill:   '#e0f0ff',
+    labelText:   '#1d4ed8',
+    shadowOp:    '.10',
+  } : {
+    bg:          '#0a0f16',
+    gridStroke:  '#263545',
+    gridOpacity: '0.18',
+    nodeFill:    '#121b26',
+    nodeStroke:  '#405268',
+    titleText:   '#f7fbff',
+    subtitleText:'#93a2b5',
+    nodeLabel:   '#f7fbff',
+    nodeType:    '#93a2b5',
+    badgeFill:   '#1f6feb22',
+    badgeStroke: '#58a6ff55',
+    badgeText:   '#9ccfff',
+    edgeStroke:  '#7dbbff',
+    labelFill:   '#0d1117cc',
+    labelText:   '#d8e7f7',
+    shadowOp:    '.32',
+  };
+
   const defs = `
     <defs>
-      <marker id="snap-arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L0,7 L7,4z" fill="#7dbbff"/></marker>
-      <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity=".32"/></filter>
+      <marker id="snap-arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L0,7 L7,4z" fill="${T.edgeStroke}"/></marker>
+      <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="${T.shadowOp}"/></filter>
     </defs>`;
-  const grid = `<rect width="100%" height="100%" fill="#0a0f16"/><path d="M0 0H${b.width}V${b.height}H0z" fill="none"/><g opacity=".18" stroke="#263545" stroke-width="1">${Array.from({length: Math.ceil(b.width/40)+1},(_,i)=>`<path d="M${i*40} 0V${b.height}"/>`).join('')}${Array.from({length: Math.ceil(b.height/40)+1},(_,i)=>`<path d="M0 ${i*40}H${b.width}"/>`).join('')}</g>`;
-  const edges = S.edges.map(edge => {
+  const grid = `<rect width="100%" height="100%" fill="${T.bg}"/><g opacity="${T.gridOpacity}" stroke="${T.gridStroke}" stroke-width="1">${Array.from({length: Math.ceil(b.width/40)+1},(_,i)=>`<path d="M${i*40} 0V${b.height}"/>`).join('')}${Array.from({length: Math.ceil(b.height/40)+1},(_,i)=>`<path d="M0 ${i*40}H${b.width}"/>`).join('')}</g>`;
+
+  const edges = Object.values(S.edges).map(edge => {
     const { ss, ts } = bestSides(edge.src, edge.tgt);
     const s = modelPortXY(edge.src, ss);
     const t = modelPortXY(edge.tgt, ts);
     const d = bezier(s.x - b.minX, s.y - b.minY, t.x - b.minX, t.y - b.minY, ss, ts);
-    const stroke = edge.replication ? '#a855f7' : '#7dbbff';
+    const stroke = edge.replication ? '#a855f7' : T.edgeStroke;
     const dash = edge.dashed ? ' stroke-dasharray="8 7"' : '';
     const flow = S.eFlow[edge.id];
     const label = S.simOn && flow > 0 && !edge.dashed
-      ? `<text x="${((s.x+t.x)/2)-b.minX}" y="${((s.y+t.y)/2)-b.minY-10}" fill="#d8e7f7" font-size="12" text-anchor="middle" font-family="Inter, Arial">${esc(formatFlow(flow))}</text>`
+      ? `<text x="${((s.x+t.x)/2)-b.minX}" y="${((s.y+t.y)/2)-b.minY-10}" fill="${T.labelText}" font-size="12" text-anchor="middle" font-family="Inter, Arial">${esc(formatFlow(flow))}</text>`
       : '';
     return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="2" marker-end="url(#snap-arr)"${dash}/>${label}`;
   }).join('');
+
   const nodes = Object.values(S.nodes).map(n => {
     const def = COMPONENT_DEFS.find(d => d.id === n.defId);
     const sim = S.simLoad[n.id];
@@ -2825,20 +2866,21 @@ function diagramSvgString() {
       : '';
     return `
       <g transform="translate(${x},${y})" filter="url(#card-shadow)">
-        <rect width="${n.w}" height="${n.h}" rx="12" fill="#121b26" stroke="#405268" stroke-width="1.2"/>
+        <rect width="${n.w}" height="${n.h}" rx="12" fill="${T.nodeFill}" stroke="${T.nodeStroke}" stroke-width="1.2"/>
         <rect width="${n.w}" height="4" rx="2" fill="${status}"/>
         <rect x="14" y="26" width="36" height="36" rx="9" fill="${def.color}22" stroke="${def.color}88"/>
         <circle cx="32" cy="44" r="8" fill="none" stroke="${def.color}" stroke-width="2"/>
-        <text x="62" y="39" fill="#f7fbff" font-size="15" font-weight="700" font-family="Inter, Arial">${label}</text>
-        <text x="62" y="58" fill="#93a2b5" font-size="11" font-family="Inter, Arial">${type}</text>
-        ${badge ? `<rect x="14" y="67" width="${Math.max(64, badge.length*7+16)}" height="18" rx="5" fill="#1f6feb22" stroke="#58a6ff55"/><text x="22" y="80" fill="#9ccfff" font-size="11" font-weight="700" font-family="Inter, Arial">${esc(badge)}</text>` : ''}
+        <text x="62" y="39" fill="${T.nodeLabel}" font-size="15" font-weight="700" font-family="Inter, Arial">${label}</text>
+        <text x="62" y="58" fill="${T.nodeType}" font-size="11" font-family="Inter, Arial">${type}</text>
+        ${badge ? `<rect x="14" y="67" width="${Math.max(64, badge.length*7+16)}" height="18" rx="5" fill="${T.badgeFill}" stroke="${T.badgeStroke}"/><text x="22" y="80" fill="${T.badgeText}" font-size="11" font-weight="700" font-family="Inter, Arial">${esc(badge)}</text>` : ''}
       </g>`;
   }).join('');
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(b.width)}" height="${Math.ceil(b.height)}" viewBox="0 0 ${b.width} ${b.height}">
     ${defs}
     ${grid}
-    <text x="28" y="38" fill="#f7fbff" font-size="22" font-weight="800" font-family="Inter, Arial">${esc(title)}</text>
-    <text x="28" y="60" fill="#93a2b5" font-size="12" font-family="Inter, Arial">Archi-Flow architecture snapshot • ${new Date().toLocaleString()}</text>
+    <text x="28" y="38" fill="${T.titleText}" font-size="22" font-weight="800" font-family="Inter, Arial">${esc(title)}</text>
+    <text x="28" y="60" fill="${T.subtitleText}" font-size="12" font-family="Inter, Arial">Archi-Flow architecture snapshot • ${new Date().toLocaleString()}</text>
     <g transform="translate(0,26)">${edges}${nodes}</g>
   </svg>`;
 }
@@ -3054,7 +3096,7 @@ function exportPdfReport() {
     .sec-title .sec-icon{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
 
     /* ── Diagram ── */
-    .diagram-wrap{border:1px solid #1e2d40;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#080d14 0%,#0d1520 100%);padding:4px}
+    .diagram-wrap{border:1px solid #dce3ec;border-radius:12px;overflow:hidden;background:#f7f9fc;padding:4px}
     .diagram-wrap svg{display:block;width:100%;height:auto;max-height:400px}
 
     /* ── 2-column layout ── */
@@ -3119,10 +3161,30 @@ function exportPdfReport() {
   `;
 
   // ── HTML ──────────────────────────────────────────────────────────────────
+  const isDarkPdf = effectiveTheme() === 'dark';
+  const darkCss = isDarkPdf ? `
+    body{background:#0d1117;color:#c9d1d9}
+    .kpi-bar,.kpi-card{border-color:#21262d}
+    .kpi-card .sub{color:#8b949e}
+    .sec-title{color:#8b949e}.sec-title::after{background:#21262d}
+    .health-box,.cost-box{background:#161b22;border-color:#30363d}
+    .health-row{color:#8b949e}.cost-total{color:#e6edf3}.cost-sub{color:#8b949e}
+    .diagram-wrap{border-color:#30363d;background:#0d1117}
+    table thead tr{background:#161b22}
+    thead th{color:#8b949e;border-bottom-color:#30363d}
+    tbody tr{border-color:#21262d}
+    tbody tr:nth-child(even){background:#161b22}
+    td{color:#c9d1d9}.unit,.dim{color:#8b949e}
+    .pill-idle{background:#21262d;color:#8b949e;border-color:#30363d}
+    .pill-ok{background:#0f2a1a;color:#3fb950;border-color:#1a4731}
+    .pill-warn{background:#2a1f00;color:#f5b731;border-color:#4a3500}
+    .pill-crit{background:#2a0f0e;color:#f85149;border-color:#4a1f1d}
+  ` : '';
+
   const html = `<!doctype html><html lang="en"><head>
     <meta charset="UTF-8"/>
     <title>${esc(payload.title || 'Architecture')} — Archi-Flow Report</title>
-    <style>${css}</style>
+    <style>${css}${darkCss}</style>
   </head><body>
 
     <!-- ▸ COVER ─────────────────────────────────────────── -->
@@ -3539,7 +3601,7 @@ function exportDiagramPng() {
     canvas.height = img.naturalHeight * scale;
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
-    ctx.fillStyle = S.theme === 'light' ? '#ffffff' : '#0d1117';
+    ctx.fillStyle = effectiveTheme() === 'light' ? '#f7f9fc' : '#0a0f16';
     ctx.fillRect(0, 0, img.naturalWidth, img.naturalHeight);
     ctx.drawImage(img, 0, 0);
     URL.revokeObjectURL(url);
