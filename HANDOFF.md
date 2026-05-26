@@ -6,7 +6,7 @@
 **Primary server:** `node server.mjs`  
 **Default URL:** `http://localhost:3456`  
 **Production:** https://archi-flow.onrender.com  
-**Important:** Server serves from `dist/` — always run `cp src/app.js dist/src/app.js` (and css/html) after source edits.
+**Important:** Server serves from `dist/` — always run `cp src/app.js dist/src/app.min.js` (and css/html) after source edits.
 
 ---
 
@@ -51,8 +51,8 @@ Tasks in order:
 
 ### After every edit, sync to dist
 ```bash
-cp src/app.js dist/src/app.js
-cp src/app.css dist/src/app.css
+cp src/app.js dist/src/app.min.js
+cp src/app.css dist/src/app.min.css
 # only if index.html changed:
 cp index.html dist/index.html
 ```
@@ -146,8 +146,8 @@ Claude/Codex preview config lives in `.claude/launch.json` and currently uses `/
 **IMPORTANT — dist/ sync:** The server serves `dist/` not root. After editing source files run:
 
 ```bash
-cp src/app.js dist/src/app.js
-cp src/app.css dist/src/app.css
+cp src/app.js dist/src/app.min.js
+cp src/app.css dist/src/app.min.css
 cp index.html dist/index.html
 ```
 
@@ -368,7 +368,7 @@ Reserved Pricing and Service Mesh buttons are inside the `#more-menu` dropdown, 
 After changes, always sync dist:
 
 ```bash
-cp src/app.js dist/src/app.js && cp src/app.css dist/src/app.css && cp index.html dist/index.html
+cp src/app.js dist/src/app.min.js && cp src/app.css dist/src/app.min.css && cp index.html dist/index.html
 ```
 
 Then verify:
