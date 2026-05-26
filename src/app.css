@@ -1612,8 +1612,8 @@ body[data-theme="light"] {
   --control-hover: rgba(59,130,246,0.10);
   --input-bg: #f8fafc;
   --canvas-bg: #ffffff;
-  --grid-minor: rgba(31,41,55,0.065);
-  --grid-major: rgba(31,41,55,0.14);
+  --grid-minor: rgba(31,41,55,0.035);
+  --grid-major: rgba(31,41,55,0.085);
   --node-bg: linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
   --node-border: rgba(51,65,85,0.16);
   --node-shadow: 0 6px 18px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
