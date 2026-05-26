@@ -102,6 +102,22 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- Supabase JS client for persistent short links -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Initial theme hydration so the page renders in the stored/system theme immediately -->
+<script>
+(function() {
+  try {
+    const saved = localStorage.getItem('archviz.theme');
+    const theme = ['system','light','dark'].includes(saved) ? saved : 'system';
+    const effective = theme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+      : theme;
+    document.documentElement.dataset.theme = effective;
+    document.documentElement.dataset.themeMode = theme;
+  } catch (err) {
+    // ignore when storage is unavailable
+  }
+})();
+</script>
 <!-- Y.js CRDT + WebRTC provider for free P2P collaboration -->
 <!-- Y.js + y-webrtc loaded as ESM, then exposed on window for the main script -->
 <script type="module">

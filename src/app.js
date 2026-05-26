@@ -165,8 +165,11 @@ function updateThemeButton() {
 
 function setTheme(theme) {
   S.theme = ['system', 'light', 'dark'].includes(theme) ? theme : 'system';
-  document.body.dataset.theme = effectiveTheme();
+  const themeValue = effectiveTheme();
+  document.body.dataset.theme = themeValue;
+  document.documentElement.dataset.theme = themeValue;
   document.body.dataset.themeMode = S.theme;
+  document.documentElement.dataset.themeMode = S.theme;
   try { localStorage.setItem('archviz.theme', S.theme); } catch {}
   updateThemeButton();
   updateCanvasGrid();
