@@ -7,7 +7,7 @@ Modeled after draw.io / Lucidchart — professional, fast, zero-install, runs in
 ## Product North Star
 Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that anyone can open, present, and understand:
 
-1. **Easy access:** one command locally, shareable URL state, hosted at archi-flow.netlify.app.
+1. **Easy access:** one command locally, shareable URL state, hosted at archi-flow.onrender.com.
 2. **Presentation-ready:** clean chrome, PDF/image export, readable diagrams, no visual glitches.
 3. **Architecture-aware:** explains bottlenecks and bad topology, not just colors them red.
 4. **Actionable:** suggestions should be one-click fixes with cost impact.
@@ -17,7 +17,7 @@ Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that 
 - **Pure HTML + vanilla JS** (no build step) — served via Node.js static server
 - No frameworks — direct DOM for nodes/edges, SVG for edges/arrows
 - Node.js static server (`node server.mjs`; serves from `dist/`) on port 3456
-- **Production:** https://archi-flow.netlify.app/ (auto-deploys from `release/serverside` branch)
+- **Production:** https://archi-flow.onrender.com (auto-deploys from `release/serverside` branch)
 
 ## Architecture Decisions
 1. No build tool — zero friction, edit source and `cp` to `dist/`

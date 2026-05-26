@@ -5,7 +5,7 @@
 **Branch:** `release/serverside`  
 **Primary server:** `node server.mjs`  
 **Default URL:** `http://localhost:3456`  
-**Production:** https://archi-flow.netlify.app/  
+**Production:** https://archi-flow.onrender.com  
 **Important:** Server serves from `dist/` — always run `cp src/app.js dist/src/app.js` (and css/html) after source edits.
 
 ---
@@ -76,7 +76,7 @@ git add src/app.js src/app.css   # add index.html if changed
 git commit -m "feat: iteration 7 — multi-select and canvas productivity"
 git push origin release/serverside
 ```
-Netlify auto-deploys on push to `release/serverside`. Takes ~2–3 min.
+Render auto-deploys on push to `release/serverside`. Takes ~2–3 min.
 
 ---
 
@@ -159,7 +159,7 @@ cp index.html dist/index.html
 
 **Last completed iteration:** Iteration 6 — PDF export redesign.
 
-**Latest checkpoint:** 2026-05-26 — production URL aligned to Netlify (`https://archi-flow.netlify.app/`), PDF report footer/cover updated, `npm test` and `npm run build` passed.
+**Latest checkpoint:** 2026-05-26 — production URL confirmed as Render (`https://archi-flow.onrender.com`), PDF report footer/cover aligned, `npm test` and `npm run build` passed.
 
 ### Shipped Iterations
 
