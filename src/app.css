@@ -2631,13 +2631,35 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
 .multisel-desel-btn:hover { background: var(--surface3); color: var(--text); }
 
 /* ── Port snap highlight ─────────────────────────────────────────────────────── */
-.port.port-snap {
+.port.port-snap-valid {
   opacity: 1 !important;
   transform: scale(1.8) !important;
   background: #34d058 !important;
   box-shadow: 0 0 0 3px rgba(52,208,88,0.4), 0 0 12px rgba(52,208,88,0.6) !important;
   border-color: #34d058 !important;
   z-index: 20;
+}
+.port.port-snap-warn {
+  opacity: 1 !important;
+  transform: scale(1.8) !important;
+  background: #f5b731 !important;
+  box-shadow: 0 0 0 3px rgba(245,183,49,0.4), 0 0 12px rgba(245,183,49,0.6) !important;
+  border-color: #f5b731 !important;
+  z-index: 20;
+}
+
+/* ── Flow readout ────────────────────────────────────────────────────────────── */
+.flow-readout {
+  font-size: 11px;
+  font-weight: 600;
+  color: #34d058;
+  background: rgba(52,208,88,0.1);
+  border: 1px solid rgba(52,208,88,0.25);
+  border-radius: 5px;
+  padding: 1px 7px;
+  margin-left: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 /* ── Run Sim pulse animation ─────────────────────────────────────────────────── */

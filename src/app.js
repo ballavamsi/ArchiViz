@@ -640,12 +640,19 @@ function renderNode(id) {
       connPrev.style.display = '';
     };
 
-    p.onmouseenter = () => { if (G.conn && G.conn.srcId !== id) p.classList.add('port-snap'); };
-    p.onmouseleave = () => { p.classList.remove('port-snap'); };
+    p.onmouseenter = () => {
+      if (G.conn && G.conn.srcId !== id) {
+        const srcDef = S.nodes[G.conn.srcId]?.defId;
+        const tgtDef = S.nodes[id]?.defId;
+        const verdict = validateConnection(srcDef, tgtDef);
+        p.classList.add(verdict.ok ? 'port-snap-valid' : 'port-snap-warn');
+      }
+    };
+    p.onmouseleave = () => { p.classList.remove('port-snap-valid', 'port-snap-warn'); };
 
     p.onmouseup = e => {
       e.stopPropagation();
-      p.classList.remove('port-snap');
+      p.classList.remove('port-snap-valid', 'port-snap-warn');
       if (!G.conn) return;
 
       const dist = G.portDragStart
@@ -1067,7 +1074,7 @@ function renderEdges() {
     // Visual path
     const vis = document.createElementNS('http://www.w3.org/2000/svg','path');
     vis.setAttribute('id', 'edge-path-' + edge.id);
-    const animClass = edge.dashed ? 'edge-dash' : (S.simOn && edge.animated ? 'edge-anim' : '');
+    const animClass = edge._warn ? '' : (edge.dashed ? 'edge-dash' : (S.simOn && edge.animated ? 'edge-anim' : ''));
     const newClass  = edge._new ? 'edge-draw-in' : '';
     vis.setAttribute('class', `edge-vis ${animClass} ${newClass} ${isSelected ? 'edge-ok' : cls}`);
     vis.setAttribute('d', d);
@@ -2209,7 +2216,7 @@ function initSugTrayObserver() {
 const slider = document.getElementById('users-slider');
 const uInp   = document.getElementById('users-input');
 const dot    = document.getElementById('sim-dot');
-const flowReadout = { textContent: '' }; // removed from DOM
+const flowReadout = document.getElementById('flow-readout') || { textContent: '', style: {} };
 
 function fmtComma(n) {
   return Math.round(n).toLocaleString('en-US');
@@ -2259,6 +2266,7 @@ document.getElementById('btn-sim').onclick = () => {
     btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg><span>Stop</span>`;
     btn.classList.add('running');
     dot.classList.add('on');
+    if (flowReadout.style) flowReadout.style.display = '';
     dismissedSugs.clear();
     const speedMs = { slow: 2500, normal: 1600, fast: 800 }[S.simSpeed || 'normal'] || 1600;
     runTick(); S.simTick = setInterval(runTick, speedMs);
@@ -2276,6 +2284,7 @@ document.getElementById('btn-sim').onclick = () => {
     btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Run Sim</span>`;
     btn.classList.remove('running');
     dot.classList.remove('on');
+    if (flowReadout.style) { flowReadout.style.display = 'none'; flowReadout.textContent = ''; }
     clearInterval(S.simTick); S.simLoad={}; S.eFlow={};
     clearSuggestionCards();
     renderAll(); updateEmptyPanel();
