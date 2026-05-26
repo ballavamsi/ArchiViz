@@ -628,7 +628,7 @@ function renderNode(id) {
       // If there is already a pending click-connection, complete it on this port
       if (G.pendingConn) {
         if (G.pendingConn.srcId !== id) {
-          addEdge(G.pendingConn.srcId, id);
+          addEdge(G.pendingConn.srcId, id, { userInitiated: true });
         }
         clearPendingConn();
         e.preventDefault();
@@ -655,7 +655,7 @@ function renderNode(id) {
 
       if (G.conn.srcId !== id) {
         // Dragged from another port → complete edge
-        addEdge(G.conn.srcId, id);
+        addEdge(G.conn.srcId, id, { userInitiated: true });
         clearPendingConn();
       } else if (dist < 6) {
         // Clicked own port (not dragged) → enter pending click mode
@@ -845,20 +845,26 @@ function addEdge(src, tgt, opts = {}) {
   const srcNode = S.nodes[src];
   const tgtNode = S.nodes[tgt];
   const verdict = validateConnection(srcNode?.defId, tgtNode?.defId);
-  if (!opts.skipRules && !verdict.ok) {
+  // Always connect when the user explicitly drags/clicks ports,
+  // but flag the edge as an architectural warning so it renders differently.
+  if (!opts.skipRules && !opts.userInitiated && !verdict.ok) {
     pushToast(verdict.message, 'warn');
     return;
+  }
+  const hasWarn = !verdict.ok && !opts.skipRules;
+  if (hasWarn) {
+    // Show warning in notification bell with details
+    pushToast(`⚠️ Unusual connection: ${verdict.message} (edge created anyway)`, 'warn');
   }
   const isDash  = srcNode?.defId === 'autoscaler' || opts.dashed || verdict.dashed;
   snapshot();
   S.activeExample = '';
   setExampleSelect('');
-  const newEdge = { id: 'e' + (++S.eSeq), src, tgt, animated: !isDash, dashed: isDash, _new: true };
+  const newEdge = { id: 'e' + (++S.eSeq), src, tgt, animated: !isDash, dashed: isDash, _new: true, _warn: hasWarn };
   S.edges.push(newEdge);
-  track('edge_created', { source_type: srcNode?.defId, target_type: tgtNode?.defId, is_dashed: isDash });
+  track('edge_created', { source_type: srcNode?.defId, target_type: tgtNode?.defId, is_dashed: isDash, has_warn: hasWarn });
   autoSave();
   renderEdges(); updateStats();
-  // Remove _new flag after animation plays
   setTimeout(() => { newEdge._new = false; }, 500);
 }
 
@@ -1051,6 +1057,7 @@ function renderEdges() {
       const flow = S.eFlow[edge.id] || 0;
       const pctVal = edge.trafficPct != null ? edge.trafficPct : null;
       let tip = `${S.nodes[edge.src]?.props?.label || edge.src} → ${S.nodes[edge.tgt]?.props?.label || edge.tgt}`;
+      if (edge._warn) tip += '\n⚠️ Unusual architecture pattern';
       if (S.simOn && flow > 0) tip += `\n${formatFlow(flow)}`;
       if (pctVal != null) tip += `  ${pctVal}%`;
       hit.setAttribute('title', tip);
@@ -1066,6 +1073,7 @@ function renderEdges() {
     vis.setAttribute('d', d);
     vis.setAttribute('stroke-width', String(strokeW));
     vis.setAttribute('marker-end', `url(#${isSelected ? 'arr-blue' : marker})`);
+    if (edge._warn && !isSelected) { vis.style.stroke = '#f5b731'; vis.style.strokeDasharray = '5,4'; vis.style.opacity = '0.85'; }
     if (edge.replication) { vis.style.stroke = '#a855f7'; vis.style.strokeWidth = String(strokeW * 0.9); vis.style.opacity = '0.7'; vis.style.filter = 'drop-shadow(0 0 4px rgba(168,85,247,0.5))'; }
     if (isSelected) { vis.style.stroke = '#58a6ff'; vis.style.strokeWidth = String(Math.min(2.8, strokeW * 1.4)); vis.style.filter = 'drop-shadow(0 0 6px rgba(88,166,255,0.7))'; }
     // Service mesh: color edges by circuit breaker state based on target load
@@ -1094,6 +1102,23 @@ function renderEdges() {
     delG.appendChild(delBg); delG.appendChild(delTxt);
     g.appendChild(delG);
     edgesG.appendChild(g);
+
+    // Warning badge for unusual connections
+    if (edge._warn && z >= 0.4) {
+      const wx = (s.x + t.x) / 2, wy = (s.y + t.y) / 2 - 16;
+      const warnG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      warnG.setAttribute('transform', `translate(${wx},${wy})`);
+      warnG.style.cursor = 'pointer';
+      warnG.setAttribute('title', 'Unusual architecture pattern');
+      const wBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      wBg.setAttribute('x','-10'); wBg.setAttribute('y','-9'); wBg.setAttribute('width','20'); wBg.setAttribute('height','16'); wBg.setAttribute('rx','4');
+      wBg.setAttribute('fill','rgba(245,183,49,0.18)'); wBg.setAttribute('stroke','#f5b731'); wBg.setAttribute('stroke-width','1');
+      const wTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      wTxt.setAttribute('text-anchor','middle'); wTxt.setAttribute('dominant-baseline','middle');
+      wTxt.setAttribute('font-size','11'); wTxt.setAttribute('fill','#f5b731'); wTxt.textContent = '⚠';
+      warnG.appendChild(wBg); warnG.appendChild(wTxt);
+      labelsG.appendChild(warnG);
+    }
 
     // Traffic % label (shown even when sim is off, if set)
     const hasPct = edge.trafficPct != null;
