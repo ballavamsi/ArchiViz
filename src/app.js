@@ -4260,35 +4260,56 @@ const TOUR_STEPS = [
   {
     target: '#sidebar',
     title: 'Component Palette',
-    body: 'Browse 39+ cloud components — servers, databases, CDNs, AI models and more. Drag any component onto the canvas to add it.',
+    icon: '🧱',
+    body: 'Browse 39+ cloud components — servers, load balancers, databases, CDNs, queues, AI models and more. <strong>Drag any component onto the canvas</strong> to add it to your architecture.',
     position: 'right',
     highlight: true,
   },
   {
     target: '#canvas-wrap',
-    title: 'Your Canvas',
-    body: 'This is where your architecture lives. Drag components here, then connect their ports to draw traffic flows between services.',
+    title: 'Connecting Components',
+    icon: '🔗',
+    body: '<strong>Hover over any node</strong> to reveal its blue port dots on the edges. Then <strong>drag from one port to another node</strong> to draw a traffic connection. That\'s how traffic flows between services.',
     position: 'center',
     highlight: false,
   },
   {
+    target: '#example-sel',
+    title: 'Start from an Example',
+    icon: '⚡',
+    body: 'New to cloud architecture? <strong>Pick a pre-built example</strong> from this dropdown — Microservices, Event-Driven, Data Pipeline and more — to instantly load a working diagram you can explore and edit.',
+    position: 'bottom',
+    highlight: true,
+  },
+  {
     target: '#btn-sim',
-    title: 'Run Simulation',
-    body: 'Hit Run Sim to start the live traffic simulation. Watch load, latency and error rates update in real-time as traffic flows through your design.',
+    title: 'Run the Simulation',
+    icon: '▶',
+    body: 'Hit <strong>Run Sim</strong> to push live traffic through your design. Every node shows real-time load %, latency, P95 and error rate. Overloaded nodes turn orange or red — that\'s a bottleneck.',
     position: 'bottom',
     highlight: true,
   },
   {
     target: '#props-panel',
-    title: 'Properties Panel',
-    body: 'Click any node to inspect it here. Edit capacity, traffic, region and more. When simulation is running you\'ll also see live latency, P95 and SLA stats.',
+    title: 'Properties & Live Stats',
+    icon: '📊',
+    body: '<strong>Click any node</strong> to edit its capacity, traffic, region and cost here. While simulation is running you\'ll also see live latency, P95, SLA % and error rate. <strong>Right-click</strong> a node for quick actions like duplicate, delete or add a read replica.',
+    position: 'left',
+    highlight: true,
+  },
+  {
+    target: '#suggestions',
+    title: 'Auto-Fix Suggestions',
+    icon: '💡',
+    body: 'Archi-Flow analyses your design as you build. <strong>This panel surfaces architecture problems</strong> — overloaded nodes, missing load balancers, single points of failure — with <strong>one-click fixes</strong> that apply the change instantly.',
     position: 'left',
     highlight: true,
   },
   {
     target: '#btn-more',
-    title: 'More Tools',
-    body: 'Export a professional PDF report, toggle dark/light theme, enable reserved pricing discounts, and share a live link — all in the ⋯ menu.',
+    title: 'Export, Share & More',
+    icon: '✨',
+    body: 'Open <strong>⋯</strong> to export a professional PDF report with bottleneck analysis, toggle dark/light theme, enable reserved pricing (−35% discount), or <strong>share a live link</strong> so teammates can view your architecture instantly.',
     position: 'bottom',
     highlight: true,
   },
@@ -4336,14 +4357,14 @@ function startTour() {
         <div class="tour-step-label">Step ${idx + 1} of ${TOUR_STEPS.length}</div>
         <button class="tour-skip-btn" id="tour-skip">Skip tour</button>
       </div>
-      <div class="tour-title">${s.title}</div>
+      <div class="tour-title">${s.icon ? `<span class="tour-icon">${s.icon}</span>` : ''}${s.title}</div>
       <div class="tour-body">${s.body}</div>
       <div class="tour-footer">
         <div class="tour-dots">${dots}</div>
         <div class="tour-nav">
-          ${idx > 0 ? `<button class="tour-btn secondary" id="tour-back">Back</button>` : ''}
+          ${idx > 0 ? `<button class="tour-btn secondary" id="tour-back">← Back</button>` : ''}
           <button class="tour-btn primary" id="tour-next">
-            ${idx === TOUR_STEPS.length - 1 ? 'Get started!' : 'Next'}
+            ${idx === TOUR_STEPS.length - 1 ? '🚀 Get started!' : 'Next →'}
           </button>
         </div>
       </div>
