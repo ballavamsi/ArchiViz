@@ -155,15 +155,38 @@ body {
 .pal-tip { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: var(--muted); font-size: 10.5px; }
 .pal-tip:last-child { margin-bottom: 0; }
 .pal-tip svg { flex-shrink: 0; }
-#pal-foot .pal-section-label {
-  font-size: 9.5px;
-  font-weight: 700;
+
+/* ── Collapsible pal-foot sections ── */
+.pal-foot-section { border-top: 1px solid var(--border); }
+.pal-foot-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
   color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  margin-bottom: 6px;
-  display: block;
+  text-align: left;
+  transition: color 0.15s;
 }
+.pal-foot-hdr:hover { color: var(--text2); }
+.pal-foot-hdr svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.pal-foot-section.open .pal-foot-hdr svg { transform: rotate(90deg); }
+.pal-foot-body {
+  display: none;
+  padding-bottom: 8px;
+}
+.pal-foot-section.open .pal-foot-body { display: block; }
+
 .pal-legend { display: flex; flex-direction: column; gap: 3px; margin-bottom: 4px; }
 .pal-legend-row { display: flex; align-items: baseline; gap: 7px; }
 .pal-legend-key {
@@ -596,11 +619,12 @@ body { background: #070b10; letter-spacing: -0.01em; }
 .pal-text .cat  { font-size: 10px; color: var(--muted); margin-top: 1px; }
 
 #pal-foot {
-  padding: 10px 12px;
+  padding: 6px 12px 10px;
   background: rgba(255,255,255,0.01);
   border-top: 1px solid var(--border);
   font-size: 10px; color: var(--muted); flex-shrink: 0;
 }
+#ph-badge { display: block; margin-top: 10px; }
 
 /* ── EMPTY STATE ── */
 #canvas-empty {

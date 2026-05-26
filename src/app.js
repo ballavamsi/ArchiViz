@@ -298,6 +298,25 @@ function initPalette() {
   renderPalette();
 }
 
+// ── Collapsible pal-foot sections ────────────────────────────────────────
+function togglePalFootSection(id) {
+  const sec = document.getElementById(id);
+  if (!sec) return;
+  const open = sec.classList.toggle('open');
+  const btn = sec.querySelector('.pal-foot-hdr');
+  if (btn) btn.setAttribute('aria-expanded', open);
+  try { localStorage.setItem('archviz.palfoot.' + id, open ? '1' : '0'); } catch {}
+}
+// Restore persisted state on load
+['tips-section', 'legend-section'].forEach(id => {
+  try {
+    if (localStorage.getItem('archviz.palfoot.' + id) === '1') {
+      const sec = document.getElementById(id);
+      if (sec) { sec.classList.add('open'); sec.querySelector('.pal-foot-hdr')?.setAttribute('aria-expanded','true'); }
+    }
+  } catch {}
+});
+
 function renderPalette() {
   const list = document.getElementById('pal-list');
   const q = document.getElementById('pal-search').value.toLowerCase().trim();
