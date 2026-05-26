@@ -1405,6 +1405,34 @@ body[data-theme="light"] #statusbar {
   cursor: not-allowed;
 }
 
+.auth-guest-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: transparent;
+  color: #8896a5;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.auth-guest-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: #c0ccd8;
+  border-color: rgba(255,255,255,0.18);
+}
+body[data-theme="light"] .auth-guest-btn {
+  border-color: #dce3ec;
+  color: #64748b;
+}
+body[data-theme="light"] .auth-guest-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #c8d2de;
+}
+
 .auth-gate-footer {
   font-size: 10.5px;
   color: #4a5568;
