@@ -2905,7 +2905,130 @@ function svgWrapText(text, maxChars) {
   return lines;
 }
 
-function diagramSvgString() {
+function exportNodeHtml(id) {
+  const n = S.nodes[id];
+  const live = document.getElementById('node-' + id);
+  if (!n || !live) return '';
+  const clone = live.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.classList.remove('selected', 'node-pop-in');
+  clone.classList.add('export-node');
+  clone.querySelectorAll('.port, .node-label-input').forEach(el => el.remove());
+  clone.setAttribute('style', `${live.getAttribute('style') || ''};position:relative!important;left:0!important;top:0!important;width:${n.w}px!important;height:${n.h}px!important;transform:none!important;transform-origin:top left!important;pointer-events:none!important;`);
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function exportNodeCss() {
+  const isLight = effectiveTheme() === 'light';
+  return `
+    .export-html, .export-node { box-sizing: border-box; font-family: Inter, Arial, sans-serif; letter-spacing: 0; }
+    .export-html {
+      --text:${isLight ? '#172033' : '#f7fbff'};
+      --text2:${isLight ? '#334155' : '#dbe7f3'};
+      --muted:${isLight ? '#6b7788' : '#93a2b5'};
+      --surface3:${isLight ? '#edf2f7' : '#223044'};
+      --border2:${isLight ? '#c8d2de' : '#405268'};
+      --node-bg:${isLight ? 'linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)' : 'linear-gradient(160deg,#131c28 0%,#0d1520 100%)'};
+      --node-border:${isLight ? 'rgba(51,65,85,0.16)' : 'rgba(100,130,165,0.22)'};
+      --node-shadow:${isLight ? '0 6px 18px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : '0 4px 22px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.05)'};
+    }
+    .export-node {
+      overflow: visible;
+      border-radius: 13px;
+      border: 1px solid var(--node-border);
+      background: var(--node-bg);
+      color: var(--text);
+      box-shadow: var(--node-shadow);
+    }
+    .export-node .node-accent { height: 4px; width: 100%; border-radius: 13px 13px 0 0; }
+    .export-node .node-body { padding: 10px 12px 9px; }
+    .export-node .node-header { display: flex; align-items: flex-start; gap: 9px; }
+    .export-node .node-icon-wrap {
+      width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .export-node .node-icon-wrap svg { width: 18px; height: 18px; display: block; }
+    .export-node .node-titles { min-width: 0; flex: 1; overflow: hidden; }
+    .export-node .node-label {
+      font-size: 12px; line-height: 1.25; font-weight: 700; color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .export-node .node-type {
+      display: inline-flex; align-items: center; gap: 4px; max-width: 100%; width: fit-content; margin-top: 4px; padding: 2px 6px;
+      border-radius: 999px; background: ${isLight ? '#f8fafc' : 'color-mix(in srgb, var(--surface3) 76%, transparent)'};
+      border: 1px solid ${isLight ? '#dbe4ee' : 'color-mix(in srgb, var(--border2) 72%, transparent)'};
+      color: var(--text2); font-size: 9.5px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .export-node .node-tool-kicker { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+    .export-node .node-tool-dot { width: 5px; height: 5px; border-radius: 999px; flex: 0 0 auto; }
+    .export-node .node-tool-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .export-node .node-badges { display: flex; flex-wrap: wrap; margin-top: 7px; gap: 4px; }
+    .export-node .badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 5px; line-height: 1.35; letter-spacing: 0.01em; }
+    .export-node .badge-info { background: rgba(79,156,249,0.14); color: ${isLight ? '#2563eb' : '#9ccfff'}; border: 1px solid rgba(79,156,249,0.32); }
+    .export-node .badge-scale { background: rgba(132,204,22,0.14); color: ${isLight ? '#3f6212' : '#bef264'}; border: 1px solid rgba(132,204,22,0.35); }
+    .export-node .badge-err { background: rgba(248,81,73,0.14); color: ${isLight ? '#dc2626' : '#fca5a5'}; border: 1px solid rgba(248,81,73,0.35); }
+    .export-node .note-text { margin-top: 10px; font-size: 11px; line-height: 1.45; white-space: pre-wrap; overflow: hidden; }
+    .export-node .node-load-bar { height: 3px; background: rgba(0,0,0,0.16); margin: 7px -12px -9px; border-radius: 0 0 13px 13px; overflow: hidden; }
+    .export-node .node-load-fill { height: 100%; }
+  `;
+}
+
+function ellipsize(text, maxChars) {
+  const s = String(text ?? '');
+  if (s.length <= maxChars) return s;
+  return s.slice(0, Math.max(1, maxChars - 1)).trimEnd() + '…';
+}
+
+function iconSvgForExport(def, x = 22, y = 34) {
+  return String(def.icon || '').replace('<svg ', `<svg x="${x}" y="${y}" color="${esc(def.color)}" `);
+}
+
+function nativeExportNodes(b, T) {
+  return Object.values(S.nodes).map(n => {
+    const def = COMPONENT_DEFS.find(d => d.id === n.defId);
+    const sim = S.simLoad[n.id];
+    const pct = sim?.loadPct ?? 0;
+    const status = !S.simOn ? def.color : pct > 85 ? '#f85149' : pct > 60 ? '#e3b341' : '#3fb950';
+    const x = n.x - b.minX, y = n.y - b.minY;
+    const label = ellipsize(n.props.label || def.name, Math.max(8, Math.floor((n.w - 66) / 7)));
+    const type = n.defId === 'textnote' ? (n.props.tone || 'Neutral') : def.name;
+    const shortType = ellipsize(type, Math.max(7, Math.floor((n.w - 108) / 5.4)));
+    const toolKicker = n.defId === 'textnote' ? 'NOTE' : 'TOOL';
+    const typeW = Math.min(n.w - 66, Math.max(54, 28 + shortType.length * 5.3 + toolKicker.length * 4.7));
+    const noteLines = n.defId === 'textnote'
+      ? svgWrapText(n.props.text || '', Math.max(24, Math.floor((n.w - 32) / 7))).slice(0, 5)
+      : [];
+    const noteTextSvg = noteLines.length
+      ? noteLines.map((line, idx) => `
+          <text x="18" y="${88 + idx * 16}" fill="${T.nodeLabel}" font-size="11" font-family="Inter, Arial, sans-serif" xml:space="preserve">${esc(line)}</text>`).join('')
+      : '';
+    const badge = n.defId === 'users' ? compactNum(n.props.userCount || 0) + ' users'
+      : S.simOn && sim ? Math.round(Math.min(pct, 999)) + '% load'
+      : n.defId === 'deviceapp' ? '×' + (n.props.eventsPerInput || 1) + ' emit'
+      : '';
+    const badgeSvg = badge
+      ? `<rect x="14" y="67" width="${Math.max(54, badge.length*6+18)}" height="18" rx="5" fill="${T.badgeFill}" stroke="${T.badgeStroke}"/><text x="22" y="80" fill="${T.badgeText}" font-size="9" font-weight="700" font-family="Inter, Arial, sans-serif">${esc(badge)}</text>`
+      : '';
+    const loadBar = S.simOn && sim && pct > 0
+      ? `<rect x="0" y="${n.h - 3}" width="${n.w}" height="3" rx="1.5" fill="rgba(0,0,0,0.16)"/><rect x="0" y="${n.h - 3}" width="${Math.min(n.w, n.w * Math.min(pct, 100) / 100)}" height="3" rx="1.5" fill="${status}"/>`
+      : '';
+    return `
+      <g transform="translate(${x},${y})" filter="url(#card-shadow)">
+        <rect width="${n.w}" height="${n.h}" rx="13" fill="${T.nodeFill}" stroke="${T.nodeStroke}" stroke-width="1"/>
+        <rect width="${n.w}" height="4" rx="2" fill="${status}"/>
+        <rect x="14" y="26" width="34" height="34" rx="9" fill="${def.color}1e" stroke="${def.color}55"/>
+        ${iconSvgForExport(def)}
+        <text x="62" y="39" fill="${T.nodeLabel}" font-size="12" font-weight="700" font-family="Inter, Arial, sans-serif">${esc(label)}</text>
+        <rect x="62" y="47" width="${typeW}" height="16" rx="8" fill="${T.toolFill}" stroke="${T.toolStroke}"/>
+        <text x="68" y="58.4" fill="${T.nodeType}" font-size="8" font-weight="800" letter-spacing=".6" font-family="Inter, Arial, sans-serif">${toolKicker}</text>
+        <circle cx="${70 + toolKicker.length * 4.6 + 8}" cy="55" r="2.5" fill="${def.color}"/>
+        <text x="${70 + toolKicker.length * 4.6 + 15}" y="58.4" fill="${T.nodeLabel}" font-size="9.5" font-weight="700" font-family="Inter, Arial, sans-serif">${esc(shortType)}</text>
+        ${badgeSvg}
+        ${noteTextSvg}
+        ${loadBar}
+      </g>`;
+  }).join('');
+}
+
+function diagramSvgString({ htmlNodes = true } = {}) {
   const b = diagramBounds();
   const title = getDiagramTitle();
   const isLight = effectiveTheme() === 'light';
@@ -2913,14 +3036,17 @@ function diagramSvgString() {
   // Theme tokens
   const T = isLight ? {
     bg:          '#f7f9fc',
-    gridStroke:  '#c8d4e0',
-    gridOpacity: '0.6',
+    gridMinor:   '#edf2f7',
+    gridMajor:   '#cdd7e3',
+    gridOpacity: '1',
     nodeFill:    '#ffffff',
     nodeStroke:  '#d0daea',
     titleText:   '#172033',
     subtitleText:'#64748b',
     nodeLabel:   '#172033',
     nodeType:    '#64748b',
+    toolFill:    '#f8fafc',
+    toolStroke:  '#dbe4ee',
     badgeFill:   '#eff6ff',
     badgeStroke: '#93c5fd',
     badgeText:   '#2563eb',
@@ -2930,14 +3056,17 @@ function diagramSvgString() {
     shadowOp:    '.10',
   } : {
     bg:          '#0a0f16',
-    gridStroke:  '#263545',
-    gridOpacity: '0.18',
+    gridMinor:   '#151e29',
+    gridMajor:   '#263545',
+    gridOpacity: '1',
     nodeFill:    '#121b26',
     nodeStroke:  '#405268',
     titleText:   '#f7fbff',
     subtitleText:'#93a2b5',
     nodeLabel:   '#f7fbff',
     nodeType:    '#93a2b5',
+    toolFill:    '#1a2635',
+    toolStroke:  '#33445c',
     badgeFill:   '#1f6feb22',
     badgeStroke: '#58a6ff55',
     badgeText:   '#9ccfff',
@@ -2947,12 +3076,22 @@ function diagramSvgString() {
     shadowOp:    '.32',
   };
 
+  const gridLines = (step, stroke, opacity, width = 1) => {
+    const startX = Math.floor(b.minX / step) * step;
+    const startY = Math.floor(b.minY / step) * step;
+    const vertical = [];
+    const horizontal = [];
+    for (let x = startX; x <= b.maxX; x += step) vertical.push(`<path d="M${Math.round(x - b.minX)} 0V${b.height}"/>`);
+    for (let y = startY; y <= b.maxY; y += step) horizontal.push(`<path d="M0 ${Math.round(y - b.minY)}H${b.width}"/>`);
+    return `<g opacity="${opacity}" stroke="${stroke}" stroke-width="${width}">${vertical.join('')}${horizontal.join('')}</g>`;
+  };
+
   const defs = `
     <defs>
       <marker id="snap-arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L0,7 L7,4z" fill="${T.edgeStroke}"/></marker>
       <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="${T.shadowOp}"/></filter>
     </defs>`;
-  const grid = `<rect width="100%" height="100%" fill="${T.bg}"/><g opacity="${T.gridOpacity}" stroke="${T.gridStroke}" stroke-width="1">${Array.from({length: Math.ceil(b.width/40)+1},(_,i)=>`<path d="M${i*40} 0V${b.height}"/>`).join('')}${Array.from({length: Math.ceil(b.height/40)+1},(_,i)=>`<path d="M0 ${i*40}H${b.width}"/>`).join('')}</g>`;
+  const grid = `<rect width="100%" height="100%" fill="${T.bg}"/>${gridLines(10, T.gridMinor, isLight ? 0.82 : 0.48)}${gridLines(40, T.gridMajor, isLight ? 0.88 : 0.75)}`;
 
   const edges = Object.values(S.edges).map(edge => {
     const { ss, ts } = bestSides(edge.src, edge.tgt);
@@ -2968,41 +3107,22 @@ function diagramSvgString() {
     return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="2" marker-end="url(#snap-arr)"${dash}/>${label}`;
   }).join('');
 
-  const nodes = Object.values(S.nodes).map(n => {
-    const def = COMPONENT_DEFS.find(d => d.id === n.defId);
-    const sim = S.simLoad[n.id];
-    const pct = sim?.loadPct ?? 0;
-    const status = !S.simOn ? def.color : pct > 85 ? '#f85149' : pct > 60 ? '#e3b341' : '#3fb950';
+  const nodes = htmlNodes ? Object.values(S.nodes).map(n => {
     const x = n.x - b.minX, y = n.y - b.minY;
-    const label = esc(n.props.label || def.name);
-    const noteTone = n.defId === 'textnote' ? esc(n.props.tone || 'Neutral') : '';
-    const type = n.defId === 'textnote' ? noteTone : esc(def.name);
-    const noteLines = n.defId === 'textnote'
-      ? svgWrapText(n.props.text || '', Math.max(24, Math.floor((n.w - 32) / 7)))
-      : [];
-    const noteTextSvg = noteLines.length
-      ? noteLines.map((line, idx) => `
-          <text x="18" y="${86 + idx * 16}" fill="${T.nodeLabel}" font-size="11" font-family="Inter, Arial" xml:space="preserve">${esc(line)}</text>`).join('')
-      : '';
-    const badge = n.defId === 'users' ? compactNum(n.props.userCount || 0) + ' users'
-      : S.simOn && sim ? Math.round(Math.min(pct, 999)) + '% load'
-      : '';
+    const html = exportNodeHtml(n.id);
+    if (!html) return '';
     return `
-      <g transform="translate(${x},${y})" filter="url(#card-shadow)">
-        <rect width="${n.w}" height="${n.h}" rx="12" fill="${T.nodeFill}" stroke="${T.nodeStroke}" stroke-width="1.2"/>
-        <rect width="${n.w}" height="4" rx="2" fill="${status}"/>
-        <rect x="14" y="26" width="36" height="36" rx="9" fill="${def.color}22" stroke="${def.color}88"/>
-        <circle cx="32" cy="44" r="8" fill="none" stroke="${def.color}" stroke-width="2"/>
-        <text x="62" y="39" fill="${T.nodeLabel}" font-size="15" font-weight="700" font-family="Inter, Arial">${label}</text>
-        <text x="62" y="58" fill="${T.nodeType}" font-size="11" font-family="Inter, Arial">${type}</text>
-        ${badge ? `<rect x="14" y="67" width="${Math.max(64, badge.length*7+16)}" height="18" rx="5" fill="${T.badgeFill}" stroke="${T.badgeStroke}"/><text x="22" y="80" fill="${T.badgeText}" font-size="11" font-weight="700" font-family="Inter, Arial">${esc(badge)}</text>` : ''}
-        ${noteTextSvg}
-      </g>`;
-  }).join('');
+      <foreignObject x="${x}" y="${y}" width="${n.w}" height="${n.h}" overflow="visible">
+        <div xmlns="http://www.w3.org/1999/xhtml" class="export-html" data-theme="${isLight ? 'light' : 'dark'}">
+          ${html}
+        </div>
+      </foreignObject>`;
+  }).join('') : nativeExportNodes(b, T);
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${b.width}" height="${b.height}" viewBox="0 0 ${b.width} ${b.height}" role="img" aria-label="${esc(title)}">
       ${defs}
+      <style>${exportNodeCss()}</style>
       ${grid}
       <g>${edges}</g>
       <g>${nodes}</g>
@@ -3795,7 +3915,7 @@ document.getElementById('btn-export-png').onclick = () => {
 };
 
 function exportDiagramPng() {
-  const svgStr = diagramSvgString();
+  const svgStr = diagramSvgString({ htmlNodes: false });
   const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const img = new Image();

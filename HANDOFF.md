@@ -12,15 +12,20 @@
 
 ## Latest Update
 
-**Commit:** `941e6d3` — `Show component tool in node tiles`
+**Latest local iteration:** High-fidelity SVG/PNG export
 
-Node tiles now display a visible compact `Tool` / `Note` chip under the node label. This makes the active component type readable directly on the canvas during reviews and presentations, instead of relying on the icon or properties panel.
+SVG and PNG export were updated after the user reported that exported diagrams did not match the website view.
+
+Current export behavior:
+- SVG export uses live rendered node HTML through `foreignObject`, so it preserves real icons, tile styling, tool chips, badges, fonts, and label sizing from the app.
+- PNG export uses a compatible native-SVG renderer with the same real component icons and tool-chip treatment. This is intentionally separate because drawing `foreignObject` SVG into a canvas taints the canvas in Chromium and blocks PNG downloads.
+- Exported grid now includes both minor 10px and major 40px lines, matching the draw.io/Lucid-style canvas more closely.
 
 Files changed:
-- `src/app.js` — node markup now renders `node-tool-kicker`, `node-tool-dot`, and `node-tool-name`
-- `src/app.css` — added theme-aware chip styling for dark and light modes
-- `test/smoke.test.mjs` — added regression coverage so tool/type metadata remains visible
-- `.claude/TASKS.md` — recorded as Iteration 6.2
+- `src/app.js` — export renderer split into live HTML SVG export and native PNG-safe SVG export
+- `scripts/browser-smoke.mjs` — now downloads and verifies SVG/PNG exports
+- `test/smoke.test.mjs` — image export regression checks
+- `.claude/TASKS.md` — recorded as Iteration 6.3
 
 Verification already completed:
 ```bash

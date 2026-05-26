@@ -114,6 +114,13 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 - Added a visible Tool/Note chip inside every node tile so the selected component type is always readable during presentation and review.
 - Added regression coverage to keep component/tool metadata visible in future tile changes.
 
+### Iteration 6.3 — High-Fidelity Image Export
+**Status:** ✅ Done
+- SVG export now serializes the live rendered node tiles via `foreignObject`, preserving actual icon SVGs, labels, tool chips, badges, font sizing, and tile styling.
+- PNG export now uses a compatible native-SVG renderer with real component icons and matching tool chips, avoiding browser canvas tainting from `foreignObject`.
+- Export grid now uses the same minor/major diagram grid structure as the canvas instead of only coarse 40px lines.
+- Browser smoke test now downloads SVG and PNG exports and verifies live SVG tiles, tool chips, no old placeholder icons, and non-empty PNG output.
+
 ---
 
 ## Pending Tasks

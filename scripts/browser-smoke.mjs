@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdtemp, readFile, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
@@ -46,6 +49,7 @@ try {
   context = await browser.newContext({
     viewport: { width: 1365, height: 820 },
     colorScheme: 'dark',
+    acceptDownloads: true,
   });
   await context.addInitScript(() => {
     localStorage.removeItem('archviz.theme');
@@ -234,9 +238,31 @@ try {
   await pdfPage.locator('text=Component Performance').waitFor({ state: 'visible', timeout: 5000 });
   await pdfPage.close();
 
+  await page.selectOption('#example-sel', 'load-balanced');
+  await page.locator('.a-node .node-tool-name').first().waitFor({ state: 'visible', timeout: 5000 });
+  const exportDir = await mkdtemp(join(tmpdir(), 'archiflow-smoke-export-'));
+
+  const svgDownloadPromise = page.waitForEvent('download', { timeout: 8000 });
+  await page.evaluate(() => document.getElementById('btn-export-svg').click());
+  const svgDownload = await svgDownloadPromise;
+  const svgPath = join(exportDir, svgDownload.suggestedFilename());
+  await svgDownload.saveAs(svgPath);
+  const svgText = await readFile(svgPath, 'utf8');
+  assert.match(svgText, /<foreignObject/, 'SVG export should use live HTML node tiles');
+  assert.match(svgText, /node-tool-name/, 'SVG export should include visible tool chips');
+  assert.doesNotMatch(svgText, /<circle cx="32" cy="44" r="8"/, 'SVG export should not use old generic placeholder icons');
+
+  const pngDownloadPromise = page.waitForEvent('download', { timeout: 10000 });
+  await page.evaluate(() => document.getElementById('btn-export-png').click());
+  const pngDownload = await pngDownloadPromise;
+  const pngPath = join(exportDir, pngDownload.suggestedFilename());
+  await pngDownload.saveAs(pngPath);
+  const pngInfo = await stat(pngPath);
+  assert.ok(pngInfo.size > 20000, 'PNG export should produce a non-empty rendered image');
+
   assert.deepEqual(consoleErrors, []);
 
-  console.log('Browser smoke passed: grid, theme, share popup, login theme token, and PDF export are working.');
+  console.log('Browser smoke passed: grid, theme, share popup, login theme token, PDF export, and image exports are working.');
 } finally {
   if (context) await context.close();
   if (browser) await browser.close();

@@ -105,7 +105,8 @@ test('index.html contains required app hooks', () => {
   }
 
   assert.match(html, /Archi-Flow/, 'app should use Archi-Flow branding');
-  assert.match(appSource, /function diagramSvgString\(\)/, 'app should support diagram image export');
+  assert.match(appSource, /function diagramSvgString\(/, 'app should support diagram image export');
+  assert.match(appSource, /foreignObject/, 'diagram image export should use live HTML node tiles');
   assert.match(appSource, /function exportPdfReport\(\)/, 'app should support PDF report export');
   assert.match(appSource, /function setTheme\(theme\)/, 'app should support light and dark themes');
   assert.match(appSource, /prefers-color-scheme: light/, 'theme should default from the user system preference');
