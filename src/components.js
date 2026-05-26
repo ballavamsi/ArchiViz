@@ -34,7 +34,23 @@ const ICONS = {
   orchestrator:   S(`<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>`),
   dataquality:    S(`<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>`),
   appinsights:    S(`<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`),
-  logging:        S(`<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>`)
+  logging:        S(`<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>`),
+
+  // ── New components ──────────────────────────────────────────────────────
+  serverless:     S(`<path d="M4 4l4 8 4-4 4 8"/><line x1="2" y1="20" x2="22" y2="20"/><circle cx="4" cy="20" r="1.5" fill="currentColor"/><circle cx="22" cy="20" r="1.5" fill="currentColor"/>`),
+  vpn:            S(`<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><circle cx="12" cy="13" r="2"/><line x1="12" y1="15" x2="12" y2="17"/>`),
+  dns:            S(`<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M8 8h8M8 12h6M8 16h4"/>`),
+  filestore:      S(`<path d="M3 3h18v18H3z" rx="2"/><path d="M3 9h18"/><path d="M7 3l-4 6"/><path d="M17 3l4 6"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/>`),
+  blockstorage:   S(`<rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="12" r="2"/><line x1="12" y1="8" x2="20" y2="8"/><line x1="12" y1="12" x2="20" y2="12"/><line x1="12" y1="16" x2="20" y2="16"/>`),
+  secretsmanager: S(`<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/>`),
+  identityprovider: S(`<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>`),
+  waf:            S(`<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>`),
+  eventbus:       S(`<rect x="2" y="8" width="20" height="8" rx="2"/><circle cx="7"  cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="17" cy="12" r="1.5" fill="currentColor"/><line x1="7" y1="8" x2="7" y2="5"/><line x1="12" y1="8" x2="12" y2="5"/><line x1="17" y1="8" x2="17" y2="5"/><line x1="7" y1="16" x2="7" y2="19"/><line x1="12" y1="16" x2="12" y2="19"/><line x1="17" y1="16" x2="17" y2="19"/>`),
+  pubsub:         S(`<circle cx="12" cy="12" r="3"/><path d="M2 12h7M15 12h7"/><path d="M6.3 6.3l3.5 3.5M14.2 14.2l3.5 3.5M17.7 6.3l-3.5 3.5M9.8 14.2l-3.5 3.5"/>`),
+  mlmodel:        S(`<circle cx="12" cy="5" r="3"/><circle cx="4"  cy="19" r="3"/><circle cx="20" cy="19" r="3"/><line x1="12" y1="8"  x2="4.8"  y2="16.2"/><line x1="12" y1="8"  x2="19.2" y2="16.2"/><line x1="6.8" y1="18" x2="17.2" y2="18"/>`),
+  vectordb:       S(`<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M9 12l2 2 4-4"/>`),
+  alerting:       S(`<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="12" y1="2" x2="12" y2="5"/>`),
+  tracing:        S(`<circle cx="5"  cy="5"  r="2"/><circle cx="19" cy="5"  r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 5h10"/><path d="M6.5 7l-1.5 9.5"/><path d="M17.5 7l1.5 9.5"/><line x1="10.5" y1="17" x2="6" y2="7"/><line x1="13.5" y1="17" x2="18" y2="7"/>`)
 };
 
 const CAT_ICONS = {
@@ -48,7 +64,8 @@ const CAT_ICONS = {
   ops:           S(`<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`),
   observability: S(`<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`),
   security:      S(`<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>`),
-  annotation:    S(`<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>`)
+  annotation:    S(`<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>`),
+  ai:            S(`<circle cx="12" cy="5" r="3"/><circle cx="4" cy="19" r="3"/><circle cx="20" cy="19" r="3"/><line x1="12" y1="8" x2="4.8" y2="16.2"/><line x1="12" y1="8" x2="19.2" y2="16.2"/><line x1="6.8" y1="18" x2="17.2" y2="18"/>`)
 };
 
 export const COMPONENT_DEFS = [
@@ -669,6 +686,279 @@ export const COMPONENT_DEFS = [
       { key: "cost", label: "Cost ($/mo)", type: "number", min: 0 }
     ],
     behaviors: ["accepts_traffic", "observability_sink"]
+  },
+
+  // ── Compute ───────────────────────────────────────────────────────────────
+  {
+    id: "serverless",
+    name: "Serverless Function",
+    icon: ICONS.serverless,
+    category: "compute",
+    color: "#f59e0b",
+    description: "Event-driven function. AWS Lambda, Azure Functions, GCP Cloud Functions. Auto-scales to zero.",
+    defaults: { capacity: 3000, memoryMB: 512, timeoutSec: 30, concurrency: 1000, runtime: "Node.js", cost: 0, label: "Serverless Fn" },
+    properties: [
+      { key: "label",       label: "Label",            type: "text" },
+      { key: "capacity",    label: "Max Req/s",         type: "number", min: 1, max: 1000000 },
+      { key: "memoryMB",    label: "Memory (MB)",       type: "number", min: 128, max: 10240 },
+      { key: "timeoutSec",  label: "Timeout (s)",       type: "number", min: 1, max: 900 },
+      { key: "concurrency", label: "Max Concurrency",   type: "number", min: 1, max: 100000 },
+      { key: "runtime",     label: "Runtime",           type: "select", options: ["Node.js","Python","Go","Java","Ruby",".NET"] },
+      { key: "autoScale",   label: "Auto Scale",        type: "checkbox" },
+      { key: "cost",        label: "Cost ($/mo)",       type: "number", min: 0 }
+    ],
+    scaleProps: [
+      { key: "autoScale",   label: "Auto Scale",   type: "checkbox" },
+      { key: "maxReplicas", label: "Max Replicas", type: "number", min: 1, max: 1000 }
+    ],
+    behaviors: ["accepts_traffic", "autoscalable"]
+  },
+
+  // ── Network ───────────────────────────────────────────────────────────────
+  {
+    id: "vpn",
+    name: "VPN Gateway",
+    icon: ICONS.vpn,
+    category: "network",
+    color: "#0ea5e9",
+    description: "Encrypted tunnel between on-prem and cloud. AWS Site-to-Site VPN, Azure VPN Gateway, Direct Connect.",
+    defaults: { capacity: 5000, bandwidth: "1 Gbps", protocol: "IPSec", cost: 150, label: "VPN Gateway" },
+    properties: [
+      { key: "label",     label: "Label",         type: "text" },
+      { key: "capacity",  label: "Throughput (req/s)", type: "number", min: 1, max: 1000000 },
+      { key: "bandwidth", label: "Bandwidth",     type: "select", options: ["100 Mbps","500 Mbps","1 Gbps","10 Gbps"] },
+      { key: "protocol",  label: "Protocol",      type: "select", options: ["IPSec","SSL/TLS","WireGuard","AWS Direct Connect"] },
+      { key: "cost",      label: "Cost ($/mo)",   type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "dns",
+    name: "DNS",
+    icon: ICONS.dns,
+    category: "network",
+    color: "#38bdf8",
+    description: "Domain resolution and traffic routing. Route 53, Cloudflare DNS, Azure DNS.",
+    defaults: { capacity: 10000, provider: "Route 53", ttl: 300, cost: 5, label: "DNS" },
+    properties: [
+      { key: "label",    label: "Label",        type: "text" },
+      { key: "capacity", label: "Queries/s",    type: "number", min: 1, max: 100000000 },
+      { key: "provider", label: "Provider",     type: "select", options: ["Route 53","Cloudflare","Azure DNS","Google Cloud DNS"] },
+      { key: "ttl",      label: "TTL (s)",      type: "number", min: 0, max: 86400 },
+      { key: "cost",     label: "Cost ($/mo)",  type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+
+  // ── Storage ───────────────────────────────────────────────────────────────
+  {
+    id: "filestore",
+    name: "File Storage",
+    icon: ICONS.filestore,
+    category: "storage",
+    color: "#fb923c",
+    description: "Shared file system. AWS EFS, Azure Files, Google Filestore. NFS/SMB protocol.",
+    defaults: { capacity: 5000, sizeGB: 100, protocol: "NFS", throughputMBs: 100, cost: 30, label: "File Storage" },
+    properties: [
+      { key: "label",          label: "Label",          type: "text" },
+      { key: "capacity",       label: "IOPS",           type: "number", min: 1, max: 1000000 },
+      { key: "sizeGB",         label: "Size (GB)",      type: "number", min: 1, max: 1000000 },
+      { key: "protocol",       label: "Protocol",       type: "select", options: ["NFS","SMB","CIFS"] },
+      { key: "throughputMBs",  label: "Throughput (MB/s)", type: "number", min: 1, max: 10000 },
+      { key: "cost",           label: "Cost ($/mo)",    type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "blockstorage",
+    name: "Block Storage",
+    icon: ICONS.blockstorage,
+    category: "storage",
+    color: "#94a3b8",
+    description: "Persistent block-level volumes. AWS EBS, Azure Managed Disk, GCP Persistent Disk.",
+    defaults: { capacity: 16000, sizeGB: 100, volumeType: "SSD", iops: 3000, cost: 10, label: "Block Storage" },
+    properties: [
+      { key: "label",      label: "Label",        type: "text" },
+      { key: "capacity",   label: "IOPS",         type: "number", min: 1, max: 256000 },
+      { key: "sizeGB",     label: "Size (GB)",    type: "number", min: 1, max: 65536 },
+      { key: "volumeType", label: "Type",         type: "select", options: ["SSD (gp3)","SSD (io2)","HDD (st1)","HDD (sc1)"] },
+      { key: "iops",       label: "Provisioned IOPS", type: "number", min: 100, max: 256000 },
+      { key: "cost",       label: "Cost ($/mo)",  type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "secretsmanager",
+    name: "Secrets Manager",
+    icon: ICONS.secretsmanager,
+    category: "storage",
+    color: "#f43f5e",
+    description: "Encrypted secret storage and rotation. AWS Secrets Manager, HashiCorp Vault, Azure Key Vault.",
+    defaults: { capacity: 10000, provider: "AWS Secrets Manager", autoRotate: true, cost: 5, label: "Secrets Manager" },
+    properties: [
+      { key: "label",      label: "Label",        type: "text" },
+      { key: "capacity",   label: "Requests/s",   type: "number", min: 1, max: 100000 },
+      { key: "provider",   label: "Provider",     type: "select", options: ["AWS Secrets Manager","HashiCorp Vault","Azure Key Vault","GCP Secret Manager"] },
+      { key: "autoRotate", label: "Auto Rotate",  type: "checkbox" },
+      { key: "cost",       label: "Cost ($/mo)",  type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+
+  // ── Identity & Auth ───────────────────────────────────────────────────────
+  {
+    id: "identityprovider",
+    name: "Identity Provider",
+    icon: ICONS.identityprovider,
+    category: "security",
+    color: "#a78bfa",
+    description: "Authentication & authorization. Auth0, AWS Cognito, Okta, Azure AD. OAuth2/OIDC/SAML.",
+    defaults: { capacity: 5000, provider: "Auth0", protocol: "OAuth2/OIDC", mfa: true, cost: 23, label: "Identity Provider" },
+    properties: [
+      { key: "label",    label: "Label",      type: "text" },
+      { key: "capacity", label: "Auth Req/s", type: "number", min: 1, max: 1000000 },
+      { key: "provider", label: "Provider",   type: "select", options: ["Auth0","AWS Cognito","Okta","Azure AD","Keycloak","Firebase Auth"] },
+      { key: "protocol", label: "Protocol",   type: "select", options: ["OAuth2/OIDC","SAML 2.0","LDAP","Social Login"] },
+      { key: "mfa",      label: "MFA",        type: "checkbox" },
+      { key: "cost",     label: "Cost ($/mo)", type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "waf",
+    name: "WAF",
+    icon: ICONS.waf,
+    category: "security",
+    color: "#34d399",
+    description: "Web Application Firewall. Filters malicious HTTP traffic. AWS WAF, Azure WAF, Cloudflare.",
+    defaults: { capacity: 50000, blockRate: 5, provider: "AWS WAF", cost: 60, label: "WAF" },
+    properties: [
+      { key: "label",     label: "Label",         type: "text" },
+      { key: "capacity",  label: "Req/s",         type: "number", min: 1, max: 10000000 },
+      { key: "blockRate", label: "Block Rate (%)", type: "number", min: 0, max: 100 },
+      { key: "provider",  label: "Provider",      type: "select", options: ["AWS WAF","Azure WAF","Cloudflare WAF","ModSecurity"] },
+      { key: "cost",      label: "Cost ($/mo)",   type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+
+  // ── Messaging ─────────────────────────────────────────────────────────────
+  {
+    id: "eventbus",
+    name: "Event Bus",
+    icon: ICONS.eventbus,
+    category: "messaging",
+    color: "#06b6d4",
+    description: "Managed event routing. AWS EventBridge, Azure Event Grid. Fan-out events to multiple targets.",
+    defaults: { capacity: 10000, provider: "AWS EventBridge", rules: 10, cost: 1, label: "Event Bus" },
+    properties: [
+      { key: "label",    label: "Label",       type: "text" },
+      { key: "capacity", label: "Events/s",    type: "number", min: 1, max: 10000000 },
+      { key: "provider", label: "Provider",    type: "select", options: ["AWS EventBridge","Azure Event Grid","Google Eventarc","Kafka"] },
+      { key: "rules",    label: "Rules",       type: "number", min: 1, max: 2000 },
+      { key: "cost",     label: "Cost ($/mo)", type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "pubsub",
+    name: "Pub/Sub",
+    icon: ICONS.pubsub,
+    category: "messaging",
+    color: "#e879f9",
+    description: "Publish-subscribe messaging. Google Pub/Sub, AWS SNS, Azure Service Bus Topics.",
+    defaults: { capacity: 10000, provider: "Google Pub/Sub", topics: 5, subscribers: 10, cost: 10, label: "Pub/Sub" },
+    properties: [
+      { key: "label",       label: "Label",       type: "text" },
+      { key: "capacity",    label: "Messages/s",  type: "number", min: 1, max: 100000000 },
+      { key: "provider",    label: "Provider",    type: "select", options: ["Google Pub/Sub","AWS SNS","Azure Service Bus","Redis Pub/Sub"] },
+      { key: "topics",      label: "Topics",      type: "number", min: 1, max: 10000 },
+      { key: "subscribers", label: "Subscribers", type: "number", min: 1, max: 10000 },
+      { key: "cost",        label: "Cost ($/mo)", type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+
+  // ── AI / ML ───────────────────────────────────────────────────────────────
+  {
+    id: "mlmodel",
+    name: "ML Model",
+    icon: ICONS.mlmodel,
+    category: "ai",
+    color: "#c084fc",
+    description: "ML inference endpoint. AWS SageMaker, Vertex AI, Azure ML, Hugging Face, Ollama.",
+    defaults: { capacity: 500, framework: "PyTorch", inferenceType: "Real-time", latencyMs: 200, gpuEnabled: false, cost: 100, label: "ML Model" },
+    properties: [
+      { key: "label",         label: "Label",          type: "text" },
+      { key: "capacity",      label: "Req/s",          type: "number", min: 1, max: 100000 },
+      { key: "framework",     label: "Framework",      type: "select", options: ["PyTorch","TensorFlow","ONNX","JAX","Scikit-learn"] },
+      { key: "inferenceType", label: "Inference",      type: "select", options: ["Real-time","Batch","Async","Streaming"] },
+      { key: "latencyMs",     label: "Latency (ms)",   type: "number", min: 1, max: 60000 },
+      { key: "gpuEnabled",    label: "GPU",            type: "checkbox" },
+      { key: "autoScale",     label: "Auto Scale",     type: "checkbox" },
+      { key: "cost",          label: "Cost ($/mo)",    type: "number", min: 0 }
+    ],
+    scaleProps: [
+      { key: "autoScale",   label: "Auto Scale",   type: "checkbox" },
+      { key: "maxReplicas", label: "Max Replicas", type: "number", min: 1, max: 100 }
+    ],
+    behaviors: ["accepts_traffic", "autoscalable"]
+  },
+  {
+    id: "vectordb",
+    name: "Vector DB",
+    icon: ICONS.vectordb,
+    category: "storage",
+    color: "#818cf8",
+    description: "High-dimensional vector storage for embeddings and semantic search. Pinecone, Weaviate, pgvector, Qdrant.",
+    defaults: { capacity: 2000, dimensions: 1536, indexType: "HNSW", provider: "Pinecone", cost: 70, label: "Vector DB" },
+    properties: [
+      { key: "label",      label: "Label",        type: "text" },
+      { key: "capacity",   label: "Queries/s",    type: "number", min: 1, max: 100000 },
+      { key: "dimensions", label: "Dimensions",   type: "number", min: 64, max: 65536 },
+      { key: "indexType",  label: "Index Type",   type: "select", options: ["HNSW","IVF","LSH","Flat"] },
+      { key: "provider",   label: "Provider",     type: "select", options: ["Pinecone","Weaviate","Qdrant","pgvector","Chroma","Milvus"] },
+      { key: "cost",       label: "Cost ($/mo)",  type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+
+  // ── Observability ─────────────────────────────────────────────────────────
+  {
+    id: "alerting",
+    name: "Alerting",
+    icon: ICONS.alerting,
+    category: "observability",
+    color: "#fb7185",
+    description: "Alert routing and on-call management. PagerDuty, OpsGenie, CloudWatch Alarms, Grafana Alerts.",
+    defaults: { capacity: 10000, provider: "PagerDuty", channels: "Slack, Email", alertRules: 20, cost: 30, label: "Alerting" },
+    properties: [
+      { key: "label",      label: "Label",        type: "text" },
+      { key: "capacity",   label: "Events/s",     type: "number", min: 1, max: 1000000 },
+      { key: "provider",   label: "Provider",     type: "select", options: ["PagerDuty","OpsGenie","VictorOps","CloudWatch Alarms","Grafana Alerts"] },
+      { key: "channels",   label: "Channels",     type: "text" },
+      { key: "alertRules", label: "Alert Rules",  type: "number", min: 1, max: 10000 },
+      { key: "cost",       label: "Cost ($/mo)",  type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic", "observability_sink"]
+  },
+  {
+    id: "tracing",
+    name: "Distributed Tracing",
+    icon: ICONS.tracing,
+    category: "observability",
+    color: "#2dd4bf",
+    description: "End-to-end request tracing. Jaeger, Zipkin, AWS X-Ray, Tempo, OpenTelemetry.",
+    defaults: { capacity: 20000, provider: "Jaeger", samplingRate: 10, retentionDays: 7, cost: 40, label: "Tracing" },
+    properties: [
+      { key: "label",         label: "Label",           type: "text" },
+      { key: "capacity",      label: "Spans/s",         type: "number", min: 1, max: 10000000 },
+      { key: "provider",      label: "Provider",        type: "select", options: ["Jaeger","Zipkin","AWS X-Ray","Grafana Tempo","OpenTelemetry"] },
+      { key: "samplingRate",  label: "Sampling Rate (%)", type: "number", min: 1, max: 100 },
+      { key: "retentionDays", label: "Retention (days)", type: "number", min: 1, max: 365 },
+      { key: "cost",          label: "Cost ($/mo)",     type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic", "observability_sink"]
   }
 ];
 
@@ -683,5 +973,6 @@ export const CATEGORIES = [
   { id: "ops",           label: "Ops",            icon: CAT_ICONS.ops },
   { id: "observability", label: "Observability",  icon: CAT_ICONS.observability },
   { id: "security",      label: "Security",       icon: CAT_ICONS.security },
+  { id: "ai",            label: "AI / ML",        icon: CAT_ICONS.ai },
   { id: "annotation",    label: "Notes",          icon: CAT_ICONS.annotation }
 ];
