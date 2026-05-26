@@ -112,8 +112,14 @@ function runSimTick(nodes, edges) {
       else if (n.defId === 'deviceapp') fwd = inn * (n.props.eventsPerInput    ||  1);
       const down = edges.filter(e => e.src === cur && !e.dashed && nodes[e.tgt]);
       if (down.length && fwd > 0) {
-        const share = fwd / down.length;
-        down.forEach(e => { eFlowNew[e.id] = share; incoming[e.tgt] = (incoming[e.tgt] || 0) + share; });
+        const hasW = down.some(e => e.trafficPct != null);
+        const totalW = hasW ? (down.reduce((s,e)=>s+(e.trafficPct||0),0)||down.length) : down.length;
+        down.forEach(e => {
+          const w = hasW ? (e.trafficPct||0)/totalW : 1/down.length;
+          const flow = fwd * w;
+          eFlowNew[e.id] = flow;
+          incoming[e.tgt] = (incoming[e.tgt] || 0) + flow;
+        });
       }
     });
 

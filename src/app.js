@@ -872,9 +872,35 @@ function renderEdges() {
     g.appendChild(delG);
     edgesG.appendChild(g);
 
+    // Traffic % label (shown even when sim is off, if set)
+    const hasPct = edge.trafficPct != null;
+    if (hasPct && !S.simOn && z >= 0.4) {
+      const midX = (s.x + t.x) / 2;
+      const midY = (s.y + t.y) / 2;
+      const liftY = Math.round(14 * z);
+      const lx = midX, ly = midY - liftY;
+      const pctLabel = edge.trafficPct + '%';
+      const charW = labelFs * 0.62;
+      const tw = Math.max(labelFs * 2.4, pctLabel.length * charW) + labelFs * 1.2;
+      const halfH = pillH / 2;
+      const bg2 = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg2.setAttribute('x', lx - tw/2); bg2.setAttribute('y', ly - halfH);
+      bg2.setAttribute('width', tw); bg2.setAttribute('height', pillH); bg2.setAttribute('rx', pillRx);
+      bg2.setAttribute('fill', 'rgba(8,12,17,0.78)'); bg2.setAttribute('stroke', '#4f9cf9');
+      bg2.setAttribute('stroke-width', String(Math.max(0.4, labelScale * 0.7)));
+      labelsG.appendChild(bg2);
+      const txt2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt2.setAttribute('x', lx); txt2.setAttribute('y', ly + 0.5);
+      txt2.setAttribute('class','flow-pill-txt');
+      txt2.setAttribute('text-anchor','middle'); txt2.setAttribute('dominant-baseline','middle');
+      txt2.setAttribute('fill', '#4f9cf9'); txt2.setAttribute('font-size', String(labelFs));
+      txt2.setAttribute('font-weight', '700'); txt2.textContent = pctLabel;
+      labelsG.appendChild(txt2);
+    }
+
     // Flow label
     const flow = S.eFlow[edge.id];
-    if (S.simOn && flow > 0 && !edge.dashed && z >= 0.4) {
+    if (S.simOn && (flow > 0 || hasPct) && !edge.dashed && z >= 0.4) {
       // Label sits ABOVE the edge midpoint — clear vertical separation from the line
       const midX = (s.x * 0.5 + t.x * 0.5);
       const midY = (s.y * 0.5 + t.y * 0.5);
@@ -883,7 +909,8 @@ function renderEdges() {
       const lx = midX;
       const ly = midY - liftY;
       // At lower zoom use compact label (number only); at higher zoom show full label
-      const flowLabel = z < 0.75 ? formatFlow(flow).replace(/\s*events\/s/, '').replace(/\s*req\/s/, '') : formatFlow(flow);
+      const flowBase = flow > 0 ? (z < 0.75 ? formatFlow(flow).replace(/\s*events\/s/, '').replace(/\s*req\/s/, '') : formatFlow(flow)) : '';
+      const flowLabel = hasPct && z >= 0.75 ? (flowBase ? `${edge.trafficPct}% · ${flowBase}` : `${edge.trafficPct}%`) : flowBase || (hasPct ? `${edge.trafficPct}%` : '0');
       const charW = labelFs * 0.62;
       const tw = Math.max(labelFs * 3.2, flowLabel.length * charW) + labelFs * 1.4;
       const pillColor = cls === 'edge-crit' ? '#f85149' : cls === 'edge-warn' ? '#f0a732' : '#3fb950';
@@ -943,12 +970,90 @@ function select(id) {
 
 function selectEdge(id) {
   S.selEdge = id; S.sel = null;
-  renderAll(); showProps(null);
+  renderAll(); showEdgeProps(id);
+}
+
+// ── Edge properties panel ─────────────────────────────────────────────────────
+function showEdgeProps(id) {
+  const panel = document.getElementById('props-panel');
+  const empty = document.getElementById('props-empty');
+  const cont  = document.getElementById('props-content');
+  const econt = document.getElementById('edge-props-content');
+  if (!id) {
+    if (econt) { econt.style.display = 'none'; econt.innerHTML = ''; }
+    panel.classList.add('collapsed');
+    empty.style.display = ''; cont.classList.remove('show');
+    updateEmptyPanel(); return;
+  }
+  const edge = S.edges.find(e => e.id === id);
+  if (!edge) { showEdgeProps(null); return; }
+  panel.classList.remove('collapsed');
+  empty.style.display = 'none';
+  cont.classList.remove('show');
+  if (econt) { econt.style.display = ''; _renderEdgePanel(edge); }
+}
+
+function _renderEdgePanel(edge) {
+  const econt = document.getElementById('edge-props-content');
+  if (!econt) return;
+  const srcNode = S.nodes[edge.src], tgtNode = S.nodes[edge.tgt];
+  const srcDef  = COMPONENT_DEFS.find(d => d.id === srcNode?.defId);
+  const tgtDef  = COMPONENT_DEFS.find(d => d.id === tgtNode?.defId);
+  const srcLabel = srcNode?.props?.label || srcDef?.name || edge.src;
+  const tgtLabel = tgtNode?.props?.label || tgtDef?.name || edge.tgt;
+  const flow = S.eFlow[edge.id];
+  const flowStr = S.simOn && flow > 0 ? formatFlow(flow) : null;
+  const pctVal  = edge.trafficPct != null ? edge.trafficPct : '';
+  econt.innerHTML = `
+    <div class="props-head">
+      <div class="props-head-icon" style="background:#1f6feb22">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M15 8l4 4-4 4"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="props-head-title">Connection</div>
+        <div class="props-head-desc" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(srcLabel)} → ${esc(tgtLabel)}</div>
+      </div>
+    </div>
+    <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto">
+      <div class="section-title" style="margin:-4px -2px 2px">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Traffic Routing
+      </div>
+      <div class="prop-row">
+        <div class="prop-lbl">Traffic %</div>
+        <input id="edge-traffic-pct" class="prop-inp" type="number" min="0" max="100" step="1" value="${esc(String(pctVal))}" placeholder="Auto"/>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:-4px;line-height:1.4">Set a weight for this connection. Leave blank for equal split. The sim normalises all outgoing weights from each node.</div>
+      ${flowStr ? `
+      <div style="background:rgba(79,156,249,0.07);border:1px solid rgba(79,156,249,0.2);border-radius:8px;padding:10px 12px;margin-top:4px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Live Flow</div>
+        <div style="font-size:18px;font-weight:800;color:#4f9cf9;letter-spacing:-.02em">${esc(flowStr)}</div>
+        ${edge.trafficPct != null ? `<div style="font-size:10px;color:var(--muted);margin-top:3px">${edge.trafficPct}% of upstream traffic</div>` : ''}
+      </div>` : ''}
+    </div>
+    <div style="padding:10px 14px;border-top:1px solid var(--border)">
+      <button class="btn-del" id="btn-del-edge-panel">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        Delete Connection
+      </button>
+    </div>`;
+  const pctInp = document.getElementById('edge-traffic-pct');
+  if (pctInp) {
+    pctInp.oninput = () => {
+      const raw = pctInp.value.trim();
+      edge.trafficPct = raw === '' ? null : Math.max(0, Math.min(100, parseFloat(raw) || 0));
+      renderEdges();
+      if (S.simOn) runTick();
+      snapshot();
+    };
+  }
+  const delBtn = document.getElementById('btn-del-edge-panel');
+  if (delBtn) delBtn.onclick = () => deleteEdge(edge.id);
 }
 
 function deselect() {
   S.sel = null; S.selEdge = null;
-  renderAll(); showProps(null);
+  renderAll(); showProps(null); showEdgeProps(null);
 }
 
 // ══ PROPERTIES PANEL ══════════════════════════════════════════════════════════
@@ -979,6 +1084,8 @@ function showProps(id) {
   const panel = document.getElementById('props-panel');
   const empty = document.getElementById('props-empty');
   const cont  = document.getElementById('props-content');
+  const econt = document.getElementById('edge-props-content');
+  if (econt) { econt.style.display = 'none'; econt.innerHTML = ''; }
   if (!id || !S.nodes[id]) {
     panel.classList.add('collapsed');
     empty.style.display = ''; cont.classList.remove('show'); updateEmptyPanel(); return;
@@ -1006,6 +1113,32 @@ function showProps(id) {
   }
 
   refreshSimStats(id);
+}
+
+function _costBreakdownHtml() {
+  const costNodes = Object.values(S.nodes).filter(n => !n.props?._isReplica && Number(n.props?.cost) > 0);
+  if (!costNodes.length) return '';
+  const total = costNodes.reduce((s,n) => s + Number(n.props.cost), 0);
+  const byCategory = {};
+  costNodes.forEach(n => {
+    const def = COMPONENT_DEFS.find(d => d.id === n.defId);
+    const cat = def?.category || 'other';
+    byCategory[cat] = (byCategory[cat] || 0) + Number(n.props.cost);
+  });
+  const catRows = Object.entries(byCategory).sort(([,a],[,b])=>b-a).map(([cat,c])=>
+    `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:10px">
+      <span style="color:var(--muted);text-transform:capitalize">${esc(cat)}</span>
+      <span style="color:var(--text2);font-weight:600">$${c.toLocaleString()}</span>
+    </div>`).join('');
+  return `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="font-size:9.5px;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">Monthly Cost</div>
+      ${catRows}
+      <div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:11px;font-weight:700">
+        <span style="color:var(--muted)">Total</span>
+        <span style="color:#34d058">$${total.toLocaleString()}/mo</span>
+      </div>
+    </div>`;
 }
 
 function updateEmptyPanel() {
@@ -1044,9 +1177,93 @@ function updateEmptyPanel() {
       <div class="metric"><strong>${edgeCount}</strong><span>Edges</span></div>
       <div class="metric"><strong>${esc(compactNum(totalRps))}</strong><span>Events/s</span></div>
       <div class="metric" style="${critical > 0 ? 'border-color:rgba(248,81,73,0.4);background:rgba(248,81,73,0.1)' : ''}"><strong style="color:${critical > 0 ? '#f85149' : warning > 0 ? '#f5b731' : 'var(--text)'}">${critical || warning || 0}</strong><span>${critical > 0 ? 'Critical' : warning > 0 ? 'Warning' : 'Issues'}</span></div>
-    </div>`;
+    </div>
+    ${_costBreakdownHtml()}`;
   requestAnimationFrame(positionSugTray);
 }
+
+// ── Hardware → Capacity / Cost auto-compute ───────────────────────────────────
+function _parseVCores(cpuStr) {
+  if (!cpuStr) return 1;
+  const m = String(cpuStr).match(/[\d.]+/);
+  const v = m ? parseFloat(m[0]) : 1;
+  // "1000m" = 1 core, "250m" = 0.25 core
+  return String(cpuStr).endsWith('m') ? v / 1000 : v;
+}
+function _parseGB(memStr) {
+  if (!memStr) return 1;
+  const m = String(memStr).match(/[\d.]+/);
+  const v = m ? parseFloat(m[0]) : 1;
+  const u = String(memStr).toLowerCase();
+  if (u.includes('mi') || u.includes('mb')) return v / 1024;
+  if (u.includes('gi') || u.includes('gb')) return v;
+  if (u.includes('tb')) return v * 1024;
+  return v;
+}
+
+const RPS_PER_CORE  = { 'Node.js':800, 'Go':2000, 'Java':600, 'Python':200, 'Ruby':150, 'PHP':300, '.NET':700 };
+const TPS_PER_CORE  = { 'PostgreSQL':500, 'MySQL':400, 'MongoDB':800, 'Redis':50000, 'DynamoDB':3000, 'CockroachDB':600, 'Cassandra':1200, 'SQLite':200 };
+const DB_COST_CORE  = { 'PostgreSQL':90, 'MySQL':80, 'MongoDB':100, 'Redis':0, 'DynamoDB':0, 'CockroachDB':110, 'Cassandra':95, 'SQLite':0 };
+
+function autoCapacityFromHW(defId, props) {
+  if (['appserver','vm'].includes(defId)) {
+    const cores = _parseVCores(props.cpu);
+    const rps   = RPS_PER_CORE[props.runtime] || 500;
+    return Math.round(cores * rps);
+  }
+  if (defId === 'pod') {
+    const cores = _parseVCores(props.cpuRequest);
+    const rps   = RPS_PER_CORE[props.runtime] || 500;
+    return Math.max(1, Math.round(cores * rps));
+  }
+  if (defId === 'serverless') {
+    const conc      = props.concurrency || 1000;
+    const latMs     = props.avgLatencyMs || 100;
+    return Math.round(conc * (1000 / Math.max(1, latMs)));
+  }
+  if (defId === 'database') {
+    const cores = _parseVCores(props.cpu);
+    return Math.round(cores * (TPS_PER_CORE[props.type] || 500));
+  }
+  if (defId === 'cache') {
+    const ramGB = _parseGB(props.memory);
+    return Math.round(ramGB * 50000);
+  }
+  return null;
+}
+
+function autoCostFromHW(defId, props) {
+  if (['appserver','vm'].includes(defId)) {
+    const cores = _parseVCores(props.cpu);
+    const ramGB  = _parseGB(props.memory);
+    return Math.round(cores * 35 + ramGB * 4);
+  }
+  if (defId === 'pod') {
+    const cores = _parseVCores(props.cpuRequest);
+    const ramGB  = _parseGB(props.memoryRequest);
+    return Math.max(1, Math.round(cores * 8 + ramGB * 1.5));
+  }
+  if (defId === 'serverless') {
+    const exec = props.executions || 1000000;
+    return Math.round(exec * 0.0000002 * 100) / 100;
+  }
+  if (defId === 'database') {
+    const cores    = _parseVCores(props.cpu);
+    const storageGB = _parseGB(props.storage);
+    const cpm      = DB_COST_CORE[props.type] || 90;
+    return Math.round(cores * cpm + storageGB * 0.115);
+  }
+  if (defId === 'cache') {
+    const ramGB = _parseGB(props.memory);
+    return Math.round(ramGB * 16.2);
+  }
+  if (defId === 'loadbalancer') return 22;
+  if (defId === 'apigateway')   return 35;
+  if (defId === 'cdn')          return 18;
+  return null;
+}
+
+const HW_KEYS = new Set(['cpu','memory','runtime','cpuRequest','memoryRequest','type','storage','concurrency','avgLatencyMs','executions']);
 
 function buildFields(containerId, props, n, nodeId) {
   const el = document.getElementById(containerId);
@@ -1080,11 +1297,29 @@ function buildFields(containerId, props, n, nodeId) {
       if (p.min !== undefined) inp.min = p.min; if (p.max !== undefined) inp.max = p.max;
       if (p.step) inp.step = p.step;
     }
+    inp.dataset.key = p.key;
     inp.oninput = () => {
       const v = p.type === 'number' ? (parseFloat(inp.value)||0) : inp.value;
       n.props[p.key] = v;
       if (p.key === 'cost') updateCost();
       if (p.key === 'readReplicas') syncDbReplicas(nodeId, Math.round(v));
+      // Auto-compute capacity + cost from hardware specs
+      const def2 = COMPONENT_DEFS.find(d => d.id === n.defId);
+      if (def2 && HW_KEYS.has(p.key)) {
+        const newCap = autoCapacityFromHW(def2.id, n.props);
+        if (newCap !== null) {
+          n.props.capacity = newCap;
+          const capEl = el.querySelector('[data-key="capacity"]');
+          if (capEl) capEl.value = newCap;
+        }
+        const newCost = autoCostFromHW(def2.id, n.props);
+        if (newCost !== null) {
+          n.props.cost = newCost;
+          const costEl = el.querySelector('[data-key="cost"]');
+          if (costEl) costEl.value = newCost;
+          updateCost();
+        }
+      }
       renderNode(nodeId);
       if (S.simOn) runTick();
       if (p.key === 'userCount' || p.key === 'requestsPerUser' || p.key === 'eventRate') {
@@ -1211,6 +1446,7 @@ async function runTickRemote() {
     S.eFlow   = eFlow;
     renderAll();
     if (S.sel) refreshSimStats(S.sel);
+    if (S.selEdge) { const ed = S.edges.find(e=>e.id===S.selEdge); if (ed) _renderEdgePanel(ed); }
     buildSuggestions();
     updateEmptyPanel();
   } catch (err) {
@@ -1275,10 +1511,13 @@ function runTickLocal() {
       else if (n.defId==='deviceapp') fwd = inn*(n.props.eventsPerInput||1);
       const down = S.edges.filter(e => e.src===cur && !e.dashed && S.nodes[e.tgt]);
       if (down.length && fwd > 0) {
-        const share = fwd / down.length;
+        const hasW = down.some(e => e.trafficPct != null);
+        const totalW = hasW ? (down.reduce((s,e)=>s+(e.trafficPct||0),0)||down.length) : down.length;
         down.forEach(edge => {
-          eFlowNew[edge.id] = share;
-          incoming[edge.tgt] = (incoming[edge.tgt] || 0) + share;
+          const w = hasW ? (edge.trafficPct||0)/totalW : 1/down.length;
+          const flow = fwd * w;
+          eFlowNew[edge.id] = flow;
+          incoming[edge.tgt] = (incoming[edge.tgt] || 0) + flow;
         });
       }
     });
@@ -1345,6 +1584,7 @@ function runTickLocal() {
 
   renderAll();
   if (S.sel) refreshSimStats(S.sel);
+  if (S.selEdge) { const ed = S.edges.find(e=>e.id===S.selEdge); if (ed) _renderEdgePanel(ed); }
   buildSuggestions();
   updateEmptyPanel();
 }
