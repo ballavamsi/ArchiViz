@@ -109,6 +109,8 @@ test('index.html contains required app hooks', () => {
   assert.match(appSource, /foreignObject/, 'diagram image export should use live HTML node tiles');
   assert.match(appSource, /function exportPdfReport\(\)/, 'app should support PDF report export');
   assert.match(appSource, /Traffic & Cost Assumptions/, 'PDF export should include traffic and cost assumptions');
+  assert.match(appSource, /Executive Summary/, 'PDF export should include an executive summary');
+  assert.match(appSource, /Recommended actions/, 'PDF export should include recommended actions');
   assert.match(appSource, /Config \/ Cost Drivers/, 'PDF component table should expose cost-driving configuration instead of canvas size');
   assert.doesNotMatch(appSource, /<th style="min-width:70px">Size<\/th>/, 'PDF component table should not export canvas pixel size');
   assert.match(appSource, /function outgoingSplitDetails\(/, 'traffic split logic should expose explicit/remainder split calculation');

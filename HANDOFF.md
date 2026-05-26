@@ -12,11 +12,13 @@
 
 ## Latest Update
 
-**Latest local iteration:** PDF architecture audit detail
+**Latest local iteration:** PDF executive review polish
 
-PDF export was updated after the user reported that Component Performance showed irrelevant canvas box size and missed key technical/cost assumptions.
+PDF export was improved to read more like an architecture review pack instead of only a data export.
 
 Current PDF behavior:
+- Executive Summary now appears before the diagram, with system posture, traffic assumption, cost model, top risks, and recommended actions.
+- Top Cost Drivers shows the most expensive components before detailed tables.
 - Component Performance no longer includes node pixel size.
 - It now includes Config / Cost Drivers, Traffic Out, and Read / Write columns.
 - A new Traffic & Cost Assumptions section explains input/output rates, cache hit/miss behavior, read replicas, event rates, and effective edge split logic.
@@ -24,10 +26,10 @@ Current PDF behavior:
 - Traffic split semantics were corrected: explicit edge percentages reserve that share, blank edges split the remaining traffic, and fully blank downstream edges split evenly.
 
 Files changed:
-- `src/app.js` — PDF data model, traffic assumptions, component configuration export, and split calculation
+- `src/app.js` — PDF executive summary, recommendations, top cost drivers, traffic assumptions, component configuration export, and split calculation
 - `scripts/browser-smoke.mjs` — checks new PDF sections/columns
 - `test/smoke.test.mjs` — PDF export regression checks
-- `.claude/TASKS.md` — recorded as Iteration 6.4
+- `.claude/TASKS.md` — recorded as Iteration 6.5
 
 Verification already completed:
 ```bash

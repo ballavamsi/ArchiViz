@@ -235,6 +235,8 @@ try {
   const pdfPage = await pdfPromise;
   await pdfPage.waitForLoadState('domcontentloaded');
   await pdfPage.locator('text=Architecture Diagram').waitFor({ state: 'visible', timeout: 5000 });
+  await pdfPage.locator('text=Executive Summary').waitFor({ state: 'visible', timeout: 5000 });
+  await pdfPage.locator('text=Recommended actions').waitFor({ state: 'visible', timeout: 5000 });
   await pdfPage.locator('text=Component Performance').waitFor({ state: 'visible', timeout: 5000 });
   await pdfPage.locator('text=Traffic & Cost Assumptions').waitFor({ state: 'visible', timeout: 5000 });
   await pdfPage.locator('text=Config / Cost Drivers').waitFor({ state: 'visible', timeout: 5000 });

@@ -129,6 +129,13 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 - Component Configuration now exports all configured component properties from each tool definition, including CPU, memory, DB type, replicas, storage, latency, capacity, and cost fields.
 - Fixed traffic split semantics: explicit percentages reserve that share, blank downstream edges split the remaining traffic; if no percentages are set, traffic splits evenly.
 
+### Iteration 6.5 — PDF Executive Review Polish
+**Status:** ✅ Done
+- Added an Executive Summary section with system posture, traffic assumption, cost model, top risks, and recommended actions.
+- Added Top Cost Drivers so reviewers can see the most expensive components before reading detailed tables.
+- Improved print behavior with break-inside protection for cards/tables and better report section ordering.
+- Extended browser smoke coverage to verify the new PDF summary/action sections.
+
 ---
 
 ## Pending Tasks

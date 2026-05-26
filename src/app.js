@@ -3362,6 +3362,22 @@ function exportPdfReport() {
     </div>`;
   }).join('');
 
+  const topCostNodes = realNodes
+    .map(n => ({ n, def: COMPONENT_DEFS.find(d => d.id === n.defId), cost: Number(n.props?.cost || 0) }))
+    .filter(x => x.cost > 0)
+    .sort((a,b) => b.cost - a.cost)
+    .slice(0, 5);
+
+  const topCostHtml = topCostNodes.length ? topCostNodes.map(({ n, def, cost }, idx) => `
+    <div class="rank-row">
+      <div class="rank-num">${idx + 1}</div>
+      <div class="rank-main">
+        <div class="rank-title">${esc(n.props.label || def?.name || n.id)}</div>
+        <div class="rank-sub">${esc(def?.name || n.defId)}${n.props.region ? ` · ${esc(n.props.region)}` : ''}</div>
+      </div>
+      <div class="rank-val">$${cost.toLocaleString()}<span>/mo</span></div>
+    </div>`).join('') : `<div class="empty-note">No monthly cost values configured yet.</div>`;
+
   // ── component table rows ────────────────────────────────────────────────────
   const rows = realNodes.map(n => {
     const def  = COMPONENT_DEFS.find(d => d.id === n.defId);
@@ -3449,6 +3465,19 @@ function exportPdfReport() {
   // ── summary KPI cards ─────────────────────────────────────────────────────
   const avgSLA  = simActive && loads.length ? (loads.reduce((s,l)=>s+(parseFloat(l.sla)||99.95),0)/loads.length).toFixed(2) : null;
   const avgLat  = simActive && loads.length ? Math.round(loads.reduce((s,l)=>s+(l.latencyMs||0),0)/loads.length) : null;
+  const totalTraffic = computeTotalRPS();
+  const systemPosture = critical > 0 ? 'Critical pressure' : warning > 0 ? 'Watch list' : simActive ? 'Healthy under current assumptions' : 'Simulation not run';
+  const systemPostureClass = critical > 0 ? 'crit' : warning > 0 ? 'warn' : 'ok';
+  const topRiskItems = bottlenecks.length
+    ? bottlenecks.map(({ n, sim, def }) => `<li><strong>${esc(n.props.label || def?.name || n.id)}</strong> is at ${Math.round(sim.loadPct)}% load with ${esc(formatFlow(sim.incoming))} incoming.</li>`).join('')
+    : `<li>No current component is above 60% load under the exported assumptions.</li>`;
+  const recommendedActions = [];
+  if (!simActive) recommendedActions.push('Run simulation before exporting when you need capacity, latency, SLA, and bottleneck evidence.');
+  if (critical > 0) recommendedActions.push('Address critical components first by increasing capacity, adding replicas, or routing through cache/load-balancing layers.');
+  if (warning > 0 && critical === 0) recommendedActions.push('Review high-load components before peak traffic; they are close enough to capacity to deserve a scaling plan.');
+  if (topCostNodes.length) recommendedActions.push(`Review the largest cost driver: ${topCostNodes[0].n.props.label || topCostNodes[0].def?.name || topCostNodes[0].n.id} at $${topCostNodes[0].cost.toLocaleString()}/mo.`);
+  if (!recommendedActions.length) recommendedActions.push('Add traffic, capacity, and cost properties to more components to make the report more decision-ready.');
+  const actionItemsHtml = recommendedActions.map(x => `<li>${esc(x)}</li>`).join('');
   const kpiCards = [
     { label:'Components', value: realNodes.length,                        color:'#4f9cf9', sub: `${payload.edges.length} connections` },
     { label:'Monthly Cost', value: totalCost > 0 ? `$${totalCost.toLocaleString()}` : '—', color:'#34d058', sub: S.reservedPricing ? 'Reserved −35%' : 'On-demand pricing' },
@@ -3520,6 +3549,20 @@ function exportPdfReport() {
     .cost-box{background:#f8fafc;border:1px solid #e8ecf2;border-radius:10px;padding:14px 16px}
     .cost-total{font-size:22px;font-weight:900;color:#1a2030;letter-spacing:-.02em;margin-bottom:2px}
     .cost-sub{font-size:10px;color:#8896a5;margin-bottom:12px}
+    .exec-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:14px}
+    .exec-card{background:#fff;border:1px solid #e8ecf2;border-radius:14px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,0.04);min-height:128px}
+    .exec-kicker{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8896a5;margin-bottom:7px}
+    .posture{font-size:19px;font-weight:900;letter-spacing:-.02em;margin-bottom:6px}
+    .posture.ok{color:#15803d}.posture.warn{color:#a16207}.posture.crit{color:#dc2626}
+    .exec-meta{font-size:11px;color:#64748b;line-height:1.6}
+    .exec-list{margin-left:16px;color:#475569;font-size:11px;line-height:1.55}
+    .exec-list li{margin-bottom:5px}
+    .rank-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid #edf2f7}
+    .rank-row:first-child{border-top:0;padding-top:0}
+    .rank-num{width:20px;height:20px;border-radius:6px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0}
+    .rank-main{flex:1;min-width:0}.rank-title{font-size:11px;font-weight:800;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rank-sub{font-size:9.5px;color:#8896a5}
+    .rank-val{font-size:12px;font-weight:900;color:#15803d;white-space:nowrap}.rank-val span{font-size:9px;color:#8896a5;font-weight:600}
+    .empty-note{font-size:11px;color:#8896a5;background:#f8fafc;border:1px dashed #d8e2ee;border-radius:10px;padding:12px}
 
     /* ── Table ── */
     table{width:100%;border-collapse:collapse;font-size:11.5px}
@@ -3564,7 +3607,9 @@ function exportPdfReport() {
       .diagram-wrap svg{max-height:360px}
       .section{padding:14px 22px}
       tr{break-inside:avoid}
+      .exec-card,.setting-card,.health-box,.cost-box{break-inside:avoid}
       .two-col{gap:12px}
+      .exec-grid{grid-template-columns:1fr 1fr 1fr;gap:10px}
       .cover{page-break-after:avoid}
     }
   `;
@@ -3577,6 +3622,7 @@ function exportPdfReport() {
     .kpi-card .sub{color:#8b949e}
     .sec-title{color:#8b949e}.sec-title::after{background:#21262d}
     .health-box,.cost-box{background:#161b22;border-color:#30363d}
+    .exec-card{background:#161b22;border-color:#30363d;box-shadow:none}.exec-meta,.exec-list{color:#c9d1d9}.rank-row{border-color:#21262d}.rank-title{color:#f8fafc}.rank-num{background:#1f6feb22;color:#58a6ff}.empty-note{background:#0b1118;border-color:#30363d;color:#8b949e}
     .health-row{color:#8b949e}.cost-total{color:#e6edf3}.cost-sub{color:#8b949e}
     .diagram-wrap{border-color:#30363d;background:#0d1117}
     table thead tr{background:#161b22}
@@ -3632,8 +3678,32 @@ function exportPdfReport() {
     <!-- ▸ KPI BAR ────────────────────────────────────────── -->
     <div class="kpi-bar">${kpiCards}</div>
 
-    <!-- ▸ DIAGRAM ──────────────────────────────────────────── -->
+    <!-- ▸ EXECUTIVE SUMMARY ──────────────────────────────── -->
     <div class="section">
+      <div class="sec-title"><span class="sec-icon" style="background:#eef2ff">✦</span>Executive Summary</div>
+      <div class="exec-grid">
+        <div class="exec-card">
+          <div class="exec-kicker">System posture</div>
+          <div class="posture ${systemPostureClass}">${esc(systemPosture)}</div>
+          <div class="exec-meta">
+            Traffic assumption: <strong>${esc(formatFlow(totalTraffic))}</strong><br>
+            Components: <strong>${realNodes.length}</strong> · Connections: <strong>${payload.edges.length}</strong><br>
+            Cost model: <strong>${totalCost > 0 ? '$' + totalCost.toLocaleString() + '/mo' : 'not fully configured'}</strong>
+          </div>
+        </div>
+        <div class="exec-card">
+          <div class="exec-kicker">Top risks</div>
+          <ul class="exec-list">${topRiskItems}</ul>
+        </div>
+        <div class="exec-card">
+          <div class="exec-kicker">Recommended actions</div>
+          <ul class="exec-list">${actionItemsHtml}</ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ▸ DIAGRAM ──────────────────────────────────────────── -->
+    <div class="section" style="padding-top:0">
       <div class="sec-title"><span class="sec-icon" style="background:#e8f0fe">🗺</span>Architecture Diagram</div>
       <div class="diagram-wrap">${svg}</div>
     </div>
@@ -3665,6 +3735,12 @@ function exportPdfReport() {
           </div>
         </div>` : '<div></div>'}
       </div>
+    </div>` : ''}
+
+    ${topCostNodes.length ? `
+    <div class="section" style="padding-top:0">
+      <div class="sec-title"><span class="sec-icon" style="background:#f0fdf4">💵</span>Top Cost Drivers</div>
+      <div class="exec-card" style="min-height:0">${topCostHtml}</div>
     </div>` : ''}
 
     <!-- ▸ BOTTLENECK ANALYSIS ────────────────────────────── -->
