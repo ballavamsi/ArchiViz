@@ -161,6 +161,8 @@ cp index.html dist/index.html
 
 **Latest checkpoint:** 2026-05-26 — added draw.io/Lucid-style canvas grid plus persisted Dark/Light theme toggle, production URL confirmed as Render (`https://archi-flow.onrender.com`), `npm test` and `npm run build` passed.
 
+**Browser testing:** Playwright Chromium is available locally. Run `npm run test:browser` for the UI smoke test that opens the app, verifies the 4-layer canvas grid, System→Light theme behavior, share popup theming, login-card theme tokens, and PDF report popup export.
+
 ### Shipped Iterations
 
 | Iteration | Feature | Status |

@@ -64,8 +64,8 @@ let S = {
   theme: (() => {
     try {
       const saved = localStorage.getItem('archviz.theme');
-      return saved === 'light' ? 'light' : 'dark';
-    } catch { return 'dark'; }
+      return ['system', 'light', 'dark'].includes(saved) ? saved : 'system';
+    } catch { return 'system'; }
   })(),
   sidebarOpen: (() => { try { return localStorage.getItem('archviz.sidebar') !== 'closed'; } catch { return true; } })(),
   gridSize: 40,
@@ -129,20 +129,38 @@ function updateCanvasGrid() {
   cWrap.style.backgroundPosition = `${pos}, ${pos}, ${pos}, ${pos}`;
 }
 
+function systemTheme() {
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+  catch { return 'dark'; }
+}
+
+function effectiveTheme() {
+  return S.theme === 'system' ? systemTheme() : S.theme;
+}
+
 function updateThemeButton() {
   const btn = document.getElementById('btn-theme');
   if (!btn) return;
-  const isLight = S.theme === 'light';
-  btn.classList.toggle('active', isLight);
-  btn.title = isLight ? 'Light theme active — switch to dark' : 'Dark theme active — switch to light';
-  btn.innerHTML = (isLight
-    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A8.5 8.5 0 1 1 12 3z"/></svg>Theme: Light'
-    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>Theme: Dark');
+  const mode = S.theme;
+  const eff = effectiveTheme();
+  btn.classList.toggle('active', mode !== 'system');
+  btn.title = mode === 'system'
+    ? `Using system theme (${eff}) — click for light`
+    : mode === 'light'
+      ? 'Light theme active — click for dark'
+      : 'Dark theme active — click for system';
+  const icon = mode === 'system'
+    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>'
+    : mode === 'light'
+      ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>'
+      : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A8.5 8.5 0 1 1 12 3z"/></svg>';
+  btn.innerHTML = `${icon}Theme: ${mode[0].toUpperCase()}${mode.slice(1)}`;
 }
 
 function setTheme(theme) {
-  S.theme = theme === 'light' ? 'light' : 'dark';
-  document.body.dataset.theme = S.theme;
+  S.theme = ['system', 'light', 'dark'].includes(theme) ? theme : 'system';
+  document.body.dataset.theme = effectiveTheme();
+  document.body.dataset.themeMode = S.theme;
   try { localStorage.setItem('archviz.theme', S.theme); } catch {}
   updateThemeButton();
   updateCanvasGrid();
@@ -3198,11 +3216,11 @@ async function shareArchitecture() {
   const url = updateShareHash();
   // Show share options modal
   const overlay = document.createElement('div');
-  overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center`;
+  overlay.className = 'share-overlay';
   overlay.innerHTML = `
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;min-width:300px;max-width:380px;display:flex;flex-direction:column;gap:12px">
-      <div style="font-size:15px;font-weight:700;color:#e6edf3">Share Architecture</div>
-      <div style="font-size:12px;color:#8b949e;line-height:1.6">The architecture is <b style="color:#e6edf3">encoded in the URL</b> — no server, no account needed.</div>
+    <div class="share-box">
+      <div class="share-title">Share Architecture</div>
+      <div class="share-copy">The architecture is <b>encoded in the URL</b> — no server, no account needed.</div>
       ${sbReady() ? `
       <div class="shortlink-box" id="sh-short-box">
         <div class="sl-label">✦ Permanent short link</div>
@@ -3213,22 +3231,22 @@ async function shareArchitecture() {
         </div>
         <div style="font-size:10px;color:#6b7f96">Short link never expires · stored on Supabase free tier</div>
       </div>` : `
-      <div style="padding:8px 10px;background:rgba(245,183,49,0.06);border:1px solid rgba(245,183,49,0.15);border-radius:8px;font-size:11px;color:#8b949e;line-height:1.55">
+      <div class="share-warn">
         <span style="color:#f5b731">⚠ Short links not configured.</span> The link below encodes the full diagram — may be long.
       </div>`}
-      <button id="sh-copy" style="display:flex;align-items:center;gap:8px;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:10px 14px;color:#e6edf3;cursor:pointer;font-size:13px;text-align:left">
+      <button id="sh-copy" class="share-action">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Copy full URL
       </button>
-      <button id="sh-linkedin" style="display:flex;align-items:center;gap:8px;background:#0a66c2;border:1px solid #0a66c2;border-radius:8px;padding:10px 14px;color:#fff;cursor:pointer;font-size:13px;text-align:left">
+      <button id="sh-linkedin" class="share-action linkedin">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
         Share on LinkedIn
       </button>
-      <button id="sh-native" style="display:${navigator.share ? 'flex' : 'none'};align-items:center;gap:8px;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:10px 14px;color:#e6edf3;cursor:pointer;font-size:13px;text-align:left">
+      <button id="sh-native" class="share-action" style="display:${navigator.share ? 'flex' : 'none'}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         Share via…
       </button>
-      <button id="sh-close" style="align-self:flex-end;background:transparent;border:none;color:#8b949e;cursor:pointer;font-size:12px;padding:4px 8px">Close</button>
+      <button id="sh-close" class="share-close">Close</button>
     </div>`;
   document.body.appendChild(overlay);
 
@@ -3353,7 +3371,10 @@ if (_btnMesh) _btnMesh.onclick = () => {
 };
 document.getElementById('btn-snap').onclick = () => setSnapGrid(!S.snapGrid);
 document.getElementById('btn-sidebar-toggle').onclick = () => setSidebarOpen(!S.sidebarOpen);
-document.getElementById('btn-theme').onclick = () => setTheme(S.theme === 'dark' ? 'light' : 'dark');
+document.getElementById('btn-theme').onclick = () => {
+  const next = S.theme === 'system' ? 'light' : S.theme === 'light' ? 'dark' : 'system';
+  setTheme(next);
+};
 
 // More menu toggle
 const moreMenu = document.getElementById('more-menu');
@@ -3392,6 +3413,11 @@ speedSel.onchange = () => {
   updateSuggestionsToggle();
   updateSnapButton();
   setTheme(S.theme);
+  try {
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+      if (S.theme === 'system') setTheme('system');
+    });
+  } catch {}
   updateSidebarToggle();
   updateZoomLabel();
   updateCanvasGrid();

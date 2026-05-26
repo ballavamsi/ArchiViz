@@ -1665,6 +1665,107 @@ body { background: var(--bg); }
 .port { border-color: var(--canvas-bg); }
 .flow-bg { fill: color-mix(in srgb, var(--surface) 90%, transparent); }
 
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+}
+.share-box {
+  min-width: 300px;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  box-shadow: var(--shadow-lg);
+}
+.share-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.share-copy { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.share-copy b { color: var(--text); }
+.share-warn {
+  padding: 8px 10px;
+  background: rgba(245,183,49,0.08);
+  border: 1px solid rgba(245,183,49,0.18);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.share-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+.share-action:hover { background: var(--surface3); border-color: var(--accent); }
+.share-action.linkedin { background: #0a66c2; border-color: #0a66c2; color: #fff; }
+.share-close {
+  align-self: flex-end;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.share-close:hover { color: var(--text); }
+
+.diagrams-box,
+.collab-box,
+.welcome-card,
+.auth-gate-card {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border2);
+  box-shadow: var(--shadow-lg);
+}
+.diag-row,
+.collab-peer-row,
+.welcome-tip {
+  background: var(--control);
+  border-color: var(--border);
+  color: var(--text2);
+}
+#auth-gate {
+  background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 34%), var(--canvas-bg);
+}
+.auth-gate-title,
+.welcome-title,
+.user-menu-name { color: var(--text); }
+.auth-gate-sub,
+.welcome-body,
+.auth-gate-footer,
+.welcome-consent-text,
+.user-menu-email { color: var(--muted); }
+.auth-google-btn,
+#user-menu {
+  background: var(--surface);
+  border-color: var(--border2);
+  color: var(--text);
+}
+.auth-google-btn:hover,
+.user-menu-item:hover { background: var(--surface3); }
+#user-menu {
+  box-shadow: var(--shadow-lg);
+}
+.user-menu-item { color: var(--text2); }
+.user-menu-divider { border-top-color: var(--border); }
+
 body[data-theme="light"] #toolbar .logo span {
   background: linear-gradient(90deg,#172033,#2563eb);
   -webkit-background-clip: text;
@@ -1678,3 +1779,9 @@ body[data-theme="light"] .empty-headline {
 }
 body[data-theme="light"] .edge-idle { stroke: rgba(100,116,139,0.42); }
 body[data-theme="light"] .flow-txt { fill: #334155; }
+body[data-theme="light"] .share-overlay,
+body[data-theme="light"] #my-diagrams-modal,
+body[data-theme="light"] #collab-modal,
+body[data-theme="light"] #welcome-popup {
+  background: rgba(15,23,42,0.28);
+}

@@ -91,6 +91,7 @@ Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that 
 | Grid snapping toggle | ✅ |
 | Draw.io/Lucid-style canvas grid | ✅ |
 | Dark / Light theme toggle | ✅ |
+| Playwright browser smoke test (`npm run test:browser`) | ✅ |
 | Editable diagram title | ✅ |
 | Multi-select / rubber-band | ⏳ Next |
 | PNG export | ⏳ Next |
@@ -116,6 +117,7 @@ Make editing feel like a real diagramming tool.
 
 ### Test Gate
 - `npm test` still passes
+- `npm run test:browser` passes after UI/presentation changes
 - Manual: select 3 nodes → move together → undo → positions restore
 - Manual: Ctrl+D → duplicated nodes appear, connections preserved
 - Manual: PNG export downloads a readable image

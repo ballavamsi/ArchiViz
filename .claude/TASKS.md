@@ -107,6 +107,7 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 - Added persisted Dark/Light theme toggle in the More menu (`archviz.theme` in `localStorage`).
 - Updated node/card/panel theme tokens so light mode is readable instead of only changing the canvas.
 - Added smoke-test coverage for `#btn-theme` and `setTheme(theme)`.
+- Added `npm run test:browser` Playwright/Chromium smoke test for grid, system-default theme, share popup, login-card theme token, and PDF export popup behavior.
 
 ---
 
