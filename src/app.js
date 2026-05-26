@@ -138,23 +138,29 @@ function effectiveTheme() {
   return S.theme === 'system' ? systemTheme() : S.theme;
 }
 
+const _THEME_ICONS = {
+  system: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>',
+  light:  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
+  dark:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A8.5 8.5 0 1 1 12 3z"/></svg>',
+};
 function updateThemeButton() {
-  const btn = document.getElementById('btn-theme');
-  if (!btn) return;
   const mode = S.theme;
   const eff = effectiveTheme();
-  btn.classList.toggle('active', mode !== 'system');
-  btn.title = mode === 'system'
+  const titleStr = mode === 'system'
     ? `Using system theme (${eff}) — click for light`
-    : mode === 'light'
-      ? 'Light theme active — click for dark'
-      : 'Dark theme active — click for system';
-  const icon = mode === 'system'
-    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>'
-    : mode === 'light'
-      ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>'
-      : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A8.5 8.5 0 1 1 12 3z"/></svg>';
-  btn.innerHTML = `${icon}Theme: ${mode[0].toUpperCase()}${mode.slice(1)}`;
+    : mode === 'light' ? 'Light theme — click for dark' : 'Dark theme — click for system';
+  // Update both the ··· menu button and the inline toolbar button
+  ['btn-theme', 'btn-theme-toolbar'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.toggle('active', mode !== 'system');
+    btn.title = titleStr;
+    if (id === 'btn-theme') {
+      btn.innerHTML = `${_THEME_ICONS[mode]}Theme: ${mode[0].toUpperCase()}${mode.slice(1)}`;
+    } else {
+      btn.innerHTML = _THEME_ICONS[mode];
+    }
+  });
 }
 
 function setTheme(theme) {
@@ -596,7 +602,7 @@ function renderNode(id) {
       <div class="node-header">
         <div class="node-icon-wrap" style="background:${n.defId === 'textnote' ? noteAccent + '22' : accentColor + '1e'};box-shadow:inset 0 0 0 1px ${n.defId === 'textnote' ? noteAccent : accentColor}33,0 2px 10px ${n.defId === 'textnote' ? noteAccent : accentColor}18">${safeIcon}</div>
         <div class="node-titles">
-          <div class="node-label" title="Double-click to rename">${safeLabel}</div>
+          <div class="node-label" title="${safeLabel}">${safeLabel}</div>
           <div class="node-type" title="${toolTitle}">
             <span class="node-tool-dot" style="background:${n.defId === 'textnote' ? noteAccent : accentColor}"></span>
             <span class="node-tool-name" ${n.defId === 'textnote' ? `style="color:${noteAccent}"` : ''}>${toolName}</span>
@@ -634,8 +640,12 @@ function renderNode(id) {
       connPrev.style.display = '';
     };
 
+    p.onmouseenter = () => { if (G.conn && G.conn.srcId !== id) p.classList.add('port-snap'); };
+    p.onmouseleave = () => { p.classList.remove('port-snap'); };
+
     p.onmouseup = e => {
       e.stopPropagation();
+      p.classList.remove('port-snap');
       if (!G.conn) return;
 
       const dist = G.portDragStart
@@ -1036,6 +1046,15 @@ function renderEdges() {
     hit.style.pointerEvents = 'stroke';
     hit.style.cursor = 'pointer';
     hit.onclick = e => { e.stopPropagation(); selectEdge(edge.id); };
+    // Hover tooltip showing traffic info
+    hit.addEventListener('mouseenter', () => {
+      const flow = S.eFlow[edge.id] || 0;
+      const pctVal = edge.trafficPct != null ? edge.trafficPct : null;
+      let tip = `${S.nodes[edge.src]?.props?.label || edge.src} → ${S.nodes[edge.tgt]?.props?.label || edge.tgt}`;
+      if (S.simOn && flow > 0) tip += `\n${formatFlow(flow)}`;
+      if (pctVal != null) tip += `  ${pctVal}%`;
+      hit.setAttribute('title', tip);
+    });
     g.appendChild(hit);
 
     // Visual path
@@ -2600,6 +2619,7 @@ window.addEventListener('keydown', e => {
   }
   if (e.key==='?' || e.key==='/') { showShortcutsModal(); e.preventDefault(); return; }
   if (e.key==='g' || e.key==='G') { setSnapGrid(!S.snapGrid); e.preventDefault(); }
+  if (e.key==='f' || e.key==='F') { fitView(); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey) { undo(); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && (e.key==='y'||(e.key==='z'&&e.shiftKey))) { redo(); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='a') { fitView(); e.preventDefault(); }
@@ -2649,9 +2669,13 @@ function fitView() {
 }
 
 function updateZoomLabel() {
-  document.getElementById('sb-zoom').textContent = Math.round(S.zoom*100)+'%';
+  const zEl = document.getElementById('sb-zoom');
+  zEl.textContent = Math.round(S.zoom*100)+'%';
+  zEl.title = 'Click to fit all in view (F)';
+  zEl.style.cursor = 'pointer';
   updateCanvasGrid();
 }
+document.getElementById('sb-zoom').addEventListener('click', fitView);
 
 function updateStats() {
   document.getElementById('sb-nodes').textContent = Object.keys(S.nodes).length;
@@ -2659,6 +2683,15 @@ function updateStats() {
   updateEmptyPanel();
   renderMiniMap();
 }
+// Status bar: click nodes chip → select all; click edges chip → (no-op or future)
+document.getElementById('sb-nodes')?.closest('.sb-stat')?.addEventListener('click', () => {
+  const ids = Object.keys(S.nodes);
+  if (!ids.length) return;
+  ids.forEach(id => S.selSet.add(id));
+  S.sel = ids[ids.length - 1];
+  renderAll(); showProps();
+  pushToast(`${ids.length} node${ids.length!==1?'s':''} selected`, 'info');
+});
 function updateCost() {
   let t = 0;
   Object.values(S.nodes).forEach(n => {
@@ -3559,6 +3592,20 @@ document.getElementById('btn-undo').onclick   = undo;
 document.getElementById('btn-redo').onclick   = redo;
 document.getElementById('btn-layout').onclick = autoLayout;
 document.getElementById('btn-fit').onclick    = fitView;
+
+// Empty state CTA buttons
+document.getElementById('btn-empty-example')?.addEventListener('click', () => {
+  // Open the example dropdown and load the first example
+  const sel = document.getElementById('example-sel');
+  if (sel && sel.options.length > 1) {
+    sel.value = sel.options[1].value;
+    sel.dispatchEvent(new Event('change'));
+  }
+});
+document.getElementById('btn-empty-tour')?.addEventListener('click', () => {
+  localStorage.removeItem(TOUR_KEY);
+  setTimeout(startTour, 100);
+});
 document.getElementById('cc-fit').onclick     = fitView;
 document.getElementById('cc-zoomin').onclick  = () => { S.zoom=Math.min(2.5,S.zoom*1.2); renderAll(); updateZoomLabel(); };
 document.getElementById('cc-zoomout').onclick = () => { S.zoom=Math.max(0.25,S.zoom/1.2); renderAll(); updateZoomLabel(); };
@@ -3656,7 +3703,7 @@ function showShortcutsModal() {
   const isMac = navigator.platform.includes('Mac');
   const mod = isMac ? '⌘' : 'Ctrl';
   const shortcuts = [
-    { group: 'Canvas',    keys: [`${mod}+Z`, `${mod}+Shift+Z`, `${mod}+A`, `G`],            labels: ['Undo', 'Redo', 'Fit to screen', 'Toggle grid snap'] },
+    { group: 'Canvas',    keys: [`${mod}+Z`, `${mod}+Shift+Z`, `F`, `G`],                  labels: ['Undo', 'Redo', 'Fit all in view', 'Toggle grid snap'] },
     { group: 'Selection', keys: ['Click', 'Delete / ⌫', `${mod}+D`],                        labels: ['Select node or edge', 'Delete selected', 'Duplicate selected node'] },
     { group: 'Canvas Nav',keys: ['Scroll', 'Drag canvas'],                                   labels: ['Zoom in / out', 'Pan'] },
     { group: 'Nodes',     keys: ['Hover → port dots', 'Drag port → node', 'Right-click'],   labels: ['Show connection ports', 'Draw a connection', 'Context menu (duplicate, delete, replica)'] },
@@ -3737,10 +3784,10 @@ if (_btnMesh) _btnMesh.onclick = () => {
 };
 document.getElementById('btn-snap').onclick = () => setSnapGrid(!S.snapGrid);
 document.getElementById('btn-sidebar-toggle').onclick = () => setSidebarOpen(!S.sidebarOpen);
-document.getElementById('btn-theme').onclick = () => {
-  const next = S.theme === 'system' ? 'light' : S.theme === 'light' ? 'dark' : 'system';
-  setTheme(next);
-};
+const _cycleTheme = () => { setTheme(S.theme === 'system' ? 'light' : S.theme === 'light' ? 'dark' : 'system'); };
+document.getElementById('btn-theme').onclick = _cycleTheme;
+const _btnThemeToolbar = document.getElementById('btn-theme-toolbar');
+if (_btnThemeToolbar) _btnThemeToolbar.onclick = _cycleTheme;
 
 // More menu toggle
 const moreMenu = document.getElementById('more-menu');

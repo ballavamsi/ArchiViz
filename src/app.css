@@ -2629,3 +2629,100 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   transition: all 0.15s;
 }
 .multisel-desel-btn:hover { background: var(--surface3); color: var(--text); }
+
+/* ── Port snap highlight ─────────────────────────────────────────────────────── */
+.port.port-snap {
+  opacity: 1 !important;
+  transform: scale(1.8) !important;
+  background: #34d058 !important;
+  box-shadow: 0 0 0 3px rgba(52,208,88,0.4), 0 0 12px rgba(52,208,88,0.6) !important;
+  border-color: #34d058 !important;
+  z-index: 20;
+}
+
+/* ── Run Sim pulse animation ─────────────────────────────────────────────────── */
+@keyframes sim-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(52,208,88,0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(52,208,88,0); }
+  100% { box-shadow: 0 0 0 0 rgba(52,208,88,0); }
+}
+#btn-sim.running {
+  animation: sim-pulse 1.8s infinite;
+}
+
+/* ── Status bar chips interactive ────────────────────────────────────────────── */
+#statusbar .sb-stat {
+  cursor: default;
+  border-radius: 5px;
+  padding: 2px 5px;
+  transition: background 0.15s;
+}
+#sb-nodes, #sb-edges { cursor: default; }
+.sb-stat-clickable {
+  cursor: pointer !important;
+}
+.sb-stat-clickable:hover {
+  background: var(--surface2) !important;
+}
+#sb-zoom {
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 2px 6px;
+  transition: background 0.15s;
+  user-select: none;
+}
+#sb-zoom:hover { background: var(--surface2); }
+
+/* ── Sidebar palette scroll fade ─────────────────────────────────────────────── */
+#palette {
+  position: relative;
+}
+#pal-list {
+  overflow-y: auto;
+  max-height: calc(100vh - 260px);
+}
+#pal-list::after {
+  content: '';
+  display: block;
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: linear-gradient(to bottom, transparent, var(--sidebar-bg, var(--surface)));
+  pointer-events: none;
+  margin-top: -28px;
+}
+
+/* ── Empty state CTA buttons ─────────────────────────────────────────────────── */
+.empty-cta-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.empty-cta-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+}
+.empty-cta-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+.empty-cta-secondary {
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.empty-cta-secondary:hover { background: var(--surface3); color: var(--text); }
+
+/* ── Theme toolbar button ────────────────────────────────────────────────────── */
+#btn-theme-toolbar { font-size: 0; }
+
