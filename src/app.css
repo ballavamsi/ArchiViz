@@ -155,6 +155,26 @@ body {
 .pal-tip { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: var(--muted); font-size: 10.5px; }
 .pal-tip:last-child { margin-bottom: 0; }
 .pal-tip svg { flex-shrink: 0; }
+#pal-foot .pal-section-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 6px;
+  display: block;
+}
+.pal-legend { display: flex; flex-direction: column; gap: 3px; margin-bottom: 4px; }
+.pal-legend-row { display: flex; align-items: baseline; gap: 7px; }
+.pal-legend-key {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 32px;
+  flex-shrink: 0;
+}
+.pal-legend-val { font-size: 10.5px; color: var(--muted); line-height: 1.4; }
 
 /* ── CANVAS ── */
 #canvas-wrap {

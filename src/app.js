@@ -442,7 +442,7 @@ function compactNum(value, digits = 1) {
   return String(Math.round(n));
 }
 
-function formatFlow(value, unit = 'events/s') {
+function formatFlow(value, unit = 'e/s') {
   return `${compactNum(value)} ${unit}`;
 }
 
@@ -1073,7 +1073,7 @@ function renderEdges() {
       const lx = midX;
       const ly = midY - liftY;
       // At lower zoom use compact label (number only); at higher zoom show full label
-      const flowBase = flow > 0 ? (z < 0.75 ? formatFlow(flow).replace(/\s*events\/s/, '').replace(/\s*req\/s/, '') : formatFlow(flow)) : '';
+      const flowBase = flow > 0 ? formatFlow(flow) : '';
       const flowLabel = hasPct && z >= 0.75 ? (flowBase ? `${edge.trafficPct}% · ${flowBase}` : `${edge.trafficPct}%`) : flowBase || (hasPct ? `${edge.trafficPct}%` : '0');
       const charW = labelFs * 0.62;
       const tw = Math.max(labelFs * 3.2, flowLabel.length * charW) + labelFs * 1.4;
