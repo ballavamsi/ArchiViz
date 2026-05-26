@@ -4252,3 +4252,167 @@ document.getElementById('canvas-wrap').insertAdjacentHTML(
   'beforeend',
   '<div id="remote-cursors" style="position:absolute;inset:0;pointer-events:none;z-index:490;overflow:hidden"></div>'
 );
+
+// ── First-time user tour ──────────────────────────────────────────────────
+const TOUR_KEY = 'archviz.tour.done';
+
+const TOUR_STEPS = [
+  {
+    target: '#sidebar',
+    title: 'Component Palette',
+    body: 'Browse 39+ cloud components — servers, databases, CDNs, AI models and more. Drag any component onto the canvas to add it.',
+    position: 'right',
+    highlight: true,
+  },
+  {
+    target: '#canvas-wrap',
+    title: 'Your Canvas',
+    body: 'This is where your architecture lives. Drag components here, then connect their ports to draw traffic flows between services.',
+    position: 'center',
+    highlight: false,
+  },
+  {
+    target: '#btn-sim',
+    title: 'Run Simulation',
+    body: 'Hit Run Sim to start the live traffic simulation. Watch load, latency and error rates update in real-time as traffic flows through your design.',
+    position: 'bottom',
+    highlight: true,
+  },
+  {
+    target: '#props-panel',
+    title: 'Properties Panel',
+    body: 'Click any node to inspect it here. Edit capacity, traffic, region and more. When simulation is running you\'ll also see live latency, P95 and SLA stats.',
+    position: 'left',
+    highlight: true,
+  },
+  {
+    target: '#btn-more',
+    title: 'More Tools',
+    body: 'Export a professional PDF report, toggle dark/light theme, enable reserved pricing discounts, and share a live link — all in the ⋯ menu.',
+    position: 'bottom',
+    highlight: true,
+  },
+];
+
+function startTour() {
+  if (localStorage.getItem(TOUR_KEY) === '1') return;
+  let step = 0;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'tour-overlay';
+  document.body.appendChild(overlay);
+
+  function getTargetRect(selector) {
+    const el = document.querySelector(selector);
+    if (!el) return null;
+    return el.getBoundingClientRect();
+  }
+
+  function renderStep(idx) {
+    overlay.innerHTML = '';
+    const s = TOUR_STEPS[idx];
+    const rect = getTargetRect(s.target);
+
+    // Spotlight cutout
+    if (rect && s.highlight) {
+      const pad = 8;
+      const spot = document.createElement('div');
+      spot.className = 'tour-spotlight';
+      spot.style.cssText = `left:${rect.left - pad}px;top:${rect.top - pad}px;width:${rect.width + pad*2}px;height:${rect.height + pad*2}px`;
+      overlay.appendChild(spot);
+    }
+
+    // Card
+    const card = document.createElement('div');
+    card.className = 'tour-card';
+
+    // Progress dots
+    const dots = TOUR_STEPS.map((_, i) =>
+      `<span class="tour-dot${i === idx ? ' active' : ''}"></span>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="tour-header">
+        <div class="tour-step-label">Step ${idx + 1} of ${TOUR_STEPS.length}</div>
+        <button class="tour-skip-btn" id="tour-skip">Skip tour</button>
+      </div>
+      <div class="tour-title">${s.title}</div>
+      <div class="tour-body">${s.body}</div>
+      <div class="tour-footer">
+        <div class="tour-dots">${dots}</div>
+        <div class="tour-nav">
+          ${idx > 0 ? `<button class="tour-btn secondary" id="tour-back">Back</button>` : ''}
+          <button class="tour-btn primary" id="tour-next">
+            ${idx === TOUR_STEPS.length - 1 ? 'Get started!' : 'Next'}
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Position card
+    if (rect && s.position !== 'center') {
+      positionCard(card, rect, s.position);
+    } else {
+      card.classList.add('tour-center');
+    }
+
+    overlay.appendChild(card);
+
+    document.getElementById('tour-skip').onclick = endTour;
+    document.getElementById('tour-next').onclick = () => {
+      if (idx === TOUR_STEPS.length - 1) endTour();
+      else renderStep(idx + 1);
+    };
+    const backBtn = document.getElementById('tour-back');
+    if (backBtn) backBtn.onclick = () => renderStep(idx - 1);
+  }
+
+  function positionCard(card, rect, pos) {
+    // Temporarily append off-screen to measure
+    card.style.visibility = 'hidden';
+    card.style.position = 'fixed';
+    document.body.appendChild(card);
+    const cw = card.offsetWidth || 320;
+    const ch = card.offsetHeight || 180;
+    document.body.removeChild(card);
+    card.style.visibility = '';
+
+    const margin = 20;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let top, left;
+
+    if (pos === 'right') {
+      left = rect.right + margin;
+      top = rect.top + rect.height / 2 - ch / 2;
+    } else if (pos === 'left') {
+      left = rect.left - cw - margin;
+      top = rect.top + rect.height / 2 - ch / 2;
+    } else if (pos === 'bottom') {
+      left = rect.left + rect.width / 2 - cw / 2;
+      top = rect.bottom + margin;
+    } else {
+      left = rect.left + rect.width / 2 - cw / 2;
+      top = rect.top - ch - margin;
+    }
+
+    // Clamp to viewport
+    left = Math.max(margin, Math.min(left, vw - cw - margin));
+    top = Math.max(margin, Math.min(top, vh - ch - margin));
+
+    card.style.position = 'fixed';
+    card.style.left = left + 'px';
+    card.style.top = top + 'px';
+  }
+
+  function endTour() {
+    localStorage.setItem(TOUR_KEY, '1');
+    overlay.classList.add('tour-fade-out');
+    setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 350);
+  }
+
+  renderStep(0);
+}
+
+// Launch tour after a short delay so the app finishes rendering
+setTimeout(startTour, 1200);
