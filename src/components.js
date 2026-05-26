@@ -50,7 +50,15 @@ const ICONS = {
   mlmodel:        S(`<circle cx="12" cy="5" r="3"/><circle cx="4"  cy="19" r="3"/><circle cx="20" cy="19" r="3"/><line x1="12" y1="8"  x2="4.8"  y2="16.2"/><line x1="12" y1="8"  x2="19.2" y2="16.2"/><line x1="6.8" y1="18" x2="17.2" y2="18"/>`),
   vectordb:       S(`<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M9 12l2 2 4-4"/>`),
   alerting:       S(`<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="12" y1="2" x2="12" y2="5"/>`),
-  tracing:        S(`<circle cx="5"  cy="5"  r="2"/><circle cx="19" cy="5"  r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 5h10"/><path d="M6.5 7l-1.5 9.5"/><path d="M17.5 7l1.5 9.5"/><line x1="10.5" y1="17" x2="6" y2="7"/><line x1="13.5" y1="17" x2="18" y2="7"/>`)
+  tracing:        S(`<circle cx="5"  cy="5"  r="2"/><circle cx="19" cy="5"  r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 5h10"/><path d="M6.5 7l-1.5 9.5"/><path d="M17.5 7l1.5 9.5"/><line x1="10.5" y1="17" x2="6" y2="7"/><line x1="13.5" y1="17" x2="18" y2="7"/>`),
+
+  // ── Iteration 3 new components ──────────────────────────────────────────────
+  searchengine:   S(`<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>`),
+  emailsms:       S(`<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>`),
+  bgworker:       S(`<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3.5"/>`),
+  graphqlapi:     S(`<polygon points="12 2 19 6.5 19 17.5 12 22 5 17.5 5 6.5 12 2"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="5" y1="6.5" x2="9.5" y2="9.5"/><line x1="14.5" y1="14.5" x2="19" y2="17.5"/><line x1="19" y1="6.5" x2="14.5" y2="9.5"/><line x1="9.5" y1="14.5" x2="5" y2="17.5"/>`),
+  websocket:      S(`<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20" stroke-width="3"/>`),
+  ratelimiter:    S(`<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="15" y2="18"/><circle cx="19" cy="18" r="3"/><line x1="19" y1="15" x2="19" y2="12"/>`)
 };
 
 const CAT_ICONS = {
@@ -142,13 +150,16 @@ export const COMPONENT_DEFS = [
     category: "compute",
     color: "#3b82f6",
     description: "General-purpose compute. Handles incoming requests up to its capacity.",
-    defaults: { capacity: 2000, cpu: "2 vCPU", memory: "4 GB", os: "Linux", cost: 70, label: "VM", autoScale: false, scaleUpAt: 80, maxReplicas: 5 },
+    defaults: { capacity: 2000, cpu: "2 vCPU", memory: "4 GB", os: "Linux", latencyMs: 50, errorRate: 0, region: "us-east-1", cost: 70, label: "VM", autoScale: false, scaleUpAt: 80, maxReplicas: 5 },
     properties: [
       { key: "label", label: "Label", type: "text" },
       { key: "capacity", label: "Capacity (req/s)", type: "number", min: 1, max: 100000 },
       { key: "cpu", label: "CPU", type: "select", options: ["1 vCPU","2 vCPU","4 vCPU","8 vCPU","16 vCPU","32 vCPU"] },
       { key: "memory", label: "Memory", type: "select", options: ["512 MB","1 GB","2 GB","4 GB","8 GB","16 GB","32 GB","64 GB"] },
       { key: "os", label: "OS", type: "select", options: ["Linux","Windows","FreeBSD"] },
+      { key: "latencyMs", label: "Base Latency (ms)", type: "number", min: 1, max: 60000 },
+      { key: "errorRate", label: "Error Rate (%)", type: "number", min: 0, max: 100, step: 0.1 },
+      { key: "region", label: "Region", type: "select", options: ["us-east-1","us-west-2","eu-west-1","eu-central-1","ap-southeast-1","ap-northeast-1","global"] },
       { key: "cost", label: "Cost ($/mo)", type: "number", min: 0 }
     ],
     scaleProps: [
@@ -165,13 +176,16 @@ export const COMPONENT_DEFS = [
     category: "compute",
     color: "#06b6d4",
     description: "Kubernetes pod or Docker container. Lightweight compute unit.",
-    defaults: { capacity: 1000, image: "app:latest", cpuRequest: "250m", memoryRequest: "512Mi", cost: 18, label: "Pod", autoScale: false, scaleUpAt: 80, maxReplicas: 10 },
+    defaults: { capacity: 1000, image: "app:latest", cpuRequest: "250m", memoryRequest: "512Mi", latencyMs: 20, errorRate: 0, region: "us-east-1", cost: 18, label: "Pod", autoScale: false, scaleUpAt: 80, maxReplicas: 10 },
     properties: [
       { key: "label", label: "Label", type: "text" },
       { key: "capacity", label: "Capacity (req/s)", type: "number", min: 1, max: 10000 },
       { key: "image", label: "Container Image", type: "text" },
       { key: "cpuRequest", label: "CPU Request", type: "select", options: ["50m","100m","250m","500m","1000m","2000m"] },
       { key: "memoryRequest", label: "Memory Request", type: "select", options: ["64Mi","128Mi","256Mi","512Mi","1Gi","2Gi","4Gi"] },
+      { key: "latencyMs", label: "Base Latency (ms)", type: "number", min: 1, max: 60000 },
+      { key: "errorRate", label: "Error Rate (%)", type: "number", min: 0, max: 100, step: 0.1 },
+      { key: "region", label: "Region", type: "select", options: ["us-east-1","us-west-2","eu-west-1","eu-central-1","ap-southeast-1","ap-northeast-1","global"] },
       { key: "cost", label: "Cost ($/mo)", type: "number", min: 0 }
     ],
     scaleProps: [
@@ -188,7 +202,7 @@ export const COMPONENT_DEFS = [
     category: "compute",
     color: "#10b981",
     description: "Application server (Node.js, Java, Python, etc).",
-    defaults: { capacity: 5000, runtime: "Node.js", version: "20", workers: 4, port: 3000, cost: 34, label: "App Server", autoScale: false, scaleUpAt: 80, maxReplicas: 10 },
+    defaults: { capacity: 5000, runtime: "Node.js", version: "20", workers: 4, port: 3000, latencyMs: 50, errorRate: 0, region: "us-east-1", cost: 34, label: "App Server", autoScale: false, scaleUpAt: 80, maxReplicas: 10 },
     properties: [
       { key: "label", label: "Label", type: "text" },
       { key: "capacity", label: "Capacity (req/s)", type: "number", min: 1, max: 50000 },
@@ -196,6 +210,9 @@ export const COMPONENT_DEFS = [
       { key: "version", label: "Version", type: "text" },
       { key: "workers", label: "Worker Threads", type: "number", min: 1, max: 256 },
       { key: "port", label: "Port", type: "number", min: 1, max: 65535 },
+      { key: "latencyMs", label: "Base Latency (ms)", type: "number", min: 1, max: 60000 },
+      { key: "errorRate", label: "Error Rate (%)", type: "number", min: 0, max: 100, step: 0.1 },
+      { key: "region", label: "Region", type: "select", options: ["us-east-1","us-west-2","eu-west-1","eu-central-1","ap-southeast-1","ap-northeast-1","global"] },
       { key: "cost", label: "Cost ($/mo)", type: "number", min: 0 }
     ],
     scaleProps: [
@@ -230,7 +247,7 @@ export const COMPONENT_DEFS = [
     category: "storage",
     color: "#ef4444",
     description: "Relational or NoSQL data store. Add Read Replicas to scale reads. Cost based on RDS db.r6g.large (2 vCPU / 16 GB).",
-    defaults: { capacity: 5000, type: "PostgreSQL", cpu: "2 vCPU", storage: "100 GB", maxConnections: 200, replication: "None", readReplicas: 0, cost: 220, label: "Database" },
+    defaults: { capacity: 5000, type: "PostgreSQL", cpu: "2 vCPU", storage: "100 GB", maxConnections: 200, replication: "None", readReplicas: 0, latencyMs: 10, errorRate: 0, region: "us-east-1", cost: 220, label: "Database" },
     properties: [
       { key: "label", label: "Label", type: "text" },
       { key: "type", label: "Type", type: "select", options: ["PostgreSQL","MySQL","MongoDB","Redis","DynamoDB","Cassandra","SQLite","CockroachDB"] },
@@ -240,6 +257,9 @@ export const COMPONENT_DEFS = [
       { key: "maxConnections", label: "Max Connections", type: "number", min: 1, max: 10000 },
       { key: "replication", label: "Replication", type: "select", options: ["None","Read Replica","Multi-Region","Synchronous"] },
       { key: "readReplicas", label: "Read Replicas (count)", type: "number", min: 0, max: 10 },
+      { key: "latencyMs", label: "Avg Query Latency (ms)", type: "number", min: 1, max: 10000 },
+      { key: "errorRate", label: "Error Rate (%)", type: "number", min: 0, max: 100, step: 0.1 },
+      { key: "region", label: "Region", type: "select", options: ["us-east-1","us-west-2","eu-west-1","eu-central-1","ap-southeast-1","ap-northeast-1","global"] },
       { key: "cost", label: "Cost ($/mo)", type: "number", min: 0 }
     ],
     behaviors: ["accepts_traffic"]
@@ -251,7 +271,7 @@ export const COMPONENT_DEFS = [
     category: "storage",
     color: "#f97316",
     description: "In-memory cache. Serves hot data without hitting the database. Cost based on ElastiCache r6g.large (2 vCPU / 13 GB).",
-    defaults: { capacity: 25000, type: "Redis", memory: "13 GB", ttl: 300, hitRate: 80, cost: 108, label: "Cache" },
+    defaults: { capacity: 25000, type: "Redis", memory: "13 GB", ttl: 300, hitRate: 80, latencyMs: 1, errorRate: 0, cost: 108, label: "Cache" },
     properties: [
       { key: "label", label: "Label", type: "text" },
       { key: "capacity", label: "Capacity (req/s)", type: "number", min: 1, max: 500000 },
@@ -259,6 +279,8 @@ export const COMPONENT_DEFS = [
       { key: "memory", label: "Memory", type: "select", options: ["256 MB","512 MB","1 GB","2 GB","4 GB","8 GB","16 GB"] },
       { key: "ttl", label: "TTL (seconds)", type: "number", min: 0 },
       { key: "hitRate", label: "Cache Hit Rate (%)", type: "number", min: 0, max: 100 },
+      { key: "latencyMs", label: "Avg Latency (ms)", type: "number", min: 0.1, max: 1000, step: 0.1 },
+      { key: "errorRate", label: "Error Rate (%)", type: "number", min: 0, max: 100, step: 0.1 },
       { key: "cost", label: "Cost ($/mo)", type: "number", min: 0 }
     ],
     behaviors: ["accepts_traffic"]
@@ -961,6 +983,132 @@ export const COMPONENT_DEFS = [
       { key: "cost",          label: "Cost ($/mo)",     type: "number", min: 0 }
     ],
     behaviors: ["accepts_traffic", "observability_sink"]
+  },
+
+  // ── Iteration 3: New integration / compute components ─────────────────────
+  {
+    id: "searchengine",
+    name: "Search Engine",
+    icon: ICONS.searchengine,
+    category: "storage",
+    color: "#f59e0b",
+    description: "Full-text and vector search. Elasticsearch, OpenSearch, Typesense, Meilisearch, Solr.",
+    defaults: { capacity: 5000, provider: "Elasticsearch", indices: 10, shards: 3, replicas: 1, latencyMs: 20, errorRate: 0, cost: 150, label: "Search Engine" },
+    properties: [
+      { key: "label",     label: "Label",         type: "text" },
+      { key: "capacity",  label: "Queries/s",     type: "number", min: 1, max: 500000 },
+      { key: "provider",  label: "Provider",      type: "select", options: ["Elasticsearch","OpenSearch","Typesense","Meilisearch","Solr","Algolia"] },
+      { key: "indices",   label: "Indices",       type: "number", min: 1, max: 1000 },
+      { key: "shards",    label: "Shards",        type: "number", min: 1, max: 100 },
+      { key: "replicas",  label: "Replicas",      type: "number", min: 0, max: 10 },
+      { key: "latencyMs", label: "Avg Latency (ms)", type: "number", min: 1, max: 10000 },
+      { key: "errorRate", label: "Error Rate (%)", type: "number", min: 0, max: 100, step: 0.1 },
+      { key: "cost",      label: "Cost ($/mo)",   type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "emailsms",
+    name: "Email / SMS",
+    icon: ICONS.emailsms,
+    category: "messaging",
+    color: "#ec4899",
+    description: "Transactional email and SMS delivery. SendGrid, AWS SES, Twilio, Mailgun, Postmark.",
+    defaults: { capacity: 10000, provider: "SendGrid", type: "Email", throughput: 100, cost: 20, label: "Email / SMS" },
+    properties: [
+      { key: "label",      label: "Label",       type: "text" },
+      { key: "capacity",   label: "Sends/s",     type: "number", min: 1, max: 10000000 },
+      { key: "provider",   label: "Provider",    type: "select", options: ["SendGrid","AWS SES","Twilio","Mailgun","Postmark","Vonage"] },
+      { key: "type",       label: "Type",        type: "select", options: ["Email","SMS","Push","WhatsApp","Multi-channel"] },
+      { key: "throughput", label: "Batch Size",  type: "number", min: 1, max: 100000 },
+      { key: "cost",       label: "Cost ($/mo)", type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "bgworker",
+    name: "Background Worker",
+    icon: ICONS.bgworker,
+    category: "compute",
+    color: "#84cc16",
+    description: "Async job processor. Celery, Sidekiq, BullMQ, Temporal, AWS SQS worker.",
+    defaults: { capacity: 500, cpu: "2 vCPU", memory: "4 GB", concurrency: 10, retries: 3, latencyMs: 500, errorRate: 0, region: "us-east-1", cost: 35, label: "BG Worker" },
+    properties: [
+      { key: "label",       label: "Label",          type: "text" },
+      { key: "capacity",    label: "Jobs/s",          type: "number", min: 1, max: 100000 },
+      { key: "cpu",         label: "CPU",             type: "select", options: ["1 vCPU","2 vCPU","4 vCPU","8 vCPU"] },
+      { key: "memory",      label: "Memory",          type: "select", options: ["512 MB","1 GB","2 GB","4 GB","8 GB","16 GB"] },
+      { key: "concurrency", label: "Concurrency",     type: "number", min: 1, max: 10000 },
+      { key: "retries",     label: "Max Retries",     type: "number", min: 0, max: 10 },
+      { key: "latencyMs",   label: "Avg Job Time (ms)", type: "number", min: 1, max: 3600000 },
+      { key: "errorRate",   label: "Error Rate (%)",  type: "number", min: 0, max: 100, step: 0.1 },
+      { key: "region",      label: "Region",          type: "select", options: ["us-east-1","us-west-2","eu-west-1","eu-central-1","ap-southeast-1","global"] },
+      { key: "cost",        label: "Cost ($/mo)",     type: "number", min: 0 }
+    ],
+    scaleProps: [
+      { key: "autoScale",   label: "Enable Auto Scaling", type: "boolean" },
+      { key: "scaleUpAt",   label: "Scale Up At (%)",     type: "number", min: 10, max: 100 },
+      { key: "maxReplicas", label: "Max Workers",          type: "number", min: 1, max: 100 }
+    ],
+    behaviors: ["accepts_traffic", "scalable"]
+  },
+  {
+    id: "graphqlapi",
+    name: "GraphQL API",
+    icon: ICONS.graphqlapi,
+    category: "network",
+    color: "#e879f9",
+    description: "GraphQL query layer with subscriptions and schema federation. Apollo Server, Hasura, StepZen.",
+    defaults: { capacity: 5000, engine: "Apollo Server", federation: false, subscriptions: true, latencyMs: 30, errorRate: 0, cost: 50, label: "GraphQL API" },
+    properties: [
+      { key: "label",          label: "Label",            type: "text" },
+      { key: "capacity",       label: "Queries/s",        type: "number", min: 1, max: 100000 },
+      { key: "engine",         label: "Engine",           type: "select", options: ["Apollo Server","Hasura","StepZen","Pothos","GraphQL Yoga","Mercurius"] },
+      { key: "federation",     label: "Federation",       type: "boolean" },
+      { key: "subscriptions",  label: "Subscriptions",    type: "boolean" },
+      { key: "latencyMs",      label: "Avg Latency (ms)", type: "number", min: 1, max: 10000 },
+      { key: "errorRate",      label: "Error Rate (%)",   type: "number", min: 0, max: 100, step: 0.1 },
+      { key: "cost",           label: "Cost ($/mo)",      type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "websocket",
+    name: "WebSocket Gateway",
+    icon: ICONS.websocket,
+    category: "network",
+    color: "#06b6d4",
+    description: "Persistent bidirectional real-time connections. Socket.IO, AWS API Gateway WebSocket, Ably, Pusher.",
+    defaults: { capacity: 100000, maxConnections: 10000, provider: "Socket.IO", latencyMs: 5, errorRate: 0, cost: 40, label: "WebSocket GW" },
+    properties: [
+      { key: "label",          label: "Label",              type: "text" },
+      { key: "capacity",       label: "Messages/s",         type: "number", min: 1, max: 10000000 },
+      { key: "maxConnections", label: "Max Connections",    type: "number", min: 100, max: 10000000 },
+      { key: "provider",       label: "Provider",           type: "select", options: ["Socket.IO","AWS API GW WS","Ably","Pusher","Centrifugo","Soketi"] },
+      { key: "latencyMs",      label: "Avg Latency (ms)",   type: "number", min: 1, max: 1000 },
+      { key: "errorRate",      label: "Error Rate (%)",     type: "number", min: 0, max: 100, step: 0.1 },
+      { key: "cost",           label: "Cost ($/mo)",        type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
+  },
+  {
+    id: "ratelimiter",
+    name: "Rate Limiter",
+    icon: ICONS.ratelimiter,
+    category: "network",
+    color: "#f97316",
+    description: "Request throttling and DDoS/abuse protection. Kong, AWS WAF, NGINX rate limiting, Cloudflare.",
+    defaults: { capacity: 100000, rateLimit: 1000, window: "1s", algorithm: "Token Bucket", rejectionRate: 5, cost: 30, label: "Rate Limiter" },
+    properties: [
+      { key: "label",         label: "Label",            type: "text" },
+      { key: "capacity",      label: "Max Req/s",        type: "number", min: 1, max: 100000000 },
+      { key: "rateLimit",     label: "Per-IP Limit/s",   type: "number", min: 1, max: 1000000 },
+      { key: "window",        label: "Window",           type: "select", options: ["100ms","1s","10s","1m","1h"] },
+      { key: "algorithm",     label: "Algorithm",        type: "select", options: ["Token Bucket","Leaky Bucket","Fixed Window","Sliding Window","Concurrency"] },
+      { key: "rejectionRate", label: "Rejection Rate (%)", type: "number", min: 0, max: 100 },
+      { key: "cost",          label: "Cost ($/mo)",      type: "number", min: 0 }
+    ],
+    behaviors: ["accepts_traffic"]
   }
 ];
 

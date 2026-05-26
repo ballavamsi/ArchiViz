@@ -61,6 +61,23 @@ async function readBody(req) {
 // ── Simulation engine (same logic as netlify/functions/simulate.mjs) ───────
 const SOURCE_DEFS = new Set(['users', 'cdcsource', 'eventsource']);
 
+// Default latency by component type (ms)
+const DEFAULT_LATENCY = {
+  appserver:50, vm:50, pod:20, serverless:100, database:10, cache:1,
+  apigateway:5, loadbalancer:2, cdn:15, queue:5, eventbus:3, pubsub:3,
+  kafkatopic:3, streamprocessor:20, bgworker:500, graphqlapi:30,
+  websocket:5, searchengine:20, ratelimiter:2,
+};
+
+function effectiveLatency(defId, props, loadPct) {
+  const base = props.latencyMs || DEFAULT_LATENCY[defId] || 50;
+  const f = Math.max(0, Math.min(loadPct, 100)) / 100;
+  // Exponential latency growth under load: 1x at 0%, 5x at 100%
+  return Math.round(base * (1 + 4 * f * f));
+}
+
+function p95Latency(avgMs) { return Math.round(avgMs * 2.5); }
+
 function sourceRate(n) {
   if (n.defId === 'cdcsource')   return n.props.changeRate || n.props.capacity || 100;
   if (n.defId === 'eventsource') return n.props.eventRate  || 100;
@@ -162,7 +179,42 @@ function runSimTick(nodes, edges) {
       const tc = cap*(1+dbReplicas);
       pct=inn/tc*100; status=pct>85?'critical':pct>60?'warning':`ok (×${dbReplicas+1} nodes)`;
     }
-    simLoad[n.id] = { incoming:inn, capacity:cap, loadPct:pct, status, scaledCap, replicas, scaling };
+    // ── Error rate: retry amplification increases effective incoming ──────
+    const errRate = n.props.errorRate || 0;
+    const retries = n.props.retries || 2;
+    const retriedIncoming = errRate > 0 ? inn * (1 + retries * errRate / 100) : inn;
+    if (errRate > 0 && retriedIncoming > inn) {
+      // Re-evaluate load with retry amplification
+      const retriedPct = (retriedIncoming / cap) * 100;
+      if (retriedPct > pct) {
+        pct = retriedPct;
+        status = pct > 85 ? 'critical' : pct > 60 ? 'warning' : 'ok';
+      }
+    }
+
+    // ── Database connection pool exhaustion ────────────────────────────────
+    let poolExhausted = false;
+    if (n.defId === 'database' && n.props.maxConnections && inn > n.props.maxConnections) {
+      poolExhausted = true;
+      status = 'pool exhausted';
+      pct = Math.min(999, pct); // clip display but keep it red
+    }
+
+    // ── Latency model ──────────────────────────────────────────────────────
+    const effLatMs = effectiveLatency(n.defId, n.props, pct);
+    const p95Ms    = p95Latency(effLatMs);
+
+    // ── Serverless cold start (first tick > 0 incoming) ───────────────────
+    const coldStart = n.defId === 'serverless' && inn > 0 && !n._hadTraffic;
+    if (inn > 0) n._hadTraffic = true;
+
+    // ── SLA estimate ───────────────────────────────────────────────────────
+    const slaBase   = pct > 85 ? 98.0 : pct > 60 ? 99.5 : 99.95;
+    const slaAdj    = errRate > 5 ? Math.max(95, slaBase - errRate * 0.3) : slaBase;
+    const sla       = slaAdj.toFixed(2) + '%';
+
+    simLoad[n.id] = { incoming:inn, capacity:cap, loadPct:pct, status, scaledCap, replicas, scaling,
+                      latencyMs:effLatMs, p95Ms, errorRate:errRate, coldStart, poolExhausted, sla };
   });
 
   return { simLoad, eFlow: eFlowNew };

@@ -1,6 +1,6 @@
 export const ARCH_RULES = {
   // Sources
-  users:           ["deviceapp", "cdn", "dns", "firewall", "waf", "apigateway", "loadbalancer", "appserver", "vm", "pod", "appinsights", "logging"],
+  users:           ["deviceapp", "cdn", "dns", "firewall", "waf", "apigateway", "loadbalancer", "appserver", "vm", "pod", "graphqlapi", "websocket", "ratelimiter", "appinsights", "logging"],
   deviceapp:       ["taskhook", "apigateway", "kafkatopic", "queue", "streamprocessor", "appinsights", "logging"],
   eventsource:     ["taskhook", "kafkatopic", "queue", "streamprocessor", "cdcsource", "eventbus", "pubsub", "appinsights", "logging"],
 
@@ -10,12 +10,12 @@ export const ARCH_RULES = {
   firewall:        ["waf", "apigateway", "loadbalancer", "appserver", "vm", "pod", "appinsights", "logging"],
   waf:             ["apigateway", "loadbalancer", "appserver", "vm", "pod", "appinsights", "logging"],
   vpn:             ["appserver", "vm", "pod", "database", "loadbalancer", "filestore", "blockstorage", "appinsights", "logging"],
-  apigateway:      ["loadbalancer", "appserver", "vm", "pod", "serverless", "queue", "cache", "database", "identityprovider", "appinsights", "logging"],
+  apigateway:      ["loadbalancer", "appserver", "vm", "pod", "serverless", "queue", "cache", "database", "identityprovider", "graphqlapi", "websocket", "searchengine", "appinsights", "logging"],
   loadbalancer:    ["appserver", "vm", "pod", "serverless", "database", "cache", "apigateway", "appinsights", "logging"],
   identityprovider:["apigateway", "appserver", "vm", "pod", "serverless", "logging", "appinsights"],
 
   // Compute — allow microservice-to-microservice and all backend targets
-  appserver:       ["appserver", "vm", "pod", "serverless", "cache", "database", "vectordb", "queue", "eventbus", "pubsub", "loadbalancer", "apigateway", "appinsights", "logging", "kafkatopic", "objectstorage", "filestore", "blockstorage", "secretsmanager", "mlmodel", "tracing"],
+  appserver:       ["appserver", "vm", "pod", "serverless", "cache", "database", "vectordb", "queue", "eventbus", "pubsub", "loadbalancer", "apigateway", "appinsights", "logging", "kafkatopic", "objectstorage", "filestore", "blockstorage", "secretsmanager", "mlmodel", "tracing", "searchengine", "emailsms", "bgworker", "graphqlapi", "websocket"],
   vm:              ["appserver", "vm", "pod", "serverless", "cache", "database", "vectordb", "queue", "eventbus", "pubsub", "loadbalancer", "apigateway", "appinsights", "logging", "kafkatopic", "objectstorage", "filestore", "blockstorage", "secretsmanager", "mlmodel", "tracing"],
   pod:             ["appserver", "vm", "pod", "serverless", "cache", "database", "vectordb", "queue", "eventbus", "pubsub", "loadbalancer", "apigateway", "appinsights", "logging", "kafkatopic", "objectstorage", "filestore", "blockstorage", "secretsmanager", "mlmodel", "tracing"],
   serverless:      ["database", "vectordb", "cache", "queue", "eventbus", "pubsub", "objectstorage", "filestore", "secretsmanager", "appserver", "vm", "pod", "serverless", "mlmodel", "appinsights", "logging", "kafkatopic", "tracing"],
@@ -29,7 +29,7 @@ export const ARCH_RULES = {
   secretsmanager:  ["appserver", "vm", "pod", "serverless", "database", "cache", "appinsights", "logging"],
 
   // Messaging
-  queue:           ["appserver", "vm", "pod", "serverless", "streamprocessor", "database", "cache", "appinsights", "logging"],
+  queue:           ["appserver", "vm", "pod", "serverless", "bgworker", "streamprocessor", "database", "cache", "appinsights", "logging"],
   eventbus:        ["serverless", "appserver", "vm", "pod", "queue", "pubsub", "logging", "appinsights"],
   pubsub:          ["serverless", "appserver", "vm", "pod", "streamprocessor", "queue", "logging", "appinsights"],
 
@@ -63,7 +63,15 @@ export const ARCH_RULES = {
   alerting:        [],
   tracing:         ["logging", "appinsights", "alerting"],
 
-  textnote:        []
+  textnote:        [],
+
+  // ── Iteration 3 new components ────────────────────────────────────────────
+  searchengine:   ["appserver", "vm", "pod", "serverless", "apigateway", "graphqlapi", "appinsights", "logging"],
+  emailsms:       ["appinsights", "logging"],
+  bgworker:       ["database", "cache", "objectstorage", "searchengine", "emailsms", "appserver", "vm", "pod", "apigateway", "appinsights", "logging"],
+  graphqlapi:     ["appserver", "vm", "pod", "serverless", "database", "cache", "searchengine", "appinsights", "logging"],
+  websocket:      ["appserver", "vm", "pod", "serverless", "eventbus", "pubsub", "appinsights", "logging"],
+  ratelimiter:    ["apigateway", "loadbalancer", "appserver", "vm", "pod", "graphqlapi", "websocket", "appinsights", "logging"]
 };
 
 const CONNECT_HINTS = {

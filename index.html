@@ -245,6 +245,14 @@
   </div>
 
   <input id="import-file" type="file" accept="application/json,.json" style="display:none"/>
+  <button class="tbtn" id="btn-reserved" title="Toggle reserved-instance pricing (saves ~35% on compute)">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    Reserved
+  </button>
+  <button class="tbtn" id="btn-service-mesh" title="Toggle service mesh mode — shows retries/circuit breakers on edges">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><line x1="7" y1="12" x2="17" y2="6.5"/><line x1="7" y1="12" x2="17" y2="17.5"/><line x1="17" y1="6.5" x2="17" y2="17.5"/></svg>
+    Mesh
+  </button>
   <div id="cost-badge">$0 / mo</div>
 </div>
 
@@ -416,6 +424,10 @@
           <!-- Meta rows -->
           <div class="sim-stat-row"><span>Replicas</span><span id="ss-rep">—</span></div>
           <div class="sim-stat-row"><span>Status</span>  <span id="ss-st">—</span></div>
+          <div class="sim-stat-row"><span>Avg Latency</span><span id="ss-latency">—</span></div>
+          <div class="sim-stat-row"><span>P95 Latency</span><span id="ss-p95">—</span></div>
+          <div class="sim-stat-row"><span>Error Rate</span><span id="ss-errrate">—</span></div>
+          <div class="sim-stat-row" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px"><span>Est. SLA</span><span id="ss-sla">—</span></div>
         </div>
         </div><!-- /sec-sim-body -->
       </div>
@@ -476,6 +488,9 @@
 </div>
 
 <div id="drag-ghost"></div>
+
+<!-- Context menu -->
+<div id="ctx-menu" style="display:none;position:fixed;z-index:9999;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:4px;min-width:150px;box-shadow:0 8px 32px rgba(0,0,0,0.5)"></div>
 
 <script type="module" src="src/app.js"></script>
 

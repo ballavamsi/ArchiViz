@@ -73,6 +73,8 @@ let S = {
   histPos: -1,
   nSeq:    0,
   eSeq:    0,
+  reservedPricing: (() => { try { return localStorage.getItem('archviz.reserved') === 'on'; } catch { return false; } })(),
+  serviceMeshOn:   false,
 };
 
 // interaction
@@ -429,6 +431,10 @@ function renderNode(id) {
   if (S.simOn && sim) {
     if (scl) badges += `<span class="badge badge-scale">⚡ ×${esc(sim.replicas)}</span>`;
     if (n.props.autoScale && !scl) badges += `<span class="badge badge-info">AutoScale ✓</span>`;
+    if (sim.coldStart) badges += `<span class="badge" style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44">❄ Cold Start</span>`;
+    if (sim.poolExhausted) badges += `<span class="badge badge-err">Pool Full</span>`;
+    if ((sim.errorRate||0) > 0) badges += `<span class="badge badge-err">${sim.errorRate}% err</span>`;
+    if (sim.latencyMs != null && n.defId !== 'textnote') badges += `<span class="badge badge-info">${sim.latencyMs}ms</span>`;
     if (n.defId === 'database' && n.props.readReplicas > 0 && !n.props._isReplica) {
       const vr = Object.values(S.nodes).filter(r => r.props._replicaOf === n.id).length;
       badges += `<span class="badge badge-info">+${esc(vr)} replicas</span>`;
@@ -513,6 +519,9 @@ function renderNode(id) {
     };
   });
 
+  // Context menu
+  el.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); select(id); _nodeContextMenu(id, e.clientX+4, e.clientY+4); };
+
   const labelEl = el.querySelector('.node-label');
   labelEl.ondblclick = e => {
     e.stopPropagation();
@@ -546,12 +555,57 @@ function beginLabelEdit(id, labelEl) {
   input.onblur = commit;
 }
 
+// ── Region colors ─────────────────────────────────────────────────────────────
+const REGION_PALETTE = {
+  'us-east-1':      { border: 'rgba(79,156,249,0.35)',  bg: 'rgba(79,156,249,0.04)',  label: 'US East 1',      dot: '#4f9cf9' },
+  'us-west-2':      { border: 'rgba(52,208,88,0.35)',   bg: 'rgba(52,208,88,0.04)',   label: 'US West 2',      dot: '#34d058' },
+  'eu-west-1':      { border: 'rgba(167,139,250,0.35)', bg: 'rgba(167,139,250,0.04)', label: 'EU West 1',      dot: '#a78bfa' },
+  'eu-central-1':   { border: 'rgba(232,121,249,0.35)', bg: 'rgba(232,121,249,0.04)', label: 'EU Central 1',   dot: '#e879f9' },
+  'ap-southeast-1': { border: 'rgba(245,158,11,0.35)',  bg: 'rgba(245,158,11,0.04)',  label: 'AP Southeast 1', dot: '#f59e0b' },
+  'ap-northeast-1': { border: 'rgba(251,113,133,0.35)', bg: 'rgba(251,113,133,0.04)', label: 'AP Northeast 1', dot: '#fb7185' },
+  'global':         { border: 'rgba(100,116,139,0.3)',  bg: 'rgba(100,116,139,0.03)', label: 'Global',         dot: '#64748b' },
+};
+const PAD_REGION = 28;
+
+function renderRegionGroups() {
+  // Remove old region divs
+  document.querySelectorAll('.region-group').forEach(e => e.remove());
+  const nodesByRegion = {};
+  Object.values(S.nodes).forEach(n => {
+    const r = n.props?.region;
+    if (!r || r === '' || n.defId === 'textnote') return;
+    if (!nodesByRegion[r]) nodesByRegion[r] = [];
+    nodesByRegion[r].push(n);
+  });
+  // Only show regions with 2+ nodes (single node regions are noisy)
+  Object.entries(nodesByRegion).forEach(([region, nodes]) => {
+    if (nodes.length < 1) return;
+    const palette = REGION_PALETTE[region];
+    if (!palette) return;
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    nodes.forEach(n => {
+      minX=Math.min(minX,n.x); minY=Math.min(minY,n.y);
+      maxX=Math.max(maxX,n.x+n.w); maxY=Math.max(maxY,n.y+n.h);
+    });
+    const sx = minX*S.zoom+S.panX-PAD_REGION*S.zoom;
+    const sy = minY*S.zoom+S.panY-PAD_REGION*S.zoom;
+    const sw = (maxX-minX+PAD_REGION*2)*S.zoom;
+    const sh = (maxY-minY+PAD_REGION*2)*S.zoom;
+    const div = document.createElement('div');
+    div.className = 'region-group';
+    div.style.cssText = `left:${sx}px;top:${sy}px;width:${sw}px;height:${sh}px;border-color:${palette.border};background:${palette.bg};color:${palette.dot};`;
+    div.innerHTML = `<span style="background:${palette.bg};border:1px solid ${palette.border};border-radius:4px;padding:2px 6px;">${esc(palette.label)}</span>`;
+    cWrap.prepend(div);
+  });
+}
+
 function renderAll() {
   cNodes.querySelectorAll('.a-node').forEach(el => {
     if (!S.nodes[el.id.replace('node-', '')]) el.remove();
   });
   Object.keys(S.nodes).forEach(id => renderNode(id));
   renderEdges();
+  renderRegionGroups();
   renderMiniMap();
 }
 
@@ -853,6 +907,14 @@ function renderEdges() {
     vis.setAttribute('marker-end', `url(#${isSelected ? 'arr-blue' : marker})`);
     if (edge.replication) { vis.style.stroke = '#a855f7'; vis.style.strokeWidth = String(strokeW * 0.9); vis.style.opacity = '0.7'; vis.style.filter = 'drop-shadow(0 0 4px rgba(168,85,247,0.5))'; }
     if (isSelected) { vis.style.stroke = '#58a6ff'; vis.style.strokeWidth = String(Math.min(2.8, strokeW * 1.4)); vis.style.filter = 'drop-shadow(0 0 6px rgba(88,166,255,0.7))'; }
+    // Service mesh: color edges by circuit breaker state based on target load
+    if (S.serviceMeshOn && S.simOn) {
+      const tgtSim = S.simLoad[edge.tgt];
+      if (tgtSim) {
+        const meshColor = tgtSim.loadPct > 85 ? '#f85149' : tgtSim.loadPct > 60 ? '#f5b731' : '#34d058';
+        if (!isSelected) { vis.style.stroke = meshColor; vis.style.opacity = '0.85'; }
+      }
+    }
     g.appendChild(vis);
 
     // Delete button at midpoint
@@ -1115,28 +1177,58 @@ function showProps(id) {
   refreshSimStats(id);
 }
 
+const COMPUTE_CATS = new Set(['compute','network']);
+function _reservedDiscount(cat) { return S.reservedPricing && COMPUTE_CATS.has(cat) ? 0.65 : 1; }
+
 function _costBreakdownHtml() {
   const costNodes = Object.values(S.nodes).filter(n => !n.props?._isReplica && Number(n.props?.cost) > 0);
   if (!costNodes.length) return '';
-  const total = costNodes.reduce((s,n) => s + Number(n.props.cost), 0);
   const byCategory = {};
   costNodes.forEach(n => {
     const def = COMPONENT_DEFS.find(d => d.id === n.defId);
     const cat = def?.category || 'other';
-    byCategory[cat] = (byCategory[cat] || 0) + Number(n.props.cost);
+    const rawCost = Number(n.props.cost) * _reservedDiscount(cat);
+    byCategory[cat] = (byCategory[cat] || 0) + rawCost;
   });
+  const total = Object.values(byCategory).reduce((s,v)=>s+v, 0);
+  // Egress cost estimate from sim flow
+  let egressCost = 0;
+  if (S.simOn && Object.keys(S.eFlow).length) {
+    S.edges.forEach(e => {
+      const flow = S.eFlow[e.id];
+      if (!flow) return;
+      const srcNode = S.nodes[e.src], tgtNode = S.nodes[e.tgt];
+      if (!srcNode || !tgtNode) return;
+      // Estimate payload 5KB per req, 730hr/mo → GB/mo
+      const gbPerMonth = flow * 5 * 1024 * 3600 * 730 / (1024 * 1024 * 1024 * 1024);
+      egressCost += gbPerMonth * 0.09; // $0.09/GB AWS egress
+    });
+    egressCost = Math.round(egressCost * 100) / 100;
+  }
   const catRows = Object.entries(byCategory).sort(([,a],[,b])=>b-a).map(([cat,c])=>
     `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:10px">
       <span style="color:var(--muted);text-transform:capitalize">${esc(cat)}</span>
-      <span style="color:var(--text2);font-weight:600">$${c.toLocaleString()}</span>
+      <span style="color:var(--text2);font-weight:600">$${Math.round(c).toLocaleString()}</span>
     </div>`).join('');
+  const egressRow = egressCost > 0.01
+    ? `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:10px">
+        <span style="color:var(--muted)">Egress (est.)</span>
+        <span style="color:var(--text2);font-weight:600">$${egressCost.toFixed(2)}</span>
+      </div>` : '';
+  const reservedChip = S.reservedPricing
+    ? `<span style="background:#34d05822;color:#34d058;border:1px solid #34d05844;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700">Reserved −35%</span>`
+    : '';
+  const grandTotal = total + egressCost;
   return `
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-      <div style="font-size:9.5px;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">Monthly Cost</div>
-      ${catRows}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:9.5px;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase">Monthly Cost</div>
+        ${reservedChip}
+      </div>
+      ${catRows}${egressRow}
       <div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:11px;font-weight:700">
         <span style="color:var(--muted)">Total</span>
-        <span style="color:#34d058">$${total.toLocaleString()}/mo</span>
+        <span style="color:#34d058">$${Math.round(grandTotal).toLocaleString()}/mo</span>
       </div>
     </div>`;
 }
@@ -1180,6 +1272,19 @@ function updateEmptyPanel() {
     </div>
     ${_costBreakdownHtml()}`;
   requestAnimationFrame(positionSugTray);
+}
+
+// ── Latency + error model (mirrors server.mjs) ───────────────────────────────
+const DEFAULT_LATENCY_MS = {
+  appserver:50, vm:50, pod:20, serverless:100, database:10, cache:1,
+  apigateway:5, loadbalancer:2, cdn:15, queue:5, eventbus:3, pubsub:3,
+  kafkatopic:3, streamprocessor:20, bgworker:500, graphqlapi:30,
+  websocket:5, searchengine:20, ratelimiter:2,
+};
+function _effectiveLatency(defId, props, loadPct) {
+  const base = props.latencyMs || DEFAULT_LATENCY_MS[defId] || 50;
+  const f = Math.max(0, Math.min(loadPct, 100)) / 100;
+  return Math.round(base * (1 + 4 * f * f));
 }
 
 // ── Hardware → Capacity / Cost auto-compute ───────────────────────────────────
@@ -1362,8 +1467,25 @@ function refreshSimStats(id) {
   document.getElementById('ss-rep').textContent = sim?.replicas ? sim.replicas + '×' : '—';
 
   const stEl = document.getElementById('ss-st');
-  stEl.textContent = sim ? sim.status : '—';
-  stEl.style.color = sim?.status === 'critical' ? '#f66060' : sim?.status === 'warning' ? '#f5b731' : sim?.status?.startsWith('ok') ? '#34d058' : 'var(--text2)';
+  const statusText = sim ? (sim.coldStart ? '⚡ cold start' : sim.poolExhausted ? '🔴 pool exhausted' : sim.status) : '—';
+  stEl.textContent = statusText;
+  stEl.style.color = sim?.status === 'critical' || sim?.poolExhausted ? '#f66060' : sim?.status === 'warning' ? '#f5b731' : sim?.status?.startsWith('ok') ? '#34d058' : 'var(--text2)';
+
+  // Latency rows
+  const latEl = document.getElementById('ss-latency');
+  const p95El = document.getElementById('ss-p95');
+  const errEl = document.getElementById('ss-errrate');
+  const slaEl = document.getElementById('ss-sla');
+  if (latEl) latEl.textContent = sim?.latencyMs != null ? sim.latencyMs + ' ms' : '—';
+  if (p95El) p95El.textContent = sim?.p95Ms != null ? sim.p95Ms + ' ms' : '—';
+  if (errEl) {
+    errEl.textContent = sim?.errorRate != null ? sim.errorRate + '%' : '—';
+    if (errEl) errEl.style.color = (sim?.errorRate || 0) > 5 ? '#f66060' : (sim?.errorRate || 0) > 0 ? '#f5b731' : 'var(--text2)';
+  }
+  if (slaEl) {
+    slaEl.textContent = sim?.sla || '—';
+    if (slaEl) slaEl.style.color = sim?.sla?.startsWith('99.9') ? '#34d058' : sim?.sla?.startsWith('99') ? '#f5b731' : '#f66060';
+  }
 }
 
 document.getElementById('btn-del-node').onclick = () => { if (S.sel) deleteNode(S.sel); };
@@ -1579,7 +1701,28 @@ function runTickLocal() {
       status = pct > 85 ? 'critical' : pct > 60 ? 'warning' : `ok (×${dbReplicas+1} nodes)`;
     }
 
-    S.simLoad[n.id] = { incoming: inn, capacity: cap, loadPct: pct, status, scaledCap, replicas, scaling };
+    // Error rate retry amplification
+    const errRate = n.props.errorRate || 0;
+    if (errRate > 0) {
+      const retriedPct = ((inn * (1 + 2 * errRate / 100)) / cap) * 100;
+      if (retriedPct > pct) { pct = retriedPct; status = pct>85?'critical':pct>60?'warning':'ok'; }
+    }
+    // DB pool exhaustion
+    if (n.defId === 'database' && n.props.maxConnections && inn > n.props.maxConnections) {
+      status = 'pool exhausted';
+    }
+    // Latency model
+    const effLatMs = _effectiveLatency(n.defId, n.props, pct);
+    const p95Ms    = Math.round(effLatMs * 2.5);
+    // SLA estimate
+    const slaBase  = pct > 85 ? 98.0 : pct > 60 ? 99.5 : 99.95;
+    const sla      = (errRate > 5 ? Math.max(95, slaBase - errRate * 0.3) : slaBase).toFixed(2) + '%';
+    // Cold start
+    const coldStart = n.defId === 'serverless' && inn > 0 && !n._hadTraffic;
+    if (inn > 0) n._hadTraffic = true;
+
+    S.simLoad[n.id] = { incoming: inn, capacity: cap, loadPct: pct, status, scaledCap, replicas, scaling,
+                        latencyMs: effLatMs, p95Ms, errorRate: errRate, coldStart, sla };
   });
 
   renderAll();
@@ -2152,6 +2295,71 @@ cWrap.addEventListener('wheel', e => {
 }, { passive:false });
 
 // ══ KEYBOARD SHORTCUTS ════════════════════════════════════════════════════════
+// ── Context menu ──────────────────────────────────────────────────────────────
+const _ctxMenu = document.getElementById('ctx-menu');
+function _showCtxMenu(x, y, items) {
+  if (!_ctxMenu) return;
+  _ctxMenu.innerHTML = items.map(it =>
+    it === '-' ? `<div class="ctx-sep"></div>` :
+    `<div class="ctx-item" data-action="${esc(it.action)}">${esc(it.label)}</div>`
+  ).join('');
+  _ctxMenu.style.display = '';
+  _ctxMenu.style.left = Math.min(x, window.innerWidth - 160) + 'px';
+  _ctxMenu.style.top  = Math.min(y, window.innerHeight - (_ctxMenu.childElementCount * 32 + 8)) + 'px';
+  _ctxMenu.querySelectorAll('.ctx-item').forEach(el => {
+    el.onclick = () => { _hideCtxMenu(); window._ctxActions[el.dataset.action]?.(); };
+  });
+}
+function _hideCtxMenu() { if (_ctxMenu) { _ctxMenu.style.display = 'none'; _ctxMenu.innerHTML = ''; } }
+document.addEventListener('click', _hideCtxMenu);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') _hideCtxMenu(); }, true);
+
+window._ctxActions = {};
+
+function _nodeContextMenu(id, x, y) {
+  const n = S.nodes[id]; if (!n) return;
+  const def = COMPONENT_DEFS.find(d => d.id === n.defId);
+  window._ctxActions = {
+    duplicate: () => {
+      snapshot();
+      const newId = 'n' + (++S.nSeq);
+      S.nodes[newId] = {
+        id: newId, defId: n.defId,
+        x: n.x + 24, y: n.y + 24,
+        w: n.w, h: n.h,
+        props: { ...n.props, label: (n.props.label || def?.name || '') + ' (copy)' }
+      };
+      renderAll(); updateStats(); updateCost(); select(newId);
+    },
+    rename: () => {
+      const el = document.getElementById('node-' + id);
+      const labelEl = el?.querySelector('.node-label');
+      if (labelEl) beginLabelEdit(id, labelEl);
+    },
+    delete: () => { deleteNode(id); },
+    copyid: () => { try { navigator.clipboard.writeText(n.props.label || n.id); pushToast('Copied to clipboard', 'info'); } catch {} },
+  };
+  _showCtxMenu(x, y, [
+    { label: '⧉ Duplicate', action: 'duplicate' },
+    { label: '✏ Rename',    action: 'rename' },
+    '-',
+    { label: '📋 Copy Label', action: 'copyid' },
+    '-',
+    { label: '🗑 Delete',   action: 'delete' },
+  ]);
+}
+
+// Attach contextmenu to node elements (called after render)
+function _attachCtxMenu(id) {
+  const el = document.getElementById('node-' + id);
+  if (!el) return;
+  el.oncontextmenu = e => {
+    e.preventDefault(); e.stopPropagation();
+    select(id);
+    _nodeContextMenu(id, e.clientX + 4, e.clientY + 4);
+  };
+}
+
 window.addEventListener('keydown', e => {
   const tag = document.activeElement.tagName;
   if (tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
@@ -2160,13 +2368,23 @@ window.addEventListener('keydown', e => {
     else if (S.selEdge) deleteEdge(S.selEdge);
     e.preventDefault();
   }
-  if (e.key==='Escape') { clearPendingConn(); deselect(); }
+  if (e.key==='Escape') { clearPendingConn(); deselect(); _hideCtxMenu(); }
   if (e.key==='g' || e.key==='G') { setSnapGrid(!S.snapGrid); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey) { undo(); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && (e.key==='y'||(e.key==='z'&&e.shiftKey))) { redo(); e.preventDefault(); }
-  if ((e.ctrlKey||e.metaKey) && e.key==='a') {
-    // Select all — just fit view
-    fitView(); e.preventDefault();
+  if ((e.ctrlKey||e.metaKey) && e.key==='a') { fitView(); e.preventDefault(); }
+  // Ctrl+D: duplicate selected node
+  if ((e.ctrlKey||e.metaKey) && e.key==='d' && S.sel) {
+    e.preventDefault();
+    window._ctxActions.duplicate?.() || (() => {
+      const n = S.nodes[S.sel]; if (!n) return;
+      const def2 = COMPONENT_DEFS.find(d => d.id === n.defId);
+      snapshot();
+      const newId = 'n' + (++S.nSeq);
+      S.nodes[newId] = { id: newId, defId: n.defId, x: n.x+24, y: n.y+24, w: n.w, h: n.h,
+        props: { ...n.props, label: (n.props.label || def2?.name || '') + ' (copy)' } };
+      renderAll(); updateStats(); updateCost(); select(newId);
+    })();
   }
 });
 
@@ -2196,8 +2414,20 @@ function updateStats() {
   renderMiniMap();
 }
 function updateCost() {
-  const t = Object.values(S.nodes).reduce((a,n)=>a+(n.props.cost||0),0);
-  document.getElementById('cost-badge').textContent = '$'+t.toLocaleString()+' / mo';
+  let t = 0;
+  Object.values(S.nodes).forEach(n => {
+    const def2 = COMPONENT_DEFS.find(d => d.id === n.defId);
+    const cat = def2?.category || 'other';
+    t += (n.props.cost || 0) * _reservedDiscount(cat);
+  });
+  document.getElementById('cost-badge').textContent = '$' + Math.round(t).toLocaleString() + ' / mo';
+  if (S.reservedPricing) {
+    document.getElementById('cost-badge').style.borderColor = '#34d058';
+    document.getElementById('cost-badge').style.color = '#34d058';
+  } else {
+    document.getElementById('cost-badge').style.borderColor = '';
+    document.getElementById('cost-badge').style.color = '';
+  }
 }
 
 function clearCanvas(silent) {
@@ -2850,6 +3080,34 @@ document.getElementById('btn-share').onclick = () => {
   shareArchitecture();
 };
 document.getElementById('btn-suggestions').onclick = () => setSuggestionsOn(!S.suggestionsOn);
+
+// ── Reserved Pricing toggle ────────────────────────────────────────────────
+const _btnReserved = document.getElementById('btn-reserved');
+function _updateReservedBtn() {
+  if (!_btnReserved) return;
+  _btnReserved.classList.toggle('active', S.reservedPricing);
+  _btnReserved.title = S.reservedPricing ? 'Reserved pricing active — click to switch to on-demand' : 'Switch to reserved pricing (saves ~35% on compute)';
+}
+_updateReservedBtn();
+if (_btnReserved) _btnReserved.onclick = () => {
+  S.reservedPricing = !S.reservedPricing;
+  try { localStorage.setItem('archviz.reserved', S.reservedPricing ? 'on' : 'off'); } catch {}
+  _updateReservedBtn(); updateCost(); updateEmptyPanel();
+  pushToast(S.reservedPricing ? 'Reserved pricing: compute costs −35%' : 'On-demand pricing restored', 'info');
+};
+
+// ── Service Mesh toggle ───────────────────────────────────────────────────
+const _btnMesh = document.getElementById('btn-service-mesh');
+function _updateMeshBtn() {
+  if (!_btnMesh) return;
+  _btnMesh.classList.toggle('active', S.serviceMeshOn);
+}
+_updateMeshBtn();
+if (_btnMesh) _btnMesh.onclick = () => {
+  S.serviceMeshOn = !S.serviceMeshOn;
+  _updateMeshBtn(); renderEdges();
+  pushToast(S.serviceMeshOn ? 'Service mesh mode on — edges show circuit breaker state' : 'Service mesh mode off', 'info');
+};
 document.getElementById('btn-snap').onclick = () => setSnapGrid(!S.snapGrid);
 document.getElementById('btn-sidebar-toggle').onclick = () => setSidebarOpen(!S.sidebarOpen);
 

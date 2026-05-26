@@ -177,6 +177,7 @@ body {
 .badge-warn    { background: rgba(245,183,49,0.11);  color: var(--yellow); border: 1px solid rgba(245,183,49,0.22); }
 .badge-crit    { background: rgba(246,96,96,0.11);   color: var(--red);   border: 1px solid rgba(246,96,96,0.22); }
 .badge-info    { background: rgba(79,156,249,0.12);  color: var(--accent); border: 1px solid rgba(79,156,249,0.22); }
+.badge-err     { background: rgba(246,96,96,0.14);   color: var(--red);    border: 1px solid rgba(246,96,96,0.3); }
 /* Load bar — bottom of card, thicker, rounded corners */
 .node-load-bar { height: 4px; background: rgba(0,0,0,0.35); margin: 7px -11px -9px; overflow: hidden; border-radius: 0 0 11px 11px; }
 .node-load-fill { height: 100%; border-radius: 0 0 11px 11px; transition: width 0.5s ease, background-color 0.3s; }
@@ -1551,3 +1552,14 @@ textarea.prop-inp {
   line-height: 1.5;
 }
 .welcome-consent-btns { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ── CONTEXT MENU ── */
+#ctx-menu .ctx-item { padding: 7px 12px; font-size: 12px; color: var(--text2); border-radius: 5px; cursor: pointer; white-space: nowrap; }
+#ctx-menu .ctx-item:hover { background: var(--surface3); color: var(--text); }
+#ctx-menu .ctx-sep { height: 1px; background: var(--border); margin: 3px 6px; }
+
+/* ── REGION GROUPING ── */
+.region-group { position: absolute; border: 1px dashed; border-radius: 12px; pointer-events: none; display: flex; align-items: flex-start; padding: 6px 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* ── SERVICE MESH ── */
+.edge-mesh { stroke-dasharray: 5 3 !important; }
