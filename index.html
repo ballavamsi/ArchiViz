@@ -261,9 +261,17 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/></svg>
         Export PDF
       </button>
-      <button class="tbtn more-item" id="btn-export-svg" title="Export diagram as a high-res SVG/PNG image" aria-label="Export image">
+      <button class="tbtn more-item" id="btn-export-svg" title="Export diagram as SVG vector image" aria-label="Export SVG">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-        Export Image
+        Export SVG
+      </button>
+      <button class="tbtn more-item" id="btn-export-png" title="Export diagram as a PNG image" aria-label="Export PNG">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Export PNG
+      </button>
+      <button class="tbtn more-item" id="btn-present" title="Presentation mode — hide editor chrome (Esc to exit)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        Present
       </button>
       <button class="tbtn more-item active" id="btn-suggestions">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="3"/></svg>
@@ -281,6 +289,14 @@
       <button class="tbtn more-item" id="btn-theme" title="Use system theme, or switch between light and dark" aria-label="Toggle theme">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>
         Theme: System
+      </button>
+      <button class="tbtn more-item" id="btn-shortcuts" title="View keyboard shortcuts (?)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01"/><path d="M10 10h.01"/><path d="M14 10h.01"/><path d="M18 10h.01"/><path d="M8 14h8"/></svg>
+        Keyboard Shortcuts
+      </button>
+      <button class="tbtn more-item" id="btn-restart-tour" title="Restart the guided tour">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Take the Tour
       </button>
       <div style="height:1px;background:var(--border);margin:4px 2px"></div>
       <button class="tbtn more-item danger" id="btn-clear" title="Remove all nodes and edges from the canvas" aria-label="Clear canvas">
@@ -339,6 +355,10 @@
 
   <!-- CANVAS -->
   <div id="canvas-wrap">
+    <button id="btn-present-exit" title="Exit presentation mode (Esc)" style="display:none">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      Exit Presentation
+    </button>
     <button id="btn-sidebar-toggle" title="Hide component sidebar" aria-label="Hide component sidebar">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
     </button>

@@ -425,8 +425,14 @@ function renderNode(id) {
     el.addEventListener('mousedown', e => {
       if (e.target.classList.contains('port')) return;
       e.stopPropagation();
-      select(id);
-      G.drag = { id, sx: e.clientX, sy: e.clientY, ox: n.x, oy: n.y };
+      select(id, e.shiftKey);
+      // Group drag: record start positions for all selected nodes
+      const origins = {};
+      S.selSet.forEach(nid => {
+        const nd = S.nodes[nid];
+        if (nd) origins[nid] = { ox: nd.x, oy: nd.y };
+      });
+      G.drag = { id, sx: e.clientX, sy: e.clientY, ox: n.x, oy: n.y, group: origins };
     });
   }
 
@@ -445,7 +451,7 @@ function renderNode(id) {
     'SLA':      { bg: 'rgba(63,185,80,0.09)',    border: 'rgba(63,185,80,0.38)',    accent: '#3fb950', text: '#86efac' },
   };
   const noteCls = n.defId === 'textnote' ? ' note-node' : '';
-  el.className = 'a-node ' + sCls + noteCls + (S.sel === id ? ' selected' : '');
+  el.className = 'a-node ' + sCls + noteCls + (S.selSet.has(id) ? ' selected' : '');
   const baseColor = n.props._isReplica ? '#a855f7' : def.color;
   // Left-border color: load-aware during sim, component color at rest
   const borderColor = (S.simOn && sim && sim.status !== 'source')
@@ -1076,8 +1082,21 @@ function renderEdges() {
 }
 
 // ══ SELECTION ════════════════════════════════════════════════════════════════
-function select(id) {
-  S.sel = id; S.selEdge = null;
+// S.selSet — multi-select set (Set of node ids). S.sel is still single-focus for props panel.
+if (!S.selSet) S.selSet = new Set();
+
+function select(id, addToSet) {
+  if (addToSet) {
+    // Shift+click: toggle in the multi-select set
+    if (S.selSet.has(id)) { S.selSet.delete(id); }
+    else { S.selSet.add(id); }
+    S.sel = id; S.selEdge = null;
+  } else {
+    // Normal click: clear set, select just this one
+    S.selSet.clear();
+    S.selSet.add(id);
+    S.sel = id; S.selEdge = null;
+  }
   renderAll(); showProps(id);
 }
 
@@ -1166,6 +1185,7 @@ function _renderEdgePanel(edge) {
 
 function deselect() {
   S.sel = null; S.selEdge = null;
+  S.selSet.clear();
   renderAll(); showProps(null); showEdgeProps(null);
 }
 
@@ -1199,6 +1219,25 @@ function showProps(id) {
   const cont  = document.getElementById('props-content');
   const econt = document.getElementById('edge-props-content');
   if (econt) { econt.style.display = 'none'; econt.innerHTML = ''; }
+  // Multi-select summary
+  if (S.selSet.size > 1) {
+    panel.classList.remove('collapsed');
+    empty.style.display = 'none'; cont.classList.remove('show');
+    let ms = document.getElementById('multisel-panel');
+    if (!ms) { ms = document.createElement('div'); ms.id = 'multisel-panel'; panel.appendChild(ms); }
+    ms.style.display = '';
+    ms.innerHTML = `<div class="multisel-summary">
+      <div class="multisel-icon">⊞</div>
+      <div class="multisel-count">${S.selSet.size} nodes selected</div>
+      <div class="multisel-hint">Drag to move · Delete to remove · ${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+D to duplicate</div>
+      <button class="multisel-desel-btn" id="multisel-desel">Deselect all</button>
+    </div>`;
+    document.getElementById('multisel-desel').onclick = deselect;
+    return;
+  } else {
+    const ms = document.getElementById('multisel-panel');
+    if (ms) ms.style.display = 'none';
+  }
   if (!id || !S.nodes[id]) {
     panel.classList.add('collapsed');
     empty.style.display = ''; cont.classList.remove('show'); updateEmptyPanel(); return;
@@ -2291,13 +2330,18 @@ function findEdgeNear(px, py) {
 }
 
 window.addEventListener('mousemove', e => {
-  // Node drag
+  // Node drag (single or group)
   if (G.drag) {
-    const n = S.nodes[G.drag.id]; if (!n) return;
-    n.x = snapVal(G.drag.ox + (e.clientX-G.drag.sx)/S.zoom);
-    n.y = snapVal(G.drag.oy + (e.clientY-G.drag.sy)/S.zoom);
-    const el = document.getElementById('node-'+G.drag.id);
-    if (el) { const {x,y}=nodeScreenPos(n); el.style.left=x+'px'; el.style.top=y+'px'; }
+    const dx = (e.clientX - G.drag.sx) / S.zoom;
+    const dy = (e.clientY - G.drag.sy) / S.zoom;
+    // Move all nodes in the group
+    Object.entries(G.drag.group).forEach(([nid, o]) => {
+      const nd = S.nodes[nid]; if (!nd) return;
+      nd.x = snapVal(o.ox + dx);
+      nd.y = snapVal(o.oy + dy);
+      const el2 = document.getElementById('node-' + nid);
+      if (el2) { const p = nodeScreenPos(nd); el2.style.left = p.x + 'px'; el2.style.top = p.y + 'px'; }
+    });
     renderEdges(); return;
   }
   // Canvas pan
@@ -2305,6 +2349,16 @@ window.addEventListener('mousemove', e => {
     S.panX = G.pan.ox + (e.clientX-G.pan.sx);
     S.panY = G.pan.oy + (e.clientY-G.pan.sy);
     renderAll(); updateZoomLabel(); updateCanvasGrid(); return;
+  }
+  // Rubber-band selection
+  if (G.rubber) {
+    const rect = cWrap.getBoundingClientRect();
+    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+    const x = Math.min(G.rubber.rx, cx), y = Math.min(G.rubber.ry, cy);
+    const w = Math.abs(cx - G.rubber.rx), h = Math.abs(cy - G.rubber.ry);
+    const rb = document.getElementById('rubber-band');
+    if (rb) rb.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;display:block`;
+    return;
   }
   // Connection preview
   if (G.conn) {
@@ -2318,9 +2372,27 @@ window.addEventListener('mousemove', e => {
   }
 });
 
-window.addEventListener('mouseup', () => {
+window.addEventListener('mouseup', e => {
   if (G.drag) { snapshot(); autoSave(); G.drag=null; }
   G.pan=null;
+  // Rubber-band: finalize selection
+  if (G.rubber) {
+    const rb = document.getElementById('rubber-band');
+    if (rb) {
+      const rbRect = rb.getBoundingClientRect();
+      Object.keys(S.nodes).forEach(nid => {
+        const el = document.getElementById('node-' + nid);
+        if (!el) return;
+        const nr = el.getBoundingClientRect();
+        const overlaps = nr.left < rbRect.right && nr.right > rbRect.left &&
+                         nr.top < rbRect.bottom && nr.bottom > rbRect.top;
+        if (overlaps) { S.selSet.add(nid); S.sel = nid; }
+      });
+      rb.style.display = 'none';
+      if (S.selSet.size > 0) renderAll();
+    }
+    G.rubber = null;
+  }
   // Don't clear conn if we're in pending click-connect mode
   if (!G.pendingConn) { G.conn=null; connPrev.style.display='none'; }
 });
@@ -2328,8 +2400,17 @@ window.addEventListener('mouseup', () => {
 cWrap.addEventListener('mousedown', e => {
   if (e.target===cWrap || e.target===cSvg || e.target.id==='canvas-nodes') {
     if (G.pendingConn) { clearPendingConn(); return; }
-    deselect();
-    G.pan = { sx:e.clientX, sy:e.clientY, ox:S.panX, oy:S.panY };
+    if (!e.shiftKey) deselect();
+    if (e.shiftKey) {
+      // Shift+drag on canvas = rubber-band add to selection
+      const rect = cWrap.getBoundingClientRect();
+      G.rubber = { sx: e.clientX, sy: e.clientY, rx: e.clientX - rect.left, ry: e.clientY - rect.top };
+      let rb = document.getElementById('rubber-band');
+      if (!rb) { rb = document.createElement('div'); rb.id = 'rubber-band'; cWrap.appendChild(rb); }
+      rb.style.cssText = `left:${G.rubber.rx}px;top:${G.rubber.ry}px;width:0;height:0;display:block`;
+    } else {
+      G.pan = { sx:e.clientX, sy:e.clientY, ox:S.panX, oy:S.panY };
+    }
   }
 });
 
@@ -2415,27 +2496,53 @@ window.addEventListener('keydown', e => {
   const tag = document.activeElement.tagName;
   if (tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
   if ((e.key==='Delete'||e.key==='Backspace') && !e.metaKey) {
-    if (S.sel) deleteNode(S.sel);
-    else if (S.selEdge) deleteEdge(S.selEdge);
+    if (S.selSet.size > 1) {
+      snapshot();
+      const ids = [...S.selSet];
+      ids.forEach(nid => { if (S.nodes[nid]) deleteNode(nid); });
+    } else if (S.sel) { deleteNode(S.sel); }
+    else if (S.selEdge) { deleteEdge(S.selEdge); }
     e.preventDefault();
   }
-  if (e.key==='Escape') { clearPendingConn(); deselect(); _hideCtxMenu(); }
+  if (e.key==='Escape') {
+    if (_presentMode) { exitPresentMode(); return; }
+    const sc = document.getElementById('shortcuts-modal');
+    if (sc) { sc._close(); return; }
+    clearPendingConn(); deselect(); _hideCtxMenu();
+  }
+  if (e.key==='?' || e.key==='/') { showShortcutsModal(); e.preventDefault(); return; }
   if (e.key==='g' || e.key==='G') { setSnapGrid(!S.snapGrid); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey) { undo(); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && (e.key==='y'||(e.key==='z'&&e.shiftKey))) { redo(); e.preventDefault(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='a') { fitView(); e.preventDefault(); }
-  // Ctrl+D: duplicate selected node
-  if ((e.ctrlKey||e.metaKey) && e.key==='d' && S.sel) {
+  // Ctrl+D: duplicate selected node(s)
+  if ((e.ctrlKey||e.metaKey) && e.key==='d' && (S.sel || S.selSet.size)) {
     e.preventDefault();
-    window._ctxActions.duplicate?.() || (() => {
-      const n = S.nodes[S.sel]; if (!n) return;
+    snapshot();
+    const newSelSet = new Set();
+    let lastNewId = null;
+    const toDup = S.selSet.size > 0 ? [...S.selSet] : (S.sel ? [S.sel] : []);
+    // Build id map so internal edges between copies can be recreated
+    const idMap = {};
+    toDup.forEach(nid => { idMap[nid] = 'n' + (++S.nSeq); });
+    toDup.forEach(nid => {
+      const n = S.nodes[nid]; if (!n) return;
       const def2 = COMPONENT_DEFS.find(d => d.id === n.defId);
-      snapshot();
-      const newId = 'n' + (++S.nSeq);
-      S.nodes[newId] = { id: newId, defId: n.defId, x: n.x+24, y: n.y+24, w: n.w, h: n.h,
-        props: { ...n.props, label: (n.props.label || def2?.name || '') + ' (copy)' } };
-      renderAll(); updateStats(); updateCost(); select(newId);
-    })();
+      const newId = idMap[nid];
+      S.nodes[newId] = { id: newId, defId: n.defId, x: n.x+28, y: n.y+28, w: n.w, h: n.h,
+        props: { ...n.props, label: (n.props.label || def2?.name || '') + ' copy' } };
+      newSelSet.add(newId); lastNewId = newId;
+    });
+    // Recreate internal edges between duplicated nodes
+    Object.values(S.edges).forEach(ed => {
+      if (idMap[ed.src] && idMap[ed.tgt]) {
+        const eid = 'e' + (++S.eSeq);
+        S.edges[eid] = { id: eid, src: idMap[ed.src], srcSide: ed.srcSide,
+          tgt: idMap[ed.tgt], tgtSide: ed.tgtSide, props: { ...ed.props } };
+      }
+    });
+    S.selSet = newSelSet; S.sel = lastNewId;
+    renderAll(); updateStats(); updateCost();
   }
 });
 
@@ -3346,6 +3453,110 @@ document.getElementById('btn-share').onclick = () => {
   shareArchitecture();
 };
 document.getElementById('btn-suggestions').onclick = () => setSuggestionsOn(!S.suggestionsOn);
+
+// ── PNG Export ────────────────────────────────────────────────────────────
+document.getElementById('btn-export-png').onclick = () => {
+  track('diagram_exported', { format: 'png', node_count: Object.keys(S.nodes).length });
+  exportDiagramPng();
+};
+
+function exportDiagramPng() {
+  const svgStr = diagramSvgString();
+  const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = () => {
+    const scale = 2; // 2× for crisp retina output
+    const canvas = document.createElement('canvas');
+    canvas.width  = img.naturalWidth  * scale;
+    canvas.height = img.naturalHeight * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = S.theme === 'light' ? '#ffffff' : '#0d1117';
+    ctx.fillRect(0, 0, img.naturalWidth, img.naturalHeight);
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(pngBlob => {
+      downloadBlob(pngBlob, `archi-flow-${getDiagramTitle().replace(/\s+/g,'-').toLowerCase()}.png`);
+    }, 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); pushToast('PNG export failed — try SVG instead', 'warn'); };
+  img.src = url;
+}
+
+// ── Presentation Mode ─────────────────────────────────────────────────────
+let _presentMode = false;
+function enterPresentMode() {
+  _presentMode = true;
+  document.body.classList.add('present-mode');
+  document.getElementById('btn-present-exit').style.display = '';
+  pushToast('Presentation mode — press Esc to exit', 'info');
+}
+function exitPresentMode() {
+  _presentMode = false;
+  document.body.classList.remove('present-mode');
+  document.getElementById('btn-present-exit').style.display = 'none';
+}
+document.getElementById('btn-present').onclick = () => { enterPresentMode(); };
+document.getElementById('btn-present-exit').onclick = () => exitPresentMode();
+
+// ── Keyboard Shortcuts Modal ──────────────────────────────────────────────
+function showShortcutsModal() {
+  if (document.getElementById('shortcuts-modal')) return;
+  const isMac = navigator.platform.includes('Mac');
+  const mod = isMac ? '⌘' : 'Ctrl';
+  const shortcuts = [
+    { group: 'Canvas',    keys: [`${mod}+Z`, `${mod}+Shift+Z`, `${mod}+A`, `G`],            labels: ['Undo', 'Redo', 'Fit to screen', 'Toggle grid snap'] },
+    { group: 'Selection', keys: ['Click', 'Delete / ⌫', `${mod}+D`],                        labels: ['Select node or edge', 'Delete selected', 'Duplicate selected node'] },
+    { group: 'Canvas Nav',keys: ['Scroll', 'Drag canvas'],                                   labels: ['Zoom in / out', 'Pan'] },
+    { group: 'Nodes',     keys: ['Hover → port dots', 'Drag port → node', 'Right-click'],   labels: ['Show connection ports', 'Draw a connection', 'Context menu (duplicate, delete, replica)'] },
+    { group: 'Misc',      keys: ['Esc', '?'],                                                labels: ['Deselect / close menus', 'Show this help'] },
+  ];
+
+  const rows = shortcuts.map(s => `
+    <div class="sc-group">${s.group}</div>
+    ${s.keys.map((k,i) => `
+      <div class="sc-row">
+        <kbd class="sc-key">${k}</kbd>
+        <span class="sc-label">${s.labels[i]}</span>
+      </div>`).join('')}
+  `).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'shortcuts-modal';
+  modal.innerHTML = `
+    <div class="sc-backdrop"></div>
+    <div class="sc-card">
+      <div class="sc-header">
+        <div class="sc-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01"/><path d="M10 10h.01"/><path d="M14 10h.01"/><path d="M18 10h.01"/><path d="M8 14h8"/></svg>
+          Keyboard Shortcuts
+        </div>
+        <button class="sc-close" id="sc-close-btn">✕</button>
+      </div>
+      <div class="sc-body">${rows}</div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const close = () => {
+    modal.classList.add('sc-fade-out');
+    setTimeout(() => modal.parentNode && modal.parentNode.removeChild(modal), 250);
+  };
+  document.getElementById('sc-close-btn').onclick = close;
+  modal.querySelector('.sc-backdrop').onclick = close;
+  modal._close = close;
+  requestAnimationFrame(() => modal.classList.add('sc-visible'));
+}
+
+document.getElementById('btn-shortcuts').onclick = showShortcutsModal;
+
+// ── Restart Tour ──────────────────────────────────────────────────────────
+document.getElementById('btn-restart-tour').onclick = () => {
+  localStorage.removeItem(TOUR_KEY);
+  const existing = document.getElementById('tour-overlay');
+  if (existing) existing.parentNode.removeChild(existing);
+  startTour();
+};
 
 // ── Reserved Pricing toggle ────────────────────────────────────────────────
 const _btnReserved = document.getElementById('btn-reserved');
