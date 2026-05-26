@@ -304,15 +304,22 @@ function togglePalFootSection(id) {
   if (!sec) return;
   const open = sec.classList.toggle('open');
   const btn = sec.querySelector('.pal-foot-hdr');
-  if (btn) btn.setAttribute('aria-expanded', open);
+  if (btn) btn.setAttribute('aria-expanded', String(open));
   try { localStorage.setItem('archviz.palfoot.' + id, open ? '1' : '0'); } catch {}
 }
-// Restore persisted state on load
+window.togglePalFootSection = togglePalFootSection;
+
+// Wire via JS (safer than inline onclick in module scripts)
 ['tips-section', 'legend-section'].forEach(id => {
+  const sec = document.getElementById(id);
+  if (!sec) return;
+  const btn = sec.querySelector('.pal-foot-hdr');
+  if (btn) btn.addEventListener('click', () => togglePalFootSection(id));
+  // Restore persisted open state
   try {
     if (localStorage.getItem('archviz.palfoot.' + id) === '1') {
-      const sec = document.getElementById(id);
-      if (sec) { sec.classList.add('open'); sec.querySelector('.pal-foot-hdr')?.setAttribute('aria-expanded','true'); }
+      sec.classList.add('open');
+      btn?.setAttribute('aria-expanded', 'true');
     }
   } catch {}
 });
