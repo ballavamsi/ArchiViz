@@ -10,6 +10,76 @@
 
 ---
 
+## Copilot Quick Start
+
+> Read this first if you're GitHub Copilot picking up from here.
+
+### What to work on next
+**Iteration 7 — Multi-Select + Canvas Productivity** (see `.claude/PLAN.md` for full spec)
+
+Tasks in order:
+1. Rubber-band selection — drag on empty canvas draws a rect; on mouseup select all nodes whose bounding box intersects
+2. Shift+click to add/remove a node from selection
+3. Group move — when dragging any selected node, translate all selected nodes by the same delta
+4. Group delete — `Delete` key removes all selected nodes and all edges connected to them
+5. Ctrl+D duplicate — copy selected nodes offset by 20px, recreate internal edges between copies
+
+### Files to edit
+- **`src/app.js`** — all canvas logic, mouse event handlers, sim, PDF export. This is the only file you'll need for iteration 7.
+- **`src/app.css`** — add `.selected` ring style and rubber-band rect style here.
+- **`index.html`** — only if you need new toolbar buttons.
+
+### After every edit, sync to dist
+```bash
+cp src/app.js dist/src/app.js
+cp src/app.css dist/src/app.css
+# only if index.html changed:
+cp index.html dist/index.html
+```
+
+### Key functions in src/app.js to know
+| Function | What it does |
+|---|---|
+| `renderAll()` | Re-renders all nodes and edges |
+| `snapshot()` | Push current state to undo history — call before any mutation |
+| `deleteNode(id)` | Removes a node and all its edges, calls renderAll |
+| `deleteEdge(id)` | Removes a single edge, calls renderAll |
+| `addNode(defId, x, y)` | Creates a new node at canvas position x,y |
+| `selectNode(id)` | Sets `S.sel`, updates properties panel |
+| `updateCost()` | Recalculates cost badge and HUD |
+| `buildSuggestions()` | Rebuilds suggestion cards |
+| `S.nodes[id]` | Node dict lookup — `S.nodes` is a **dict**, not an array |
+| `S.edges[id]` | Edge dict lookup |
+
+### Canvas coordinate system
+- `S.panX`, `S.panY` — canvas offset in px
+- `S.zoom` — current zoom level (1 = 100%)
+- To convert screen coords to canvas coords:
+  ```js
+  const cx = (screenX - S.panX) / S.zoom;
+  const cy = (screenY - S.panY) / S.zoom;
+  ```
+
+### Current selection state
+- `S.sel` — single selected node id (string or null)
+- There is no multi-select state yet — you'll need to add `S.selSet = new Set()` for iteration 7
+
+### Critical gotchas
+- `S.nodes` is a **dict** (`{}`), not an array — never call `.find()`, `.map()`, `.filter()` on it directly. Use `Object.values(S.nodes)` or `Object.keys(S.nodes)`.
+- `sla` in `S.simLoad[id].sla` is a **string** like `"99.50%"` — use `parseFloat(sla)` before any math.
+- Edge panel needs `display: flex` not `display: ''` — CSS default for `#edge-props-content` is `display:none`.
+- `dist/` is gitignored and served by the server. Source edits only take effect after the `cp` commands above.
+
+### Commit and push
+```bash
+git add src/app.js src/app.css   # add index.html if changed
+git commit -m "feat: iteration 7 — multi-select and canvas productivity"
+git push origin release/serverside
+```
+Render auto-deploys on push to `release/serverside`. Takes ~2–3 min.
+
+---
+
 ## Product Summary
 
 Archi-Flow is a browser-based architecture diagramming and traffic simulation tool, modeled after draw.io/Lucidchart but specialized for cloud/system design.
