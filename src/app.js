@@ -1052,7 +1052,7 @@ function showEdgeProps(id) {
   panel.classList.remove('collapsed');
   empty.style.display = 'none';
   cont.classList.remove('show');
-  if (econt) { econt.style.display = ''; _renderEdgePanel(edge); }
+  if (econt) { econt.style.display = 'flex'; _renderEdgePanel(edge); }
 }
 
 function _renderEdgePanel(edge) {

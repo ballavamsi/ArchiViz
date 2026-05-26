@@ -139,7 +139,7 @@
 
   <!-- Title (Notion-style) -->
   <input id="diagram-title" type="text" value="Untitled Architecture" title="Click to rename diagram"
-    style="height:30px;background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text);font-size:13px;font-weight:600;padding:0 9px;outline:none;min-width:0;width:200px;transition:all 0.15s;letter-spacing:-0.01em;"
+    style="height:30px;background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text);font-size:13px;font-weight:600;padding:0 9px;outline:none;min-width:80px;max-width:140px;flex-shrink:1;width:120px;transition:all 0.15s;letter-spacing:-0.01em;"
     onfocus="this.style.borderColor='rgba(79,156,249,0.45)';this.style.background='rgba(79,156,249,0.07)'"
     onblur="this.style.borderColor='transparent';this.style.background='transparent'"/>
 
@@ -231,6 +231,15 @@
         Hints
       </button>
       <div style="height:1px;background:var(--border);margin:4px 2px"></div>
+      <button class="tbtn more-item" id="btn-reserved" title="Toggle reserved-instance pricing (saves ~35% on compute)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Reserved Pricing
+      </button>
+      <button class="tbtn more-item" id="btn-service-mesh" title="Toggle service mesh mode — shows retries/circuit breakers on edges">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><line x1="7" y1="12" x2="17" y2="6.5"/><line x1="7" y1="12" x2="17" y2="17.5"/><line x1="17" y1="6.5" x2="17" y2="17.5"/></svg>
+        Service Mesh
+      </button>
+      <div style="height:1px;background:var(--border);margin:4px 2px"></div>
       <button class="tbtn more-item danger" id="btn-clear" title="Remove all nodes and edges from the canvas" aria-label="Clear canvas">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg>
         Clear Canvas
@@ -245,14 +254,6 @@
   </div>
 
   <input id="import-file" type="file" accept="application/json,.json" style="display:none"/>
-  <button class="tbtn" id="btn-reserved" title="Toggle reserved-instance pricing (saves ~35% on compute)">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-    Reserved
-  </button>
-  <button class="tbtn" id="btn-service-mesh" title="Toggle service mesh mode — shows retries/circuit breakers on edges">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><line x1="7" y1="12" x2="17" y2="6.5"/><line x1="7" y1="12" x2="17" y2="17.5"/><line x1="17" y1="6.5" x2="17" y2="17.5"/></svg>
-    Mesh
-  </button>
   <div id="cost-badge">$0 / mo</div>
 </div>
 

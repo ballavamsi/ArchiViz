@@ -49,7 +49,7 @@ body {
 /* Share button — accent outline */
 .tbtn-share { border-color: rgba(79,156,249,0.35) !important; color: var(--accent) !important; background: rgba(79,156,249,0.08) !important; font-weight: 600; }
 .tbtn-share:hover { background: rgba(79,156,249,0.18) !important; box-shadow: 0 0 14px rgba(79,156,249,0.22) !important; }
-#example-sel { height: 28px; width: min(34vw, 460px); max-width: 460px; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); padding: 0 8px; font-size: 12px; outline: none; cursor: pointer; }
+#example-sel { height: 28px; width: min(22vw, 280px); max-width: 280px; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); padding: 0 8px; font-size: 12px; outline: none; cursor: pointer; }
 #example-sel:focus { border-color: var(--accent); }
 #cost-badge { background: #238636; color: #3fb950; border: 1px solid #2ea043; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; font-family: monospace; flex-shrink: 0; }
 
@@ -371,6 +371,18 @@ body { background: #070b10; letter-spacing: -0.01em; }
 }
 #toolbar .logo svg { color: var(--accent); filter: drop-shadow(0 0 6px rgba(79,156,249,0.5)); }
 #toolbar .sep { background: var(--border2); opacity: 0.6; }
+
+/* Compact toolbar for small viewports */
+@media (max-width: 860px) {
+  #btn-share { display: none !important; }
+  #diagram-title { max-width: 90px !important; font-size: 12px !important; }
+}
+@media (max-width: 780px) {
+  #btn-collab { display: none !important; }
+  #collab-users { display: none !important; }
+  #diagram-title { display: none !important; }
+  #example-sel { width: min(28vw, 200px) !important; max-width: 200px !important; }
+}
 
 .tbtn {
   height: 32px;
