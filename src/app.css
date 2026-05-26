@@ -331,15 +331,38 @@ body {
 .health-ring { --health: 0%; --ring-color: var(--green); width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 4px; background: radial-gradient(circle at center, var(--surface) 0 57%, transparent 58%), conic-gradient(var(--ring-color) var(--health), color-mix(in srgb, var(--border2) 70%, transparent) 0); box-shadow: var(--shadow-sm); }
 .health-ring span { position: relative; z-index: 1; font-size: 14px; font-weight: 900; color: var(--text); white-space: nowrap; letter-spacing: -0.03em; }
 .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-.metric { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 7px; }
-.metric strong { display: block; color: var(--text); font-size: 14px; line-height: 1; }
-.metric span { color: var(--muted); font-size: 10px; }
+.metric {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 10px 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+.metric strong {
+  display: block;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+}
 
 #canvas-hud { position: absolute; top: 12px; right: 12px; width: 236px; z-index: 45; background: rgba(10,15,22,0.9); border: 1px solid rgba(100,130,165,0.2); border-radius: 14px; padding: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04); backdrop-filter: blur(16px); }
 #canvas-hud .health-ring { width: 62px; height: 62px; min-width: 62px; margin: 0; flex-shrink: 0; }
 #canvas-hud .metric-grid { grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
-#canvas-hud .metric { padding: 7px 5px; text-align: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; }
-#canvas-hud .metric strong { font-size: 12px; font-weight: 700; }
+#canvas-hud .metric { padding: 8px 4px 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; }
+#canvas-hud .metric strong { font-size: 15px; }
 #canvas-hud .metric span { font-size: 9px; }
 #props-content { display: none; flex-direction: column; height: 100%; overflow: hidden; }
 #props-content.show { display: flex; }
@@ -380,6 +403,28 @@ body {
 /* ── STATUS BAR ── */
 #statusbar { height: 40px; background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; padding: 0 12px; flex-shrink: 0; overflow: hidden; flex-wrap: nowrap; }
 .sb-divider { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+
+.speed-sel {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 26px;
+  padding: 0 24px 0 9px;
+  background: rgba(255,255,255,0.05)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7f96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
+    no-repeat right 7px center;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.14s, background 0.14s;
+  flex-shrink: 0;
+}
+.speed-sel:hover { background-color: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.18); }
+.speed-sel:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,156,249,0.15); }
+.speed-sel option { background: #111c2a; color: #c9d6e3; }
 .sb-stat { font-size: 11px; color: var(--muted); white-space: nowrap; display: flex; align-items: center; gap: 4px; }
 .sb-stat strong { color: var(--text); font-weight: 600; }
 .sb-stat svg { opacity: 0.55; flex-shrink: 0; }
@@ -909,18 +954,47 @@ body[data-theme="light"] .node-titles .node-type {
 .prop-lbl { font-size: 10px; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
 .prop-inp {
   height: 32px;
-  background: rgba(0,0,0,0.3);
+  background: rgba(255,255,255,0.05);
   border: 1px solid var(--border2);
   border-radius: 8px;
   color: var(--text);
   font-size: 12px;
   font-weight: 500;
-  transition: border-color 0.14s, box-shadow 0.14s;
+  transition: border-color 0.14s, box-shadow 0.14s, background 0.14s;
+}
+.prop-inp:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
 }
 .prop-inp:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(79,156,249,0.1);
-  background: rgba(0,0,0,0.4);
+  box-shadow: 0 0 0 3px rgba(79,156,249,0.12);
+  background: rgba(79,156,249,0.06);
+  outline: none;
+}
+
+/* Select-specific — custom arrow, no OS chrome */
+select.prop-inp {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7f96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  cursor: pointer;
+}
+select.prop-inp:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234f9cf9' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+
+/* Style the OS dropdown options as best we can */
+select.prop-inp option {
+  background: #111c2a;
+  color: #c9d6e3;
+  font-size: 12px;
+  padding: 6px 10px;
 }
 textarea.prop-inp {
   height: 100px;
@@ -2104,13 +2178,15 @@ body[data-theme="light"] .leg-item {
   border-color: #c8d2de;
   color: #475569;
 }
-body[data-theme="light"] #sim-speed-sel,
+body[data-theme="light"] .speed-sel,
 body[data-theme="light"] #sim-users-val,
 body[data-theme="light"] #users-input {
   background: #ffffff !important;
   color: #172033 !important;
   border-color: #c8d2de !important;
 }
+body[data-theme="light"] select.prop-inp option { background: #ffffff; color: #172033; }
+body[data-theme="light"] .speed-sel option { background: #ffffff; color: #172033; }
 
 /* ── Light theme: property panel inputs ───────────────────────────────────── */
 body[data-theme="light"] .prop-inp,
