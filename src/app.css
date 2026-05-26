@@ -1590,6 +1590,9 @@ textarea.prop-inp {
   --node-bg: linear-gradient(160deg,#131c28 0%,#0d1520 100%);
   --node-border: rgba(100,130,165,0.22);
   --node-shadow: 0 4px 22px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.05);
+  --menu-bg: #0f1722;
+  --menu-border: #2a3a50;
+  --menu-item-hover: rgba(79,156,249,0.16);
 }
 
 body[data-theme="light"] {
@@ -1614,6 +1617,9 @@ body[data-theme="light"] {
   --node-bg: linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
   --node-border: rgba(51,65,85,0.16);
   --node-shadow: 0 6px 18px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  --menu-bg: #ffffff;
+  --menu-border: #c8d2de;
+  --menu-item-hover: #eef5ff;
   --shadow-sm: 0 1px 4px rgba(15,23,42,0.08);
   --shadow-md: 0 8px 24px rgba(15,23,42,0.12);
   --shadow-lg: 0 18px 44px rgba(15,23,42,0.16);
@@ -1637,6 +1643,49 @@ body { background: var(--bg); }
 #minimap { background: var(--panel-soft); border-color: var(--border); }
 #canvas-hud .metric,
 .metric { background: var(--control); border-color: var(--border); }
+
+#more-menu {
+  min-width: 232px !important;
+  padding: 6px !important;
+  background: var(--menu-bg) !important;
+  border: 1px solid var(--menu-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 18px 50px rgba(15,23,42,0.22) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+#more-menu .more-item {
+  min-height: 34px;
+  justify-content: flex-start;
+  gap: 9px;
+  color: var(--text2) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+#more-menu .more-item svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+#more-menu .more-item:hover {
+  background: var(--menu-item-hover) !important;
+  color: var(--text) !important;
+  border-color: transparent !important;
+  transform: none !important;
+}
+#more-menu .more-item.active {
+  background: color-mix(in srgb, var(--accent) 14%, var(--menu-bg)) !important;
+  color: var(--accent) !important;
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent) !important;
+}
+#more-menu .more-item.danger:hover {
+  background: rgba(246,96,96,0.12) !important;
+  color: var(--red) !important;
+}
+#more-menu > div:not(:last-child) {
+  border-color: var(--border) !important;
+}
 
 #canvas-wrap {
   background-color: var(--canvas-bg);

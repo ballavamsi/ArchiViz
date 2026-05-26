@@ -87,6 +87,22 @@ try {
   assert.equal(lightCanvas.bg, 'rgb(255, 255, 255)');
   assert.match(lightCanvas.themeButton, /Theme: Light/);
 
+  await page.locator('#btn-more').click();
+  const menuState = await page.locator('#more-menu').evaluate(el => {
+    const cs = getComputedStyle(el);
+    const item = el.querySelector('.more-item');
+    const itemCs = getComputedStyle(item);
+    return {
+      bg: cs.backgroundColor,
+      backdrop: cs.backdropFilter,
+      width: Math.round(el.getBoundingClientRect().width),
+      itemColor: itemCs.color,
+    };
+  });
+  assert.equal(menuState.bg, 'rgb(255, 255, 255)');
+  assert.ok(menuState.width >= 232, 'More menu should be wide enough for labels');
+  assert.equal(menuState.itemColor, 'rgb(51, 65, 85)');
+
   await page.locator('#btn-share').click();
   await page.locator('.share-box').waitFor({ state: 'visible', timeout: 5000 });
   const shareState = await page.locator('.share-box').evaluate(el => {
