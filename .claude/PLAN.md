@@ -89,6 +89,8 @@ Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that 
 | Whiteboard text notes | ✅ |
 | Responsive toolbar (breakpoints at 860/780px) | ✅ |
 | Grid snapping toggle | ✅ |
+| Draw.io/Lucid-style canvas grid | ✅ |
+| Dark / Light theme toggle | ✅ |
 | Editable diagram title | ✅ |
 | Multi-select / rubber-band | ⏳ Next |
 | PNG export | ⏳ Next |

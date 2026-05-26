@@ -61,6 +61,12 @@ let S = {
   simTick: null,
   simSpeed: (() => { try { return localStorage.getItem('archviz.simspeed') || 'normal'; } catch { return 'normal'; } })(),
   snapGrid: (() => { try { return localStorage.getItem('archviz.snap') !== 'off'; } catch { return true; } })(),
+  theme: (() => {
+    try {
+      const saved = localStorage.getItem('archviz.theme');
+      return saved === 'light' ? 'light' : 'dark';
+    } catch { return 'dark'; }
+  })(),
   sidebarOpen: (() => { try { return localStorage.getItem('archviz.sidebar') !== 'closed'; } catch { return true; } })(),
   gridSize: 40,
   title: 'Untitled Architecture',
@@ -116,9 +122,31 @@ function clearPendingConn() {
 }
 
 function updateCanvasGrid() {
-  const sz = S.gridSize * S.zoom;
-  cWrap.style.backgroundSize = `${sz}px ${sz}px, ${sz}px ${sz}px, 100% 100%`;
-  cWrap.style.backgroundPosition = `${S.panX}px ${S.panY}px, ${S.panX}px ${S.panY}px, 0 0`;
+  const major = S.gridSize * S.zoom;
+  const minor = Math.max(5, major / 4);
+  const pos = `${S.panX}px ${S.panY}px`;
+  cWrap.style.backgroundSize = `${minor}px ${minor}px, ${minor}px ${minor}px, ${major}px ${major}px, ${major}px ${major}px`;
+  cWrap.style.backgroundPosition = `${pos}, ${pos}, ${pos}, ${pos}`;
+}
+
+function updateThemeButton() {
+  const btn = document.getElementById('btn-theme');
+  if (!btn) return;
+  const isLight = S.theme === 'light';
+  btn.classList.toggle('active', isLight);
+  btn.title = isLight ? 'Light theme active — switch to dark' : 'Dark theme active — switch to light';
+  btn.innerHTML = (isLight
+    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A8.5 8.5 0 1 1 12 3z"/></svg>Theme: Light'
+    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>Theme: Dark');
+}
+
+function setTheme(theme) {
+  S.theme = theme === 'light' ? 'light' : 'dark';
+  document.body.dataset.theme = S.theme;
+  try { localStorage.setItem('archviz.theme', S.theme); } catch {}
+  updateThemeButton();
+  updateCanvasGrid();
+  renderAll();
 }
 
 function updateSnapButton() {
@@ -409,9 +437,9 @@ function renderNode(id) {
 
   if (n.defId === 'textnote') {
     const tone = TONE_THEME[n.props.tone] || TONE_THEME['Neutral'];
-    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${n.h}px;transform:scale(${S.zoom});transform-origin:top left;background:${tone.bg};border-color:rgba(255,255,255,0.07);border-left-color:${tone.accent};`;
+    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${n.h}px;transform:scale(${S.zoom});transform-origin:top left;background:${tone.bg};border-color:var(--node-border);border-left-color:${tone.accent};`;
   } else {
-    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${n.h}px;transform:scale(${S.zoom});transform-origin:top left;border-left-color:${borderColor};background:linear-gradient(160deg,#131c28 0%,#0d1520 100%);box-shadow:0 4px 22px rgba(0,0,0,0.42),inset 0 1px 0 rgba(255,255,255,0.05),inset 3px 0 24px ${baseColor}18;`;
+    el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${n.h}px;transform:scale(${S.zoom});transform-origin:top left;border-left-color:${borderColor};background:var(--node-bg);box-shadow:var(--node-shadow),inset 3px 0 22px ${baseColor}14;`;
   }
 
   const label = n.props.label || def.name;
@@ -3325,6 +3353,7 @@ if (_btnMesh) _btnMesh.onclick = () => {
 };
 document.getElementById('btn-snap').onclick = () => setSnapGrid(!S.snapGrid);
 document.getElementById('btn-sidebar-toggle').onclick = () => setSidebarOpen(!S.sidebarOpen);
+document.getElementById('btn-theme').onclick = () => setTheme(S.theme === 'dark' ? 'light' : 'dark');
 
 // More menu toggle
 const moreMenu = document.getElementById('more-menu');
@@ -3362,6 +3391,7 @@ speedSel.onchange = () => {
   snapshot();
   updateSuggestionsToggle();
   updateSnapButton();
+  setTheme(S.theme);
   updateSidebarToggle();
   updateZoomLabel();
   updateCanvasGrid();

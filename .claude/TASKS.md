@@ -101,6 +101,15 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 
 ---
 
+### Iteration 6.1 — Canvas Theme Polish
+**Status:** ✅ Done  
+- Replaced decorative canvas glow background with a diagramming-tool grid: minor grid every 10px, major grid every 40px, aligned with pan/zoom and snap grid.
+- Added persisted Dark/Light theme toggle in the More menu (`archviz.theme` in `localStorage`).
+- Updated node/card/panel theme tokens so light mode is readable instead of only changing the canvas.
+- Added smoke-test coverage for `#btn-theme` and `setTheme(theme)`.
+
+---
+
 ## Pending Tasks
 
 ### Next — Multi-Select Canvas Productivity

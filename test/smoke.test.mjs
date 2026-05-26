@@ -93,6 +93,7 @@ test('index.html contains required app hooks', () => {
     'btn-sim',
     'btn-export-pdf',
     'btn-export-svg',
+    'btn-theme',
     'sim-speed-sel',
     'users-input',
     'suggestions',
@@ -106,6 +107,7 @@ test('index.html contains required app hooks', () => {
   assert.match(html, /Archi-Flow/, 'app should use Archi-Flow branding');
   assert.match(appSource, /function diagramSvgString\(\)/, 'app should support diagram image export');
   assert.match(appSource, /function exportPdfReport\(\)/, 'app should support PDF report export');
+  assert.match(appSource, /function setTheme\(theme\)/, 'app should support light and dark themes');
   assert.match(appSource, /transform:scale\(\$\{S\.zoom\}\)/, 'nodes should use transform scaling for zoom');
   assert.doesNotMatch(appSource, /width:\$\{n\.w \* S\.zoom\}px/, 'nodes should not resize width directly during zoom');
 });

@@ -159,7 +159,7 @@ cp index.html dist/index.html
 
 **Last completed iteration:** Iteration 6 — PDF export redesign.
 
-**Latest checkpoint:** 2026-05-26 — production URL confirmed as Render (`https://archi-flow.onrender.com`), PDF report footer/cover aligned, `npm test` and `npm run build` passed.
+**Latest checkpoint:** 2026-05-26 — added draw.io/Lucid-style canvas grid plus persisted Dark/Light theme toggle, production URL confirmed as Render (`https://archi-flow.onrender.com`), `npm test` and `npm run build` passed.
 
 ### Shipped Iterations
 
@@ -204,6 +204,8 @@ cp index.html dist/index.html
 | Auto-layout | ✅ |
 | Lucid-style zoom/pan/fit | ✅ |
 | Grid snapping toggle | ✅ |
+| Draw.io/Lucid-style canvas grid | ✅ |
+| Dark / Light theme toggle | ✅ |
 | Editable diagram title | ✅ |
 | JSON import/export | ✅ |
 | SVG diagram image export | ✅ |
