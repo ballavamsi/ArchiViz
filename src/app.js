@@ -2658,156 +2658,371 @@ function exportPdfReport() {
   const win = window.open('', '_blank');
   if (!win) { pushToast('Popup blocked — allow popups and try again.', 'warn'); return; }
 
-  const totalCost = payload.nodes.reduce((s, n) => s + Number(n.props?.cost || 0), 0);
+  const realNodes = payload.nodes.filter(n => !n.props?._isReplica);
+  const totalCost = realNodes.reduce((s, n) => s + Number(n.props?.cost || 0), 0);
   const loads     = Object.values(S.simLoad).filter(x => typeof x.loadPct === 'number');
   const critical  = loads.filter(x => x.loadPct > 85).length;
   const warning   = loads.filter(x => x.loadPct > 60 && x.loadPct <= 85).length;
+  const healthy   = loads.filter(x => x.loadPct <= 60 && x.status !== 'source').length;
   const simActive = S.simOn || loads.length > 0;
 
-  // Status badge helper
-  const statusBadge = sim => {
-    if (!sim || !simActive || sim.status === 'source') return '<span class="badge badge-idle">—</span>';
-    if (sim.loadPct > 85) return `<span class="badge badge-crit">${Math.round(sim.loadPct)}% — Critical</span>`;
-    if (sim.loadPct > 60) return `<span class="badge badge-warn">${Math.round(sim.loadPct)}% — High</span>`;
-    return `<span class="badge badge-ok">${Math.round(sim.loadPct)}% — Healthy</span>`;
+  const ts     = new Date().toLocaleString(undefined, { dateStyle:'medium', timeStyle:'short' });
+  const tsISO  = new Date().toISOString().slice(0,10);
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+  const statusBadge = (sim, inline) => {
+    if (!sim || !simActive || sim.status === 'source') return inline
+      ? '<span class="pill pill-idle">—</span>'
+      : '<span class="pill pill-idle">—</span>';
+    if (sim.poolExhausted) return `<span class="pill pill-crit">Pool Exhausted</span>`;
+    if (sim.loadPct > 85)  return `<span class="pill pill-crit">${Math.round(sim.loadPct)}% Critical</span>`;
+    if (sim.loadPct > 60)  return `<span class="pill pill-warn">${Math.round(sim.loadPct)}% High</span>`;
+    return `<span class="pill pill-ok">${Math.round(sim.loadPct)}% Healthy</span>`;
   };
 
-  const rows = payload.nodes.filter(n => !n.props?._isReplica).map(n => {
+  // load bar SVG (mini horizontal bar)
+  const loadBar = (pct) => {
+    if (pct == null) return '';
+    const w = Math.min(100, Math.round(pct));
+    const col = pct > 85 ? '#f85149' : pct > 60 ? '#f5b731' : '#34d058';
+    return `<div style="display:flex;align-items:center;gap:6px">
+      <div style="flex:1;height:6px;background:#e8ecf2;border-radius:3px;overflow:hidden;min-width:60px">
+        <div style="width:${w}%;height:100%;background:${col};border-radius:3px"></div>
+      </div>
+      <span style="font-size:10px;font-weight:700;color:${col};min-width:32px;text-align:right">${Math.round(pct)}%</span>
+    </div>`;
+  };
+
+  // cost bar for cost breakdown chart
+  const costCategories = {};
+  realNodes.forEach(n => {
+    const def = COMPONENT_DEFS.find(d => d.id === n.defId);
+    const cat = def?.category || 'other';
+    costCategories[cat] = (costCategories[cat] || 0) + Number(n.props?.cost || 0);
+  });
+  const catColors = { compute:'#4f9cf9', network:'#a78bfa', storage:'#34d058', data:'#f5b731', messaging:'#f97316', observability:'#64748b', security:'#ec4899', 'ai/ml':'#06b6d4', other:'#94a3b8' };
+  const maxCatCost = Math.max(...Object.values(costCategories), 1);
+  const costChartBars = Object.entries(costCategories).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([cat,v]) => {
+    const pct = Math.round((v / maxCatCost) * 100);
+    const col = catColors[cat] || '#94a3b8';
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="width:72px;font-size:10px;font-weight:600;color:#5a6a80;text-align:right;text-transform:capitalize">${cat}</div>
+      <div style="flex:1;height:18px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;display:flex;align-items:center;padding-left:6px">
+          <span style="font-size:9.5px;font-weight:700;color:#fff;white-space:nowrap">$${v.toLocaleString()}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── component table rows ────────────────────────────────────────────────────
+  const rows = realNodes.map(n => {
     const def  = COMPONENT_DEFS.find(d => d.id === n.defId);
     const sim  = S.simLoad[n.id];
     const cost = Number(n.props?.cost || 0);
+    const lat  = sim?.latencyMs;
+    const p95  = sim?.p95Ms;
+    const err  = sim?.errorRate;
+    const slaRaw = sim?.sla;  // stored as "99.50%" string
+    const slaNum = slaRaw != null ? parseFloat(slaRaw) : null;
+    const region = n.props?.region || '';
     return `<tr>
-      <td><strong>${esc(n.props.label || def?.name || n.id)}</strong></td>
-      <td class="type-cell">${esc(def?.name || n.defId)}</td>
-      <td>${sim ? esc(formatFlow(sim.incoming)) : '<span class="dim">—</span>'}</td>
-      <td>${sim && typeof sim.capacity === 'number' ? esc(formatFlow(sim.capacity)) : '<span class="dim">—</span>'}</td>
-      <td>${statusBadge(sim)}</td>
-      <td class="cost-cell">${cost > 0 ? '$' + cost.toLocaleString() + '/mo' : '<span class="dim">—</span>'}</td>
+      <td>
+        <div style="font-weight:700;color:#1a2030;font-size:12px">${esc(n.props.label || def?.name || n.id)}</div>
+        <div style="font-size:10px;color:#8896a5;margin-top:1px">${esc(def?.name || n.defId)}${region ? ` · ${region}` : ''}</div>
+      </td>
+      <td>${sim ? loadBar(sim.loadPct) : '<span class="dim">—</span>'}</td>
+      <td style="font-variant-numeric:tabular-nums">${sim ? esc(formatFlow(sim.incoming)) : '<span class="dim">—</span>'}</td>
+      <td style="font-variant-numeric:tabular-nums">${sim && typeof sim.capacity==='number' ? esc(formatFlow(sim.capacity)) : '<span class="dim">—</span>'}</td>
+      <td style="font-variant-numeric:tabular-nums">${lat != null ? lat+'<span class="unit">ms</span>' : '<span class="dim">—</span>'}</td>
+      <td style="font-variant-numeric:tabular-nums">${p95 != null ? p95+'<span class="unit">ms</span>' : '<span class="dim">—</span>'}</td>
+      <td>${err != null ? `<span style="color:${err>5?'#f85149':err>1?'#f5b731':'#34d058'};font-weight:700">${err}%</span>` : '<span class="dim">—</span>'}</td>
+      <td>${slaNum != null ? `<span style="font-weight:700;color:${slaNum>=99.9?'#34d058':slaNum>=99?'#f5b731':'#f85149'}">${slaNum.toFixed(2)}%</span>` : '<span class="dim">—</span>'}</td>
+      <td style="font-weight:700;color:#1a2030;font-variant-numeric:tabular-nums">${cost > 0 ? '$'+cost.toLocaleString() : '<span class="dim">—</span>'}</td>
     </tr>`;
   }).join('');
 
-  const summaryCards = [
-    { label: 'Components', value: payload.nodes.filter(n=>!n.props?._isReplica).length, color: '#4f9cf9' },
-    { label: 'Connections', value: payload.edges.length, color: '#a78bfa' },
-    { label: 'Monthly cost', value: totalCost > 0 ? '$' + totalCost.toLocaleString() : '—', color: '#34d058' },
-    { label: 'Critical', value: critical, color: critical > 0 ? '#f85149' : '#6b7f96' },
-  ].map(c => `<div class="stat-card"><div class="stat-val" style="color:${c.color}">${c.value}</div><div class="stat-lbl">${c.label}</div></div>`).join('');
+  // ── bottleneck analysis ────────────────────────────────────────────────────
+  const bottlenecks = realNodes
+    .map(n => ({ n, sim: S.simLoad[n.id], def: COMPONENT_DEFS.find(d=>d.id===n.defId) }))
+    .filter(({sim}) => sim && sim.loadPct > 60 && sim.status !== 'source')
+    .sort((a,b) => b.sim.loadPct - a.sim.loadPct)
+    .slice(0, 5);
 
-  const healthBar = simActive ? `
-    <div class="health-section">
-      <div class="health-row">
-        <span class="health-dot" style="background:#34d058"></span> Healthy: ${loads.filter(x=>x.loadPct<=60).length}
-        <span class="health-dot" style="background:#f5b731;margin-left:16px"></span> High load: ${warning}
-        <span class="health-dot" style="background:#f85149;margin-left:16px"></span> Critical: ${critical}
+  const bottleneckCards = bottlenecks.length ? bottlenecks.map(({n, sim, def}) => {
+    const isCrit = sim.loadPct > 85;
+    const bg  = isCrit ? '#fff1f0' : '#fffbeb';
+    const bdr = isCrit ? '#fecaca' : '#fde68a';
+    const ico = isCrit ? '🔴' : '🟡';
+    const rec = sim.poolExhausted
+      ? 'Increase <code>maxConnections</code> or add a connection pool / caching layer in front.'
+      : sim.loadPct > 150
+        ? 'Traffic far exceeds capacity. Scale horizontally or increase capacity significantly.'
+        : 'Consider increasing capacity, enabling auto-scaling, or distributing load with a load balancer.';
+    return `<div style="background:${bg};border:1px solid ${bdr};border-radius:10px;padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span>${ico}</span>
+        <strong style="font-size:13px">${esc(n.props.label || def?.name || n.id)}</strong>
+        <span style="font-size:10px;color:#8896a5;margin-left:auto">${esc(def?.name||n.defId)}</span>
+        ${statusBadge({...sim})}
       </div>
-    </div>` : '';
+      <div style="font-size:11px;color:#556070;line-height:1.6">
+        Receiving <strong>${formatFlow(sim.incoming)}</strong> against capacity of <strong>${formatFlow(sim.capacity)}</strong>
+        (${Math.round(sim.loadPct)}% utilisation${sim.errorRate ? `, ${sim.errorRate}% error rate` : ''}).
+        ${sim.latencyMs ? `Avg latency <strong>${sim.latencyMs}ms</strong> / P95 <strong>${sim.p95Ms}ms</strong>.` : ''}
+        <br><span style="color:#7c8fa0">💡 Recommendation:</span> ${rec}
+      </div>
+    </div>`;
+  }).join('') : `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center;color:#15803d;font-size:12px;font-weight:500">
+    ✅ All components within healthy load thresholds — no bottlenecks detected.
+  </div>`;
 
-  const autoprint = '<scr' + 'ipt>setTimeout(()=>window.print(),500)</' + 'script>';
-  const ts = new Date().toLocaleString(undefined, { dateStyle:'medium', timeStyle:'short' });
+  // ── summary KPI cards ─────────────────────────────────────────────────────
+  const avgSLA  = simActive && loads.length ? (loads.reduce((s,l)=>s+(parseFloat(l.sla)||99.95),0)/loads.length).toFixed(2) : null;
+  const avgLat  = simActive && loads.length ? Math.round(loads.reduce((s,l)=>s+(l.latencyMs||0),0)/loads.length) : null;
+  const kpiCards = [
+    { label:'Components', value: realNodes.length,                        color:'#4f9cf9', sub: `${payload.edges.length} connections` },
+    { label:'Monthly Cost', value: totalCost > 0 ? `$${totalCost.toLocaleString()}` : '—', color:'#34d058', sub: S.reservedPricing ? 'Reserved −35%' : 'On-demand pricing' },
+    { label:'System Health', value: critical > 0 ? `${critical} Critical` : warning > 0 ? `${warning} Warning` : 'All Clear', color: critical>0?'#f85149':warning>0?'#f5b731':'#34d058', sub: `${healthy} healthy · ${warning} warn · ${critical} crit` },
+    { label:'Avg Latency',   value: avgLat != null ? `${avgLat}ms` : '—', color:'#a78bfa', sub: avgSLA != null ? `Est. SLA ${avgSLA}%` : 'Run sim for data' },
+  ].map(c => `<div class="kpi-card">
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8896a5;margin-bottom:6px">${c.label}</div>
+    <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;color:${c.color};margin-bottom:3px">${c.value}</div>
+    <div style="font-size:10px;color:#9aabb8">${c.sub}</div>
+  </div>`).join('');
 
+  // ── CSS ───────────────────────────────────────────────────────────────────
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Inter',system-ui,sans-serif;background:#fff;color:#1a2030;font-size:13px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    /* Header */
-    .header{background:linear-gradient(135deg,#0d1520 0%,#131c2e 100%);color:#fff;padding:28px 36px 24px;display:flex;justify-content:space-between;align-items:flex-start}
-    .header-left .app{font-size:11px;font-weight:600;color:#4f9cf9;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
-    .header-left h1{font-size:22px;font-weight:800;color:#eaf0fb;letter-spacing:-.02em;margin-bottom:4px}
-    .header-left .meta{font-size:11px;color:#6b7f96}
-    .header-right{text-align:right}
-    .header-right .date{font-size:11px;color:#6b7f96;margin-bottom:4px}
-    /* Stats row */
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e8ecf2}
-    .stat-card{padding:14px 20px;border-right:1px solid #e8ecf2}
-    .stat-card:last-child{border-right:none}
-    .stat-val{font-size:22px;font-weight:800;letter-spacing:-.03em;margin-bottom:2px}
-    .stat-lbl{font-size:10px;font-weight:600;color:#8896a5;text-transform:uppercase;letter-spacing:.05em}
-    /* Diagram */
+
+    /* ── Cover / Header ── */
+    .cover{background:linear-gradient(135deg,#060d18 0%,#0d1a2e 55%,#111e35 100%);color:#fff;padding:0;position:relative;overflow:hidden;page-break-after:avoid}
+    .cover-grid{position:absolute;inset:0;background-image:radial-gradient(rgba(79,156,249,0.08) 1px,transparent 1px);background-size:28px 28px;pointer-events:none}
+    .cover-glow{position:absolute;top:-80px;right:-80px;width:360px;height:360px;background:radial-gradient(circle,rgba(79,156,249,0.18) 0%,transparent 70%);pointer-events:none}
+    .cover-inner{position:relative;padding:32px 36px 28px;display:flex;justify-content:space-between;align-items:flex-start}
+    .brand{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+    .brand-icon{width:28px;height:28px;background:linear-gradient(135deg,#4f9cf9,#a78bfa);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0}
+    .brand-name{font-size:13px;font-weight:700;color:#e2eaf8;letter-spacing:-.01em}
+    .cover h1{font-size:26px;font-weight:900;color:#f0f6ff;letter-spacing:-.03em;margin-bottom:5px;line-height:1.15}
+    .cover .sub{font-size:11px;color:#6b7f96;margin-bottom:16px}
+    .cover-chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:#a0b5cc}
+    .chip.chip-sim{background:rgba(52,208,88,0.12);border-color:rgba(52,208,88,0.3);color:#34d058}
+    .chip.chip-crit{background:rgba(248,81,73,0.12);border-color:rgba(248,81,73,0.3);color:#f85149}
+    .cover-right{text-align:right;flex-shrink:0}
+    .cover-right .date-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#4f6580;margin-bottom:3px}
+    .cover-right .date-val{font-size:11px;font-weight:600;color:#8ba3bc}
+    .cover-right .url{font-size:10px;color:#4f9cf9;margin-top:5px}
+
+    /* ── KPI bar ── */
+    .kpi-bar{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #e8ecf2}
+    .kpi-card{padding:16px 20px;border-right:1px solid #e8ecf2}
+    .kpi-card:last-child{border-right:none}
+
+    /* ── Sections ── */
     .section{padding:22px 28px}
-    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8896a5;margin-bottom:12px;display:flex;align-items:center;gap:6px}
-    .section-title::after{content:'';flex:1;height:1px;background:#e8ecf2}
-    .diagram-wrap{border:1px solid #e3e8ef;border-radius:12px;overflow:hidden;background:#080d14}
-    .diagram-wrap svg{display:block;width:100%;height:auto;max-height:420px}
-    /* Health bar */
-    .health-section{padding:10px 28px 18px;background:#f8fafc}
-    .health-row{display:flex;align-items:center;gap:4px;font-size:11px;color:#556070;font-weight:500}
-    .health-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
-    /* Table */
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    thead th{background:#f8fafc;padding:9px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8896a5;border-bottom:2px solid #e3e8ef}
-    tbody tr{border-bottom:1px solid #f0f3f7;transition:background .1s}
+    .section+.section{padding-top:0}
+    .sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#8896a5;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+    .sec-title::after{content:'';flex:1;height:1px;background:#e8ecf2}
+    .sec-title .sec-icon{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+
+    /* ── Diagram ── */
+    .diagram-wrap{border:1px solid #1e2d40;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#080d14 0%,#0d1520 100%);padding:4px}
+    .diagram-wrap svg{display:block;width:100%;height:auto;max-height:400px}
+
+    /* ── 2-column layout ── */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+    /* ── Health summary ── */
+    .health-box{background:#f8fafc;border:1px solid #e8ecf2;border-radius:10px;padding:14px 16px}
+    .health-row{display:flex;align-items:center;gap:6px;font-size:11px;color:#556070;font-weight:500;margin-bottom:4px}
+    .health-row:last-child{margin-bottom:0}
+    .h-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .h-count{font-weight:800;font-size:14px;min-width:24px;text-align:right}
+
+    /* ── Cost chart ── */
+    .cost-box{background:#f8fafc;border:1px solid #e8ecf2;border-radius:10px;padding:14px 16px}
+    .cost-total{font-size:22px;font-weight:900;color:#1a2030;letter-spacing:-.02em;margin-bottom:2px}
+    .cost-sub{font-size:10px;color:#8896a5;margin-bottom:12px}
+
+    /* ── Table ── */
+    table{width:100%;border-collapse:collapse;font-size:11.5px}
+    thead tr{background:linear-gradient(90deg,#f8fafc,#f1f5f9)}
+    thead th{padding:9px 11px;text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8896a5;border-bottom:2px solid #e3e8ef;white-space:nowrap}
+    tbody tr{border-bottom:1px solid #f0f3f7}
+    tbody tr:nth-child(even){background:#fafbfd}
     tbody tr:last-child{border-bottom:none}
-    tbody tr:hover{background:#fafbfd}
-    td{padding:10px 12px;vertical-align:middle}
-    td strong{font-weight:600;color:#1a2030}
-    .type-cell{color:#5a6a80;font-size:11px}
-    .cost-cell{font-weight:600;color:#1a2030;font-variant-numeric:tabular-nums}
+    td{padding:9px 11px;vertical-align:middle}
+    .unit{font-size:9px;color:#8896a5;margin-left:1px}
     .dim{color:#b0bec8}
-    /* Badges */
-    .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:10.5px;font-weight:600;white-space:nowrap}
-    .badge-ok{background:#eafbf0;color:#1a7a40;border:1px solid #b7e5cb}
-    .badge-warn{background:#fffbeb;color:#92600a;border:1px solid #fde68a}
-    .badge-crit{background:#fff1f0;color:#c0392b;border:1px solid #fecaca}
-    .badge-idle{background:#f3f5f8;color:#8896a5;border:1px solid #e3e8ef}
-    /* Footer */
-    .footer{border-top:1px solid #e8ecf2;padding:14px 28px;display:flex;justify-content:space-between;align-items:center;color:#a0aab5;font-size:10.5px}
-    .footer a{color:#4f9cf9;text-decoration:none}
-    /* Print toolbar */
-    .print-bar{position:fixed;bottom:0;left:0;right:0;background:#0d1520;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;z-index:999;box-shadow:0 -4px 20px rgba(0,0,0,.15)}
-    .print-bar span{color:#8b949e;font-size:12px}
-    .print-btn{background:linear-gradient(135deg,#4f9cf9,#3b82f6);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
-    .print-btn:hover{background:linear-gradient(135deg,#3b82f6,#2563eb)}
+
+    /* ── Pills ── */
+    .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+    .pill-ok{background:#eafbf0;color:#1a7a40;border:1px solid #b7e5cb}
+    .pill-warn{background:#fffbeb;color:#92600a;border:1px solid #fde68a}
+    .pill-crit{background:#fff1f0;color:#c0392b;border:1px solid #fecaca}
+    .pill-idle{background:#f3f5f8;color:#8896a5;border:1px solid #e3e8ef}
+
+    /* ── Footer ── */
+    .footer{border-top:2px solid #e8ecf2;padding:13px 28px;display:flex;justify-content:space-between;align-items:center;background:#f8fafc}
+    .footer-left{font-size:10px;color:#a0aab5}
+    .footer-left a{color:#4f9cf9;text-decoration:none;font-weight:600}
+    .footer-right{font-size:10px;color:#b0bec8;text-align:right}
+
+    /* ── Print toolbar ── */
+    .print-bar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(90deg,#060d18,#0d1a2e);padding:13px 28px;display:flex;align-items:center;justify-content:space-between;z-index:999;box-shadow:0 -4px 24px rgba(0,0,0,.25);border-top:1px solid rgba(79,156,249,0.2)}
+    .print-bar-left{display:flex;align-items:center;gap:10px}
+    .print-bar-left svg{color:#4f9cf9}
+    .print-bar-left span{color:#8b949e;font-size:12px}
+    .print-bar-left strong{color:#c9d4e0}
+    .print-actions{display:flex;gap:10px;align-items:center}
+    .print-btn{background:linear-gradient(135deg,#4f9cf9,#3b82f6);color:#fff;border:none;padding:9px 22px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 2px 12px rgba(79,156,249,0.35);transition:all .15s}
+    .print-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(79,156,249,0.5)}
+    .close-btn{background:rgba(255,255,255,0.06);color:#8b949e;border:1px solid rgba(255,255,255,0.1);padding:9px 16px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer}
+
     @media print{
-      .print-bar{display:none}
+      .print-bar{display:none!important}
       body{padding-bottom:0}
-      .diagram-wrap svg{max-height:380px}
-      .section{padding:16px 22px}
+      .diagram-wrap svg{max-height:360px}
+      .section{padding:14px 22px}
       tr{break-inside:avoid}
+      .two-col{gap:12px}
+      .cover{page-break-after:avoid}
     }
   `;
 
+  // ── HTML ──────────────────────────────────────────────────────────────────
   const html = `<!doctype html><html lang="en"><head>
     <meta charset="UTF-8"/>
-    <title>${esc(payload.title || 'Architecture')} — Report</title>
+    <title>${esc(payload.title || 'Architecture')} — Archi-Flow Report</title>
     <style>${css}</style>
   </head><body>
-    <div class="header">
-      <div class="header-left">
-        <div class="app">⬡ Archi-Flow</div>
-        <h1>${esc(payload.title || 'Architecture Diagram')}</h1>
-        <div class="meta">${payload.nodes.length} components · ${payload.edges.length} connections${simActive ? ' · Simulation data included' : ''}</div>
-      </div>
-      <div class="header-right">
-        <div class="date">${ts}</div>
-        <div style="font-size:11px;color:#4f9cf9;margin-top:2px">archi-flow.app</div>
+
+    <!-- ▸ COVER ─────────────────────────────────────────── -->
+    <div class="cover">
+      <div class="cover-grid"></div>
+      <div class="cover-glow"></div>
+      <div class="cover-inner">
+        <div>
+          <div class="brand">
+            <div class="brand-icon">A</div>
+            <span class="brand-name">Archi-Flow</span>
+          </div>
+          <h1>${esc(payload.title || 'Architecture Report')}</h1>
+          <div class="sub">${realNodes.length} components &middot; ${payload.edges.length} connections${simActive ? ' &middot; Live simulation data' : ''}</div>
+          <div class="cover-chips">
+            ${simActive ? `<span class="chip chip-sim">● Simulation Active</span>` : '<span class="chip">No sim data</span>'}
+            ${critical > 0 ? `<span class="chip chip-crit">⚠ ${critical} Critical</span>` : ''}
+            ${totalCost > 0 ? `<span class="chip">$${totalCost.toLocaleString()}/mo</span>` : ''}
+            ${S.reservedPricing ? '<span class="chip chip-sim">Reserved −35%</span>' : ''}
+          </div>
+        </div>
+        <div class="cover-right">
+          <div class="date-label">Generated</div>
+          <div class="date-val">${ts}</div>
+          <div class="url">archi-flow.onrender.com</div>
+        </div>
       </div>
     </div>
-    <div class="stats">${summaryCards}</div>
-    ${healthBar}
+
+    <!-- ▸ KPI BAR ────────────────────────────────────────── -->
+    <div class="kpi-bar">${kpiCards}</div>
+
+    <!-- ▸ DIAGRAM ──────────────────────────────────────────── -->
     <div class="section">
-      <div class="section-title">Architecture Diagram</div>
+      <div class="sec-title"><span class="sec-icon" style="background:#e8f0fe">🗺</span>Architecture Diagram</div>
       <div class="diagram-wrap">${svg}</div>
     </div>
+
+    <!-- ▸ HEALTH + COST (2-col) ──────────────────────────── -->
+    ${simActive || totalCost > 0 ? `
     <div class="section" style="padding-top:0">
-      <div class="section-title">Component Summary</div>
+      <div class="two-col">
+        ${simActive ? `
+        <div>
+          <div class="sec-title" style="margin-bottom:10px"><span class="sec-icon" style="background:#f0fdf4">❤️</span>System Health</div>
+          <div class="health-box">
+            <div class="health-row"><div class="h-dot" style="background:#34d058"></div><span style="flex:1">Healthy</span><span class="h-count" style="color:#34d058">${healthy}</span></div>
+            <div class="health-row"><div class="h-dot" style="background:#f5b731"></div><span style="flex:1">High Load</span><span class="h-count" style="color:#f5b731">${warning}</span></div>
+            <div class="health-row"><div class="h-dot" style="background:#f85149"></div><span style="flex:1">Critical</span><span class="h-count" style="color:#f85149">${critical}</span></div>
+            ${avgSLA ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e8ecf2;font-size:10px;color:#8896a5">
+              Est. System SLA: <strong style="color:${Number(avgSLA)>=99.9?'#34d058':Number(avgSLA)>=99?'#f5b731':'#f85149'}">${avgSLA}%</strong>
+              &nbsp;·&nbsp; Avg latency: <strong>${avgLat}ms</strong>
+            </div>` : ''}
+          </div>
+        </div>` : '<div></div>'}
+        ${totalCost > 0 ? `
+        <div>
+          <div class="sec-title" style="margin-bottom:10px"><span class="sec-icon" style="background:#f0fdf4">💰</span>Monthly Cost Breakdown</div>
+          <div class="cost-box">
+            <div class="cost-total">$${totalCost.toLocaleString()}<span style="font-size:13px;font-weight:500;color:#8896a5">/mo</span></div>
+            <div class="cost-sub">${S.reservedPricing ? 'Reserved pricing applied (−35% on compute & network)' : 'On-demand pricing'}</div>
+            ${costChartBars}
+          </div>
+        </div>` : '<div></div>'}
+      </div>
+    </div>` : ''}
+
+    <!-- ▸ BOTTLENECK ANALYSIS ────────────────────────────── -->
+    ${simActive && bottlenecks.length >= 0 ? `
+    <div class="section" style="padding-top:0">
+      <div class="sec-title"><span class="sec-icon" style="background:#fff1f0">⚡</span>Bottleneck Analysis</div>
+      ${bottleneckCards}
+    </div>` : ''}
+
+    <!-- ▸ COMPONENT PERFORMANCE TABLE ───────────────────── -->
+    <div class="section" style="padding-top:0">
+      <div class="sec-title"><span class="sec-icon" style="background:#f0f4ff">📊</span>Component Performance</div>
       <table>
-        <thead><tr><th>Component</th><th>Type</th><th>Traffic In</th><th>Capacity</th><th>Status</th><th>Cost</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th style="min-width:90px">Load</th>
+            <th>Traffic In</th>
+            <th>Capacity</th>
+            <th>Avg Lat</th>
+            <th>P95 Lat</th>
+            <th>Err %</th>
+            <th>SLA</th>
+            <th>Cost/mo</th>
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
       </table>
-      ${totalCost > 0 ? `<div style="text-align:right;padding:10px 2px 0;font-size:12px;color:#8896a5">Total estimated cost: <strong style="color:#1a2030;font-size:14px">$${totalCost.toLocaleString()}/mo</strong></div>` : ''}
+      ${totalCost > 0 ? `
+      <div style="display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid #e8ecf2">
+        <div style="text-align:right">
+          <div style="font-size:10px;color:#8896a5;margin-bottom:2px">Total Monthly Estimate</div>
+          <div style="font-size:18px;font-weight:900;color:#1a2030">$${totalCost.toLocaleString()}<span style="font-size:12px;font-weight:500;color:#8896a5">/mo</span></div>
+          ${S.reservedPricing ? '<div style="font-size:10px;color:#34d058;margin-top:2px">✓ Reserved pricing active (−35% on compute & network)</div>' : ''}
+        </div>
+      </div>` : ''}
     </div>
+
+    <!-- ▸ FOOTER ─────────────────────────────────────────── -->
     <div class="footer">
-      <span>Generated with <a href="https://ballavamsi.com">Archi-Flow</a> by <a href="https://ballavamsi.com">ballavamsi.com</a></span>
-      <span>${ts}</span>
+      <div class="footer-left">Generated with <a href="https://archi-flow.onrender.com">Archi-Flow</a> by <a href="https://ballavamsi.com">ballavamsi.com</a></div>
+      <div class="footer-right">${ts} &nbsp;·&nbsp; ${realNodes.length} components &nbsp;·&nbsp; ${payload.edges.length} connections</div>
     </div>
-    <div class="print-bar no-print">
-      <span>Review your report, then save as PDF</span>
-      <button class="print-btn" onclick="window.print()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Save as PDF
-      </button>
+
+    <!-- ▸ PRINT BAR ──────────────────────────────────────── -->
+    <div class="print-bar">
+      <div class="print-bar-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span><strong>${esc(payload.title || 'Architecture')}</strong> — Ready to save</span>
+      </div>
+      <div class="print-actions">
+        <button class="close-btn" onclick="window.close()">✕ Close</button>
+        <button class="print-btn" onclick="window.print()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Save as PDF
+        </button>
+      </div>
     </div>
-    ${autoprint}
+
+    ${'<scr'+'ipt>setTimeout(()=>window.print(),800)</'+'script>'}
   </body></html>`;
 
   win.document.write(html);
