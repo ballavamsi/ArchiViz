@@ -1302,8 +1302,8 @@ function updateEmptyPanel() {
   const ringLabel = S.simOn && loads.length ? Math.round(maxLoad) + '%' : nodeCount ? '—' : 'SIM';
   hud.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-      <div class="health-ring" style="--health:${ringPct}%;--ring-color:${ringColor};box-shadow:inset 0 0 0 7px rgba(10,15,22,0.95)">
-        <span style="color:${ringColor};font-size:13px">${esc(ringLabel)}</span>
+      <div class="health-ring" style="--health:${ringPct}%;--ring-color:${ringColor}">
+        <span>${esc(ringLabel)}</span>
       </div>
       <div style="min-width:0;flex:1">
         <div style="font-size:13px;font-weight:700;color:${ringColor};margin-bottom:3px;line-height:1.2">${esc(title)}</div>

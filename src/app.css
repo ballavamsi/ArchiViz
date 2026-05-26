@@ -223,15 +223,15 @@ body {
 .empty-dashboard { width: 100%; height: 100%; padding: 14px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
 .empty-title { font-size: 13px; font-weight: 700; color: var(--text); }
 .empty-sub { font-size: 11px; color: var(--muted); line-height: 1.45; }
-.health-ring { --health: 0%; --ring-color: var(--green); width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 4px; background: conic-gradient(var(--ring-color) var(--health), rgba(255,255,255,0.06) 0); box-shadow: inset 0 0 0 8px var(--surface); }
-.health-ring span { font-size: 15px; font-weight: 800; color: var(--text); }
+.health-ring { --health: 0%; --ring-color: var(--green); width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 4px; background: radial-gradient(circle at center, var(--surface) 0 57%, transparent 58%), conic-gradient(var(--ring-color) var(--health), color-mix(in srgb, var(--border2) 70%, transparent) 0); box-shadow: var(--shadow-sm); }
+.health-ring span { position: relative; z-index: 1; font-size: 14px; font-weight: 900; color: var(--text); white-space: nowrap; letter-spacing: -0.03em; }
 .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .metric { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 7px; }
 .metric strong { display: block; color: var(--text); font-size: 14px; line-height: 1; }
 .metric span { color: var(--muted); font-size: 10px; }
 
 #canvas-hud { position: absolute; top: 12px; right: 12px; width: 236px; z-index: 45; background: rgba(10,15,22,0.9); border: 1px solid rgba(100,130,165,0.2); border-radius: 14px; padding: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04); backdrop-filter: blur(16px); }
-#canvas-hud .health-ring { width: 58px; height: 58px; min-width: 58px; box-shadow: inset 0 0 0 7px rgba(10,15,22,0.95); margin: 0; flex-shrink: 0; }
+#canvas-hud .health-ring { width: 62px; height: 62px; min-width: 62px; margin: 0; flex-shrink: 0; }
 #canvas-hud .metric-grid { grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
 #canvas-hud .metric { padding: 7px 5px; text-align: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; }
 #canvas-hud .metric strong { font-size: 12px; font-weight: 700; }
@@ -670,7 +670,7 @@ body { background: #070b10; letter-spacing: -0.01em; }
   top: 14px;
   right: 14px;
 }
-#canvas-hud .health-ring { width: 56px; height: 56px; min-width: 56px; flex-shrink: 0; box-shadow: inset 0 0 0 7px rgba(11,17,27,0.92); margin: 0; }
+#canvas-hud .health-ring { width: 62px; height: 62px; min-width: 62px; flex-shrink: 0; margin: 0; }
 #canvas-hud .metric { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.06); }
 .empty-title { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
 .empty-sub   { font-size: 11px; color: var(--muted); line-height: 1.5; }

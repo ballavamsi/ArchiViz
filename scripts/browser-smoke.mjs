@@ -87,6 +87,21 @@ try {
   assert.equal(lightCanvas.bg, 'rgb(255, 255, 255)');
   assert.match(lightCanvas.themeButton, /Theme: Light/);
 
+  const ringState = await page.locator('.health-ring').evaluate(el => {
+    const cs = getComputedStyle(el);
+    const span = el.querySelector('span');
+    const spanCs = getComputedStyle(span);
+    return {
+      backgroundImage: cs.backgroundImage,
+      label: span?.textContent?.trim(),
+      labelColor: spanCs.color,
+      labelDisplay: spanCs.display,
+    };
+  });
+  assert.match(ringState.backgroundImage, /radial-gradient/, 'health ring should have a solid readable center');
+  assert.match(ringState.backgroundImage, /conic-gradient/, 'health ring should retain percent ring fill');
+  assert.ok(ringState.label, 'health ring should show a visible label');
+
   await page.locator('#btn-more').click();
   const menuState = await page.locator('#more-menu').evaluate(el => {
     const cs = getComputedStyle(el);
