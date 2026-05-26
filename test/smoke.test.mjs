@@ -111,6 +111,7 @@ test('index.html contains required app hooks', () => {
   assert.match(appSource, /prefers-color-scheme: light/, 'theme should default from the user system preference');
   assert.match(appSource, /transform:scale\(\$\{S\.zoom\}\)/, 'nodes should use transform scaling for zoom');
   assert.doesNotMatch(appSource, /width:\$\{n\.w \* S\.zoom\}px/, 'nodes should not resize width directly during zoom');
+  assert.match(appSource, /node-tool-name/, 'node tiles should show the tool/component type');
 });
 
 test('run scripts exist for macOS/Linux and Windows', () => {

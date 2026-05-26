@@ -496,6 +496,8 @@ function renderNode(id) {
   const noteAccent = n.defId === 'textnote' ? (TONE_THEME[n.props.tone] || TONE_THEME['Neutral']).accent : null;
   const noteToneLabel = n.defId === 'textnote' ? (n.props.tone || 'Neutral') : null;
   const noteTextColor = n.defId === 'textnote' ? (TONE_THEME[n.props.tone] || TONE_THEME['Neutral']).text : null;
+  const toolName = n.defId === 'textnote' ? esc(noteToneLabel) : safeType;
+  const toolTitle = n.defId === 'textnote' ? `Note type: ${esc(noteToneLabel)}` : `Tool: ${safeType}`;
 
   el.innerHTML = `
     <div class="node-accent" style="background:${n.defId === 'textnote' ? noteAccent : accentColor}"></div>
@@ -504,7 +506,11 @@ function renderNode(id) {
         <div class="node-icon-wrap" style="background:${n.defId === 'textnote' ? noteAccent + '22' : accentColor + '1e'};box-shadow:inset 0 0 0 1px ${n.defId === 'textnote' ? noteAccent : accentColor}33,0 2px 10px ${n.defId === 'textnote' ? noteAccent : accentColor}18">${safeIcon}</div>
         <div class="node-titles">
           <div class="node-label" title="Double-click to rename">${safeLabel}</div>
-          <div class="node-type">${n.defId === 'textnote' ? `<span style="color:${noteAccent};font-weight:600">${esc(noteToneLabel)}</span>` : safeType}</div>
+          <div class="node-type" title="${toolTitle}">
+            <span class="node-tool-kicker">${n.defId === 'textnote' ? 'Note' : 'Tool'}</span>
+            <span class="node-tool-dot" style="background:${n.defId === 'textnote' ? noteAccent : accentColor}"></span>
+            <span class="node-tool-name" ${n.defId === 'textnote' ? `style="color:${noteAccent}"` : ''}>${toolName}</span>
+          </div>
         </div>
       </div>
       ${badges ? `<div class="node-badges">${badges}</div>` : ''}

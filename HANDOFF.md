@@ -208,6 +208,7 @@ cp index.html dist/index.html
 | Grid snapping toggle | ✅ |
 | Draw.io/Lucid-style canvas grid | ✅ |
 | Dark / Light theme toggle | ✅ |
+| Visible tool/component chip on node tiles | ✅ |
 | Editable diagram title | ✅ |
 | JSON import/export | ✅ |
 | SVG diagram image export | ✅ |

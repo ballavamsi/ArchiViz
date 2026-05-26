@@ -620,7 +620,48 @@ body { background: #070b10; letter-spacing: -0.01em; }
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.09), 0 2px 6px rgba(0,0,0,0.3);
 }
 .node-titles .node-label { font-size: 12px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
-.node-titles .node-type  { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+.node-titles .node-type  {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface3) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border2) 72%, transparent);
+  color: var(--text2);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.node-tool-kicker {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.node-tool-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+.node-tool-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body[data-theme="light"] .node-titles .node-type {
+  background: #f8fafc;
+  border-color: #dbe4ee;
+  color: #334155;
+}
 .node-badges { margin-top: 7px; gap: 4px; }
 .badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 5px; letter-spacing: 0.01em; }
 

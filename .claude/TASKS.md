@@ -109,6 +109,11 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 - Added smoke-test coverage for `#btn-theme` and `setTheme(theme)`.
 - Added `npm run test:browser` Playwright/Chromium smoke test for grid, system-default theme, share popup, login-card theme token, and PDF export popup behavior.
 
+### Iteration 6.2 — Node Tile Clarity
+**Status:** ✅ Done
+- Added a visible Tool/Note chip inside every node tile so the selected component type is always readable during presentation and review.
+- Added regression coverage to keep component/tool metadata visible in future tile changes.
+
 ---
 
 ## Pending Tasks
