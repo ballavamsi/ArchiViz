@@ -3485,6 +3485,13 @@ function autoSave() {
   }, 1800);
 }
 
+function loadAutoSavedDiagram() {
+  const auto = (() => { try { return JSON.parse(localStorage.getItem(LS_AUTO) || 'null'); } catch { return null; } })();
+  if (!auto || !auto.payload) return false;
+  importArchitecture(auto.payload);
+  return true;
+}
+
 function saveNamedDiagram(name) {
   const list = lsGetSaved();
   const id   = 'diag_' + Date.now();
@@ -3875,9 +3882,14 @@ speedSel.onchange = () => {
   positionSugTray();
   initSugTrayObserver();
 
-  // 3. Load saved diagram from URL (short path or hash)
+  // 3. Load saved diagram from URL (short path or hash), otherwise restore autosave
   const loaded = await loadFromShortPath();
-  if (!loaded) loadFromHash();
+  if (!loaded) {
+    const hashLoaded = loadFromHash();
+    if (!hashLoaded) {
+      loadAutoSavedDiagram();
+    }
+  }
 
   const _collabParam = new URLSearchParams(location.search).get('collab');
   if (_collabParam) setTimeout(() => showCollabInvite(_collabParam), 700);
