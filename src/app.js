@@ -1155,7 +1155,7 @@ function renderEdges() {
 
     // Flow label
     const flow = S.eFlow[edge.id];
-    if (S.simOn && (flow > 0 || hasPct) && !edge.dashed && z >= 0.4) {
+    if (S.simOn && !edge._warn && (flow > 0 || hasPct) && !edge.dashed && z >= 0.4) {
       // Label sits ABOVE the edge midpoint — clear vertical separation from the line
       const midX = (s.x * 0.5 + t.x * 0.5);
       const midY = (s.y * 0.5 + t.y * 0.5);
@@ -1859,7 +1859,7 @@ function runTickLocal() {
       else if (n.defId==='cache') fwd = inn*(1-(n.props.hitRate||80)/100);
       else if (n.defId==='firewall') fwd = inn*(1-(n.props.blockRate||5)/100);
       else if (n.defId==='deviceapp') fwd = inn*(n.props.eventsPerInput||1);
-      const down = S.edges.filter(e => e.src===cur && !e.dashed && S.nodes[e.tgt]);
+      const down = S.edges.filter(e => e.src===cur && !e.dashed && !e._warn && S.nodes[e.tgt]);
       if (down.length && fwd > 0) {
         const hasW = down.some(e => e.trafficPct != null);
         const totalW = hasW ? (down.reduce((s,e)=>s+(e.trafficPct||0),0)||down.length) : down.length;
