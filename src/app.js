@@ -2544,8 +2544,11 @@ window.addEventListener('keydown', e => {
     if (S.selSet.size > 1) {
       snapshot();
       const ids = [...S.selSet];
-      ids.forEach(nid => { if (S.nodes[nid]) deleteNode(nid); });
-    } else if (S.sel) { deleteNode(S.sel); }
+      // Use window.deleteNode so the collab wrapper fires for each deletion,
+      // then do one final full sync to catch all removed edges at once
+      ids.forEach(nid => { if (S.nodes[nid]) _origDeleteNode(nid); });
+      if (C.active) pushToY(null);
+    } else if (S.sel) { window.deleteNode(S.sel); }
     else if (S.selEdge) { deleteEdge(S.selEdge); }
     e.preventDefault();
   }
@@ -4347,7 +4350,8 @@ window.addNode = function(defId, x, y) {
 const _origDeleteNode = deleteNode;
 window.deleteNode = function(id) {
   _origDeleteNode(id);
-  if (C.active) pushToY(id); // node gone → will delete from yNodes
+  // Full sync — node is gone AND its edges are removed, both must sync
+  if (C.active) pushToY(null);
 };
 
 // Wrap addEdge
@@ -4426,11 +4430,26 @@ window.buildFields = function(containerId, props, n, nodeId) {
   });
 };
 
-// Hook drag end to broadcast moved node positions
-const _origMouseUp = window.onmouseup;
+// Hook drag end to broadcast moved node positions (single or group)
 document.addEventListener('mouseup', () => {
-  if (C.active && G.drag) {
-    setTimeout(() => pushToY(G.drag?.id || null), 50);
+  if (!C.active) return;
+  // Capture the dragged set BEFORE G.drag is cleared by the main mouseup handler.
+  // We use a short timeout so the positions are already committed into S.nodes.
+  if (G.drag) {
+    const movedIds = G.drag.group ? Object.keys(G.drag.group) : [G.drag.id];
+    setTimeout(() => {
+      if (movedIds.length === 1) {
+        pushToY(movedIds[0]);
+      } else {
+        // Group move — push all moved nodes in one transaction
+        if (!C.active || C._applying) return;
+        C.doc.transact(() => {
+          movedIds.forEach(nid => {
+            if (S.nodes[nid]) C.yNodes.set(nid, JSON.parse(JSON.stringify(S.nodes[nid])));
+          });
+        });
+      }
+    }, 30);
   }
 });
 
