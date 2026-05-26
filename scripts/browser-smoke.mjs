@@ -3,12 +3,19 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
-const PORT = 3461;
+const PORT = 3461 + Math.floor(Math.random() * 600);
 const BASE = `http://127.0.0.1:${PORT}`;
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function assertContrast(name, ratio, min) {
+  assert.ok(
+    ratio >= min,
+    `${name} contrast ${ratio.toFixed(2)} should be at least ${min}:1`
+  );
 }
 
 async function waitForServer(url, timeoutMs = 10000) {
@@ -49,7 +56,7 @@ try {
   page.on('console', msg => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
-  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE}/?smoke=${Date.now()}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.body.dataset.themeMode === 'system');
 
   const darkCanvas = await page.locator('#canvas-wrap').evaluate(el => {
@@ -73,6 +80,7 @@ try {
 
   await page.locator('#btn-more').click();
   await page.locator('#btn-theme').click();
+  await page.waitForTimeout(220);
 
   const lightCanvas = await page.locator('#canvas-wrap').evaluate(el => {
     const cs = getComputedStyle(el);
@@ -86,6 +94,60 @@ try {
   assert.equal(lightCanvas.theme, 'light');
   assert.equal(lightCanvas.bg, 'rgb(255, 255, 255)');
   assert.match(lightCanvas.themeButton, /Theme: Light/);
+
+  const contrastState = await page.evaluate(() => {
+    function parseRgb(input) {
+      const m = String(input).match(/rgba?\(([^)]+)\)/);
+      if (!m) return [0, 0, 0, 1];
+      const parts = m[1].split(',').map(v => Number(v.trim()));
+      return [parts[0], parts[1], parts[2], parts[3] ?? 1];
+    }
+    function composite(fg, bg) {
+      const a = fg[3];
+      return [
+        Math.round((fg[0] * a) + (bg[0] * (1 - a))),
+        Math.round((fg[1] * a) + (bg[1] * (1 - a))),
+        Math.round((fg[2] * a) + (bg[2] * (1 - a))),
+      ];
+    }
+    function linear(v) {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    }
+    function lum(rgb) {
+      const [r, g, b] = rgb.map(linear);
+      return (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
+    }
+    function ratio(fgCss, bgCss) {
+      const bg = composite(parseRgb(bgCss), [255, 255, 255, 1]);
+      const fg = composite(parseRgb(fgCss), [...bg, 1]);
+      const a = lum(fg);
+      const b = lum(bg);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    }
+    function pair(selector) {
+      const el = document.querySelector(selector);
+      const cs = getComputedStyle(el);
+      return {
+        color: cs.color,
+        background: cs.backgroundColor,
+        ratio: ratio(cs.color, cs.backgroundColor),
+      };
+    }
+    return {
+      cost: pair('#cost-badge'),
+      share: pair('#btn-share'),
+      live: pair('#btn-collab'),
+      more: pair('#btn-more'),
+      notif: pair('#btn-notif'),
+    };
+  });
+  if (process.env.DEBUG_CONTRAST) console.log(JSON.stringify(contrastState, null, 2));
+  assertContrast('Cost badge text', contrastState.cost.ratio, 4.5);
+  assertContrast('Share button text', contrastState.share.ratio, 4.5);
+  assertContrast('Live button text', contrastState.live.ratio, 4.5);
+  assertContrast('More icon', contrastState.more.ratio, 3);
+  assertContrast('Notification icon', contrastState.notif.ratio, 3);
 
   const ringState = await page.locator('.health-ring').evaluate(el => {
     const cs = getComputedStyle(el);
