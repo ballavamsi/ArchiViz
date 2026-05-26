@@ -175,9 +175,9 @@ cp index.html dist/index.html
 
 ## Current App Status
 
-**Overall status:** 9/10 — all 6 iterations shipped and working.
+**Overall status:** 9.5/10 — iterations 0–6.2 shipped and working.
 
-**Last completed iteration:** Iteration 6 — PDF export redesign.
+**Last completed iteration:** Iteration 6.2 — Visible tool chip on node tiles.
 
 **Latest checkpoint:** 2026-05-26 — added draw.io/Lucid-style canvas grid plus persisted Dark/Light theme toggle, production URL confirmed as Render (`https://archi-flow.onrender.com`), `npm test` and `npm run build` passed.
 
