@@ -136,6 +136,12 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 - Improved print behavior with break-inside protection for cards/tables and better report section ordering.
 - Extended browser smoke coverage to verify the new PDF summary/action sections.
 
+### Iteration 6.6 — PDF Number Formatting
+**Status:** ✅ Done
+- Compact large numeric component properties in PDF chips/cards using K/M/B/T formatting.
+- Keeps small operational values readable with normal comma formatting.
+- Added regression coverage so PDF property formatting continues to use compact values.
+
 ---
 
 ## Pending Tasks

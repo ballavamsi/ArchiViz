@@ -3199,8 +3199,15 @@ function toExportValue(key, value) {
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (key === 'autoScale') return value ? 'Enabled' : 'Disabled';
   if (['cacheHitRate','hitRate','blockRate','errorRate','samplingRate','rejectionRate'].includes(key)) return `${value}%`;
-  if (key === 'cost' && typeof value === 'number') return `$${value.toLocaleString()}/mo`;
-  if (key === 'maxConnections' && typeof value === 'number') return String(value);
+  if (key === 'cost' && typeof value === 'number') return `$${compactNum(value)}/mo`;
+  if (typeof value === 'number') {
+    const compactKeys = new Set([
+      'capacity','maxConnections','userCount','eventRate','changeRate','throughput','maxMessages',
+      'storageTB','sizeGB','storageGB','iops','executions','ingestGBDay'
+    ]);
+    if (compactKeys.has(key) || Math.abs(value) >= 100000) return compactNum(value);
+    return Number.isInteger(value) ? value.toLocaleString('en-US') : String(value);
+  }
   return String(value);
 }
 

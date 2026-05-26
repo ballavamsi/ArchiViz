@@ -12,11 +12,13 @@
 
 ## Latest Update
 
-**Latest local iteration:** PDF executive review polish
+**Latest local iteration:** PDF number formatting
 
-PDF export was improved to read more like an architecture review pack instead of only a data export.
+PDF export was updated after the user reported unreadable raw billion-scale values in Component Performance chips.
 
 Current PDF behavior:
+- Large component property values now use compact K/M/B/T formatting in PDF chips/cards, e.g. `1.3B`, `8B`, `1K`.
+- Small operational counts remain readable with normal formatting.
 - Executive Summary now appears before the diagram, with system posture, traffic assumption, cost model, top risks, and recommended actions.
 - Top Cost Drivers shows the most expensive components before detailed tables.
 - Component Performance no longer includes node pixel size.
