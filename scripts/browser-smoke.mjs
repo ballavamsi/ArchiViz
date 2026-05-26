@@ -243,6 +243,19 @@ try {
   await pdfPage.locator('text=Read / Write').waitFor({ state: 'visible', timeout: 5000 });
   await pdfPage.close();
 
+  await page.selectOption('#example-sel', 'mobile-events');
+  await page.locator('.a-node .node-tool-name').first().waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('#btn-more').click();
+  const bigPdfPromise = page.waitForEvent('popup', { timeout: 5000 });
+  await page.locator('#btn-export-pdf').click();
+  const bigPdfPage = await bigPdfPromise;
+  await bigPdfPage.waitForLoadState('domcontentloaded');
+  const bigPdfText = await bigPdfPage.locator('body').innerText();
+  assert.match(bigPdfText, /1\.3B/, 'PDF should compact billion-scale user counts');
+  assert.match(bigPdfText, /8B/, 'PDF should compact billion-scale capacities');
+  assert.doesNotMatch(bigPdfText, /1300000000|8000000000|9000000000/, 'PDF should not show raw billion-scale numbers');
+  await bigPdfPage.close();
+
   await page.selectOption('#example-sel', 'load-balanced');
   await page.locator('.a-node .node-tool-name').first().waitFor({ state: 'visible', timeout: 5000 });
   const exportDir = await mkdtemp(join(tmpdir(), 'archiflow-smoke-export-'));

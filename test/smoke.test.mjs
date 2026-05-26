@@ -116,7 +116,8 @@ test('index.html contains required app hooks', () => {
   assert.match(appSource, /function outgoingSplitDetails\(/, 'traffic split logic should expose explicit/remainder split calculation');
   assert.match(appSource, /100 - explicitTotal/, 'blank downstream edges should receive remaining split percentage');
   assert.match(appSource, /compactKeys/, 'PDF property values should compact large numeric values');
-  assert.match(appSource, /compactNum\(value\)/, 'PDF property values should use K/M/B/T formatting');
+  assert.match(appSource, /Math\.abs\(value\) >= 1000/, 'PDF property values should compact all values from 1K upward');
+  assert.match(appSource, /compactMoney\(value\)/, 'PDF money values should use compact K/M/B/T formatting');
   assert.match(appSource, /function setTheme\(theme\)/, 'app should support light and dark themes');
   assert.match(appSource, /prefers-color-scheme: light/, 'theme should default from the user system preference');
   assert.match(appSource, /transform:scale\(\$\{S\.zoom\}\)/, 'nodes should use transform scaling for zoom');

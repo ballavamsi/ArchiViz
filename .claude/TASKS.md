@@ -139,8 +139,9 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 ### Iteration 6.6 — PDF Number Formatting
 **Status:** ✅ Done
 - Compact large numeric component properties in PDF chips/cards using K/M/B/T formatting.
-- Keeps small operational values readable with normal comma formatting.
-- Added regression coverage so PDF property formatting continues to use compact values.
+- Compact monthly cost values across PDF KPI cards, cost charts, top cost drivers, recommendations, and totals.
+- Formats every numeric PDF property from 1K upward using compact K/M/B/T units.
+- Added browser regression coverage against the billion-scale Mobile Event Streaming example.
 
 ---
 

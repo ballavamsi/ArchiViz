@@ -17,8 +17,8 @@
 PDF export was updated after the user reported unreadable raw billion-scale values in Component Performance chips.
 
 Current PDF behavior:
-- Large component property values now use compact K/M/B/T formatting in PDF chips/cards, e.g. `1.3B`, `8B`, `1K`.
-- Small operational counts remain readable with normal formatting.
+- Large PDF values now use compact K/M/B/T formatting across component chips, config cards, costs, charts, recommendations, and totals.
+- Browser smoke verifies the billion-scale Mobile Event Streaming report contains values like `1.3B` and `8B`, and does not expose raw values such as `1300000000`.
 - Executive Summary now appears before the diagram, with system posture, traffic assumption, cost model, top risks, and recommended actions.
 - Top Cost Drivers shows the most expensive components before detailed tables.
 - Component Performance no longer includes node pixel size.

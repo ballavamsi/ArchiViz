@@ -495,6 +495,10 @@ function formatFlow(value, unit = 'e/s') {
   return `${compactNum(value)} ${unit}`;
 }
 
+function compactMoney(value) {
+  return '$' + compactNum(value);
+}
+
 function nodeScreenPos(n) {
   return { x: n.x * S.zoom + S.panX, y: n.y * S.zoom + S.panY };
 }
@@ -3205,7 +3209,7 @@ function toExportValue(key, value) {
       'capacity','maxConnections','userCount','eventRate','changeRate','throughput','maxMessages',
       'storageTB','sizeGB','storageGB','iops','executions','ingestGBDay'
     ]);
-    if (compactKeys.has(key) || Math.abs(value) >= 100000) return compactNum(value);
+    if (compactKeys.has(key) || Math.abs(value) >= 1000) return compactNum(value);
     return Number.isInteger(value) ? value.toLocaleString('en-US') : String(value);
   }
   return String(value);
@@ -3363,7 +3367,7 @@ function exportPdfReport() {
       <div style="width:72px;font-size:10px;font-weight:600;color:#5a6a80;text-align:right;text-transform:capitalize">${cat}</div>
       <div style="flex:1;height:18px;background:#f1f5f9;border-radius:4px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;display:flex;align-items:center;padding-left:6px">
-          <span style="font-size:9.5px;font-weight:700;color:#fff;white-space:nowrap">$${v.toLocaleString()}</span>
+          <span style="font-size:9.5px;font-weight:700;color:#fff;white-space:nowrap">${compactMoney(v)}</span>
         </div>
       </div>
     </div>`;
@@ -3382,7 +3386,7 @@ function exportPdfReport() {
         <div class="rank-title">${esc(n.props.label || def?.name || n.id)}</div>
         <div class="rank-sub">${esc(def?.name || n.defId)}${n.props.region ? ` · ${esc(n.props.region)}` : ''}</div>
       </div>
-      <div class="rank-val">$${cost.toLocaleString()}<span>/mo</span></div>
+      <div class="rank-val">${compactMoney(cost)}<span>/mo</span></div>
     </div>`).join('') : `<div class="empty-note">No monthly cost values configured yet.</div>`;
 
   // ── component table rows ────────────────────────────────────────────────────
@@ -3416,7 +3420,7 @@ function exportPdfReport() {
       <td style="font-variant-numeric:tabular-nums">${p95 != null ? p95+'<span class="unit">ms</span>' : '<span class="dim">—</span>'}</td>
       <td>${err != null ? `<span style="color:${err>5?'#f85149':err>1?'#f5b731':'#34d058'};font-weight:700">${err}%</span>` : '<span class="dim">—</span>'}</td>
       <td>${slaNum != null ? `<span style="font-weight:700;color:${slaNum>=99.9?'#34d058':slaNum>=99?'#f5b731':'#f85149'}">${slaNum.toFixed(2)}%</span>` : '<span class="dim">—</span>'}</td>
-      <td style="font-weight:700;color:#1a2030;font-variant-numeric:tabular-nums">${cost > 0 ? '$'+cost.toLocaleString() : '<span class="dim">—</span>'}</td>
+      <td style="font-weight:700;color:#1a2030;font-variant-numeric:tabular-nums">${cost > 0 ? compactMoney(cost) : '<span class="dim">—</span>'}</td>
     </tr>`;
   }).join('');
 
@@ -3482,12 +3486,12 @@ function exportPdfReport() {
   if (!simActive) recommendedActions.push('Run simulation before exporting when you need capacity, latency, SLA, and bottleneck evidence.');
   if (critical > 0) recommendedActions.push('Address critical components first by increasing capacity, adding replicas, or routing through cache/load-balancing layers.');
   if (warning > 0 && critical === 0) recommendedActions.push('Review high-load components before peak traffic; they are close enough to capacity to deserve a scaling plan.');
-  if (topCostNodes.length) recommendedActions.push(`Review the largest cost driver: ${topCostNodes[0].n.props.label || topCostNodes[0].def?.name || topCostNodes[0].n.id} at $${topCostNodes[0].cost.toLocaleString()}/mo.`);
+  if (topCostNodes.length) recommendedActions.push(`Review the largest cost driver: ${topCostNodes[0].n.props.label || topCostNodes[0].def?.name || topCostNodes[0].n.id} at ${compactMoney(topCostNodes[0].cost)}/mo.`);
   if (!recommendedActions.length) recommendedActions.push('Add traffic, capacity, and cost properties to more components to make the report more decision-ready.');
   const actionItemsHtml = recommendedActions.map(x => `<li>${esc(x)}</li>`).join('');
   const kpiCards = [
     { label:'Components', value: realNodes.length,                        color:'#4f9cf9', sub: `${payload.edges.length} connections` },
-    { label:'Monthly Cost', value: totalCost > 0 ? `$${totalCost.toLocaleString()}` : '—', color:'#34d058', sub: S.reservedPricing ? 'Reserved −35%' : 'On-demand pricing' },
+    { label:'Monthly Cost', value: totalCost > 0 ? compactMoney(totalCost) : '—', color:'#34d058', sub: S.reservedPricing ? 'Reserved −35%' : 'On-demand pricing' },
     { label:'System Health', value: critical > 0 ? `${critical} Critical` : warning > 0 ? `${warning} Warning` : 'All Clear', color: critical>0?'#f85149':warning>0?'#f5b731':'#34d058', sub: `${healthy} healthy · ${warning} warn · ${critical} crit` },
     { label:'Avg Latency',   value: avgLat != null ? `${avgLat}ms` : '—', color:'#a78bfa', sub: avgSLA != null ? `Est. SLA ${avgSLA}%` : 'Run sim for data' },
   ].map(c => `<div class="kpi-card">
@@ -3670,7 +3674,7 @@ function exportPdfReport() {
           <div class="cover-chips">
             ${simActive ? `<span class="chip chip-sim">● Simulation Active</span>` : '<span class="chip">No sim data</span>'}
             ${critical > 0 ? `<span class="chip chip-crit">⚠ ${critical} Critical</span>` : ''}
-            ${totalCost > 0 ? `<span class="chip">$${totalCost.toLocaleString()}/mo</span>` : ''}
+            ${totalCost > 0 ? `<span class="chip">${compactMoney(totalCost)}/mo</span>` : ''}
             ${S.reservedPricing ? '<span class="chip chip-sim">Reserved −35%</span>' : ''}
           </div>
         </div>
@@ -3695,7 +3699,7 @@ function exportPdfReport() {
           <div class="exec-meta">
             Traffic assumption: <strong>${esc(formatFlow(totalTraffic))}</strong><br>
             Components: <strong>${realNodes.length}</strong> · Connections: <strong>${payload.edges.length}</strong><br>
-            Cost model: <strong>${totalCost > 0 ? '$' + totalCost.toLocaleString() + '/mo' : 'not fully configured'}</strong>
+            Cost model: <strong>${totalCost > 0 ? compactMoney(totalCost) + '/mo' : 'not fully configured'}</strong>
           </div>
         </div>
         <div class="exec-card">
@@ -3736,7 +3740,7 @@ function exportPdfReport() {
         <div>
           <div class="sec-title" style="margin-bottom:10px"><span class="sec-icon" style="background:#f0fdf4">💰</span>Monthly Cost Breakdown</div>
           <div class="cost-box">
-            <div class="cost-total">$${totalCost.toLocaleString()}<span style="font-size:13px;font-weight:500;color:#8896a5">/mo</span></div>
+            <div class="cost-total">${compactMoney(totalCost)}<span style="font-size:13px;font-weight:500;color:#8896a5">/mo</span></div>
             <div class="cost-sub">${S.reservedPricing ? 'Reserved pricing applied (−35% on compute & network)' : 'On-demand pricing'}</div>
             ${costChartBars}
           </div>
@@ -3783,7 +3787,7 @@ function exportPdfReport() {
       <div style="display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid #e8ecf2">
         <div style="text-align:right">
           <div style="font-size:10px;color:#8896a5;margin-bottom:2px">Total Monthly Estimate</div>
-          <div style="font-size:18px;font-weight:900;color:#1a2030">$${totalCost.toLocaleString()}<span style="font-size:12px;font-weight:500;color:#8896a5">/mo</span></div>
+          <div style="font-size:18px;font-weight:900;color:#1a2030">${compactMoney(totalCost)}<span style="font-size:12px;font-weight:500;color:#8896a5">/mo</span></div>
           ${S.reservedPricing ? '<div style="font-size:10px;color:#34d058;margin-top:2px">✓ Reserved pricing active (−35% on compute & network)</div>' : ''}
         </div>
       </div>` : ''}
