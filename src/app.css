@@ -638,13 +638,13 @@ body { background: #070b10; letter-spacing: -0.01em; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* hidden by default, revealed on node hover */
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
-.node-tool-kicker {
-  color: var(--muted);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.a-node:hover .node-type,
+.a-node.selected .node-type {
+  opacity: 1;
 }
 .node-tool-dot {
   width: 5px;

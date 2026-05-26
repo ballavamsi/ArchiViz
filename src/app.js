@@ -507,7 +507,6 @@ function renderNode(id) {
         <div class="node-titles">
           <div class="node-label" title="Double-click to rename">${safeLabel}</div>
           <div class="node-type" title="${toolTitle}">
-            <span class="node-tool-kicker">${n.defId === 'textnote' ? 'Note' : 'Tool'}</span>
             <span class="node-tool-dot" style="background:${n.defId === 'textnote' ? noteAccent : accentColor}"></span>
             <span class="node-tool-name" ${n.defId === 'textnote' ? `style="color:${noteAccent}"` : ''}>${toolName}</span>
           </div>
