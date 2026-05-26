@@ -2922,7 +2922,7 @@ function exportPdfReport() {
         <div class="cover-right">
           <div class="date-label">Generated</div>
           <div class="date-val">${ts}</div>
-          <div class="url">archi-flow.onrender.com</div>
+          <div class="url">archi-flow.netlify.app</div>
         </div>
       </div>
     </div>
@@ -3003,7 +3003,7 @@ function exportPdfReport() {
 
     <!-- ▸ FOOTER ─────────────────────────────────────────── -->
     <div class="footer">
-      <div class="footer-left">Generated with <a href="https://archi-flow.onrender.com">Archi-Flow</a> by <a href="https://ballavamsi.com">ballavamsi.com</a></div>
+      <div class="footer-left">Generated with <a href="https://archi-flow.netlify.app/">Archi-Flow</a> by <a href="https://ballavamsi.com">ballavamsi.com</a></div>
       <div class="footer-right">${ts} &nbsp;·&nbsp; ${realNodes.length} components &nbsp;·&nbsp; ${payload.edges.length} connections</div>
     </div>
 
