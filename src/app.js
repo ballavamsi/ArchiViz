@@ -294,13 +294,25 @@ function makePalItem(def) {
 }
 
 // ── Collapsible pal-foot sections ────────────────────────────────────────
+const PAL_FOOT_IDS = ['tips-section', 'legend-section'];
 function togglePalFootSection(id) {
   const sec = document.getElementById(id);
   if (!sec) return;
-  const open = sec.classList.toggle('open');
+  const willOpen = !sec.classList.contains('open');
+  // Accordion: close all siblings first
+  PAL_FOOT_IDS.forEach(otherId => {
+    if (otherId === id) return;
+    const other = document.getElementById(otherId);
+    if (!other) return;
+    other.classList.remove('open');
+    const otherBtn = other.querySelector('.pal-foot-hdr');
+    if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+    try { localStorage.setItem('archviz.palfoot.' + otherId, '0'); } catch {}
+  });
+  sec.classList.toggle('open', willOpen);
   const btn = sec.querySelector('.pal-foot-hdr');
-  if (btn) btn.setAttribute('aria-expanded', String(open));
-  try { localStorage.setItem('archviz.palfoot.' + id, open ? '1' : '0'); } catch {}
+  if (btn) btn.setAttribute('aria-expanded', String(willOpen));
+  try { localStorage.setItem('archviz.palfoot.' + id, willOpen ? '1' : '0'); } catch {}
 }
 window.togglePalFootSection = togglePalFootSection;
 
