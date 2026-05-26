@@ -936,6 +936,10 @@ textarea.prop-inp {
   border-top: 1px solid var(--border);
   gap: 12px;
 }
+body[data-theme="light"] #statusbar {
+  background: #ffffff !important;
+  border-top-color: #dce3ec !important;
+}
 .sb-stat { font-size: 11px; font-weight: 500; }
 .sb-stat strong { color: var(--text); font-weight: 700; }
 .legend { gap: 5px; }
@@ -1925,4 +1929,73 @@ body[data-theme="light"] #btn-notif {
   background: #f8fafc !important;
   border-color: #cbd5e1 !important;
   color: #334155 !important;
+}
+
+/* ── Light theme: Run Sim button ─────────────────────────────────────────── */
+body[data-theme="light"] #btn-sim {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
+  border-color: #16a34a55 !important;
+  color: #15803d !important;
+}
+body[data-theme="light"] #btn-sim:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
+}
+body[data-theme="light"] #btn-sim.running {
+  background: linear-gradient(135deg, #fee2e2, #fecaca) !important;
+  border-color: #dc262655 !important;
+  color: #dc2626 !important;
+}
+body[data-theme="light"] #btn-sim.running:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+/* ── Light theme: statusbar ───────────────────────────────────────────────── */
+body[data-theme="light"] #statusbar {
+  background: #ffffff;
+  border-top-color: #dce3ec;
+  color: #334155;
+}
+body[data-theme="light"] .sb-divider {
+  background: #dce3ec;
+}
+body[data-theme="light"] .sim-users-wrap {
+  background: #f1f5f9;
+  border-color: #c8d2de;
+}
+body[data-theme="light"] .leg-item {
+  background: #f1f5f9;
+  border-color: #c8d2de;
+  color: #475569;
+}
+body[data-theme="light"] #sim-speed-sel,
+body[data-theme="light"] #sim-users-val {
+  background: #f1f5f9;
+  color: #172033;
+  border-color: #c8d2de;
+}
+
+/* ── Light theme: property panel inputs ───────────────────────────────────── */
+body[data-theme="light"] .prop-inp,
+body[data-theme="light"] input[type="number"].prop-inp,
+body[data-theme="light"] input[type="text"].prop-inp,
+body[data-theme="light"] select.prop-inp,
+body[data-theme="light"] textarea.prop-inp {
+  background: #ffffff !important;
+  color: #172033 !important;
+  border-color: #c8d2de !important;
+}
+body[data-theme="light"] .prop-inp:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.12) !important;
+}
+/* number input stepper button background */
+body[data-theme="light"] input[type="number"]::-webkit-inner-spin-button,
+body[data-theme="light"] input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: auto;
+  opacity: 1;
+  background: #e2e8f0;
 }
