@@ -293,11 +293,6 @@ function makePalItem(def) {
   return el;
 }
 
-function initPalette() {
-  document.getElementById('pal-search').addEventListener('input', renderPalette);
-  renderPalette();
-}
-
 // ── Collapsible pal-foot sections ────────────────────────────────────────
 function togglePalFootSection(id) {
   const sec = document.getElementById(id);
@@ -309,20 +304,27 @@ function togglePalFootSection(id) {
 }
 window.togglePalFootSection = togglePalFootSection;
 
-// Wire via JS (safer than inline onclick in module scripts)
-['tips-section', 'legend-section'].forEach(id => {
-  const sec = document.getElementById(id);
-  if (!sec) return;
-  const btn = sec.querySelector('.pal-foot-hdr');
-  if (btn) btn.addEventListener('click', () => togglePalFootSection(id));
-  // Restore persisted open state
-  try {
-    if (localStorage.getItem('archviz.palfoot.' + id) === '1') {
-      sec.classList.add('open');
-      btn?.setAttribute('aria-expanded', 'true');
-    }
-  } catch {}
-});
+function initPalFootSections() {
+  ['tips-section', 'legend-section'].forEach(id => {
+    const sec = document.getElementById(id);
+    if (!sec) return;
+    const btn = sec.querySelector('.pal-foot-hdr');
+    if (btn) btn.addEventListener('click', () => togglePalFootSection(id));
+    // Restore persisted open state
+    try {
+      if (localStorage.getItem('archviz.palfoot.' + id) === '1') {
+        sec.classList.add('open');
+        btn?.setAttribute('aria-expanded', 'true');
+      }
+    } catch {}
+  });
+}
+
+function initPalette() {
+  document.getElementById('pal-search').addEventListener('input', renderPalette);
+  renderPalette();
+  initPalFootSections();
+}
 
 function renderPalette() {
   const list = document.getElementById('pal-list');
