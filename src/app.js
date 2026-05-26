@@ -2883,6 +2883,28 @@ function modelPortXY(nodeId, side) {
   return { x: cx, y: cy };
 }
 
+function svgWrapText(text, maxChars) {
+  if (!text) return [];
+  const lines = [];
+  const words = text.replace(/\r\n?/g, '\n').split(/(\s+)/);
+  let current = '';
+  for (const token of words) {
+    if (token === '\n') {
+      lines.push(current.trim());
+      current = '';
+      continue;
+    }
+    if (current.length + token.length > maxChars && current.trim()) {
+      lines.push(current.trim());
+      current = token.trim();
+    } else {
+      current += token;
+    }
+  }
+  if (current.trim()) lines.push(current.trim());
+  return lines;
+}
+
 function diagramSvgString() {
   const b = diagramBounds();
   const title = getDiagramTitle();
@@ -2953,7 +2975,15 @@ function diagramSvgString() {
     const status = !S.simOn ? def.color : pct > 85 ? '#f85149' : pct > 60 ? '#e3b341' : '#3fb950';
     const x = n.x - b.minX, y = n.y - b.minY;
     const label = esc(n.props.label || def.name);
-    const type = esc(def.name);
+    const noteTone = n.defId === 'textnote' ? esc(n.props.tone || 'Neutral') : '';
+    const type = n.defId === 'textnote' ? noteTone : esc(def.name);
+    const noteLines = n.defId === 'textnote'
+      ? svgWrapText(n.props.text || '', Math.max(24, Math.floor((n.w - 32) / 7)))
+      : [];
+    const noteTextSvg = noteLines.length
+      ? noteLines.map((line, idx) => `
+          <text x="18" y="${86 + idx * 16}" fill="${T.nodeLabel}" font-size="11" font-family="Inter, Arial" xml:space="preserve">${esc(line)}</text>`).join('')
+      : '';
     const badge = n.defId === 'users' ? compactNum(n.props.userCount || 0) + ' users'
       : S.simOn && sim ? Math.round(Math.min(pct, 999)) + '% load'
       : '';
@@ -2966,16 +2996,18 @@ function diagramSvgString() {
         <text x="62" y="39" fill="${T.nodeLabel}" font-size="15" font-weight="700" font-family="Inter, Arial">${label}</text>
         <text x="62" y="58" fill="${T.nodeType}" font-size="11" font-family="Inter, Arial">${type}</text>
         ${badge ? `<rect x="14" y="67" width="${Math.max(64, badge.length*7+16)}" height="18" rx="5" fill="${T.badgeFill}" stroke="${T.badgeStroke}"/><text x="22" y="80" fill="${T.badgeText}" font-size="11" font-weight="700" font-family="Inter, Arial">${esc(badge)}</text>` : ''}
+        ${noteTextSvg}
       </g>`;
   }).join('');
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(b.width)}" height="${Math.ceil(b.height)}" viewBox="0 0 ${b.width} ${b.height}">
-    ${defs}
-    ${grid}
-    <text x="28" y="38" fill="${T.titleText}" font-size="22" font-weight="800" font-family="Inter, Arial">${esc(title)}</text>
-    <text x="28" y="60" fill="${T.subtitleText}" font-size="12" font-family="Inter, Arial">Archi-Flow architecture snapshot • ${new Date().toLocaleString()}</text>
-    <g transform="translate(0,26)">${edges}${nodes}</g>
-  </svg>`;
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${b.width}" height="${b.height}" viewBox="0 0 ${b.width} ${b.height}" role="img" aria-label="${esc(title)}">
+      ${defs}
+      ${grid}
+      <g>${edges}</g>
+      <g>${nodes}</g>
+      <text x="18" y="${b.height - 18}" fill="${T.subtitleText}" font-size="11" font-family="Inter, Arial">${esc(`Archi-Flow architecture snapshot • ${new Date().toLocaleString()}`)}</text>
+    </svg>`;
 }
 
 function downloadBlob(blob, filename) {
@@ -3010,6 +3042,46 @@ async function shareDiagram() {
     await navigator.clipboard.writeText(url);
     return 'link';
   }
+}
+
+function toExportValue(key, value) {
+  if (value == null || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (key === 'autoScale') return value ? 'Enabled' : 'Disabled';
+  if (['cacheHitRate','blockRate','errorRate'].includes(key)) return `${value}%`;
+  if (key === 'maxConnections' && typeof value === 'number') return String(value);
+  return String(value);
+}
+
+function nodeSettingsHtml(n) {
+  const props = n.props || {};
+  const def = COMPONENT_DEFS.find(d => d.id === n.defId) || {};
+  const lines = [];
+  lines.push({ label: 'Component', value: esc(props.label || def.name || n.id) });
+  lines.push({ label: 'Type', value: esc(def.name || n.defId) });
+  lines.push({ label: 'Size', value: `${n.w || '–'}×${n.h || '–'} px` });
+  const keys = [
+    'region','zone','type','runtime','cpu','memory','storage','capacity','maxConnections',
+    'userCount','requestsPerUser','eventRate','changeRate','readReplicas','autoScale',
+    'scaleUpThreshold','maxReplicas','cost','errorRate','avgLatencyMs','concurrency','cacheHitRate','blockRate'
+  ];
+  keys.forEach(key => {
+    if (props[key] != null && props[key] !== '' && key !== 'type') {
+      const label = {
+        region: 'Region', zone: 'Zone', runtime: 'Runtime', cpu: 'CPU', memory: 'Memory', storage: 'Storage',
+        capacity: 'Capacity', maxConnections: 'Max connections', userCount: 'Users', requestsPerUser: 'Reqs/user',
+        eventRate: 'Event rate', changeRate: 'Change rate', readReplicas: 'Read replicas', autoScale: 'Auto-scale',
+        scaleUpThreshold: 'Scale-up threshold', maxReplicas: 'Max replicas', cost: 'Cost/mo', errorRate: 'Error %',
+        avgLatencyMs: 'Avg latency (ms)', concurrency: 'Concurrency', cacheHitRate: 'Cache hit %', blockRate: 'Block %'
+      }[key] || key;
+      lines.push({ label, value: esc(toExportValue(key, props[key])) });
+    }
+  });
+  if (n.defId === 'textnote' && props.text) {
+    lines.push({ label: 'Text', value: esc(props.text.slice(0, 150) + (props.text.length > 150 ? '…' : '')) });
+  }
+  return `<div class="setting-card"><div class="setting-card-title">${esc(props.label || def.name || n.id)}</div>${lines.map((row, idx) => `
+      <div class="setting-row"${idx===0?' style="font-weight:800;color:#111"':''}><div>${row.label}</div><div>${row.value}</div></div>`).join('')}</div>`;
 }
 
 function exportPdfReport() {
@@ -3091,6 +3163,7 @@ function exportPdfReport() {
         <div style="font-weight:700;color:#1a2030;font-size:12px">${esc(n.props.label || def?.name || n.id)}</div>
         <div style="font-size:10px;color:#8896a5;margin-top:1px">${esc(def?.name || n.defId)}${region ? ` · ${region}` : ''}</div>
       </td>
+      <td style="font-variant-numeric:tabular-nums">${n.w && n.h ? esc(`${n.w}×${n.h}`) : '<span class="dim">—</span>'}</td>
       <td>${sim ? loadBar(sim.loadPct) : '<span class="dim">—</span>'}</td>
       <td style="font-variant-numeric:tabular-nums">${sim ? esc(formatFlow(sim.incoming)) : '<span class="dim">—</span>'}</td>
       <td style="font-variant-numeric:tabular-nums">${sim && typeof sim.capacity==='number' ? esc(formatFlow(sim.capacity)) : '<span class="dim">—</span>'}</td>
@@ -3163,6 +3236,11 @@ function exportPdfReport() {
     .cover-glow{position:absolute;top:-80px;right:-80px;width:360px;height:360px;background:radial-gradient(circle,rgba(79,156,249,0.18) 0%,transparent 70%);pointer-events:none}
     .cover-inner{position:relative;padding:32px 36px 28px;display:flex;justify-content:space-between;align-items:flex-start}
     .brand{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+    .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:14px}
+    .setting-card{background:#fff;border:1px solid #e8ecf2;border-radius:16px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,0.05);}
+    .setting-card-title{font-size:12px;font-weight:800;color:#1f2937;margin-bottom:10px}
+    .setting-row{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#475569;line-height:1.4;border-top:1px solid #e5e7eb;padding:8px 0 0}
+    .setting-row:first-child{border-top:0;padding-top:0}
     .brand-icon{width:28px;height:28px;background:linear-gradient(135deg,#4f9cf9,#a78bfa);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0}
     .brand-name{font-size:13px;font-weight:700;color:#e2eaf8;letter-spacing:-.01em}
     .cover h1{font-size:26px;font-weight:900;color:#f0f6ff;letter-spacing:-.03em;margin-bottom:5px;line-height:1.15}
@@ -3269,6 +3347,11 @@ function exportPdfReport() {
     tbody tr:nth-child(even){background:#161b22}
     td{color:#c9d1d9}.unit,.dim{color:#8b949e}
     .pill-idle{background:#21262d;color:#8b949e;border-color:#30363d}
+    .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:14px}
+    .setting-card{background:#0b1118;border:1px solid #21262d;border-radius:16px;padding:16px}
+    .setting-card-title{font-size:12px;font-weight:800;color:#f8fafc;margin-bottom:10px}
+    .setting-row{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#c9d1d9;line-height:1.4;border-top:1px solid #161b22;padding:8px 0 0}
+    .setting-row:first-child{border-top:0;padding-top:0}
     .pill-ok{background:#0f2a1a;color:#3fb950;border-color:#1a4731}
     .pill-warn{background:#2a1f00;color:#f5b731;border-color:#4a3500}
     .pill-crit{background:#2a0f0e;color:#f85149;border-color:#4a1f1d}
@@ -3359,6 +3442,7 @@ function exportPdfReport() {
         <thead>
           <tr>
             <th>Component</th>
+            <th style="min-width:70px">Size</th>
             <th style="min-width:90px">Load</th>
             <th>Traffic In</th>
             <th>Capacity</th>
@@ -3379,6 +3463,13 @@ function exportPdfReport() {
           ${S.reservedPricing ? '<div style="font-size:10px;color:#34d058;margin-top:2px">✓ Reserved pricing active (−35% on compute & network)</div>' : ''}
         </div>
       </div>` : ''}
+    </div>
+
+    <div class="section" style="padding-top:0">
+      <div class="sec-title"><span class="sec-icon" style="background:#eefcfd">🛠</span>Component Configuration</div>
+      <div class="settings-grid">
+        ${realNodes.filter(n => n.defId !== 'textnote').map(nodeSettingsHtml).join('')}
+      </div>
     </div>
 
     <!-- ▸ FOOTER ─────────────────────────────────────────── -->
