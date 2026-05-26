@@ -1317,9 +1317,9 @@ function updateEmptyPanel() {
       </div>
     </div>
     <div class="metric-grid">
-      <div class="metric"><strong>${nodeCount}</strong><span>Nodes</span></div>
-      <div class="metric"><strong>${edgeCount}</strong><span>Edges</span></div>
-      <div class="metric"><strong>${esc(compactNum(totalRps))}</strong><span>Events/s</span></div>
+      <div class="metric"><span>${nodeCount}</span><span>Nodes</span></div>
+      <div class="metric"><span>${edgeCount}</span><span>Edges</span></div>
+      <div class="metric"><span>${esc(compactNum(totalRps))}</span><span>Events/s</span></div>
       <div class="metric" style="${critical > 0 ? 'border-color:rgba(248,81,73,0.4);background:rgba(248,81,73,0.1)' : ''}"><strong style="color:${critical > 0 ? '#f85149' : warning > 0 ? '#f5b731' : 'var(--text)'}">${critical || warning || 0}</strong><span>${critical > 0 ? 'Critical' : warning > 0 ? 'Warning' : 'Issues'}</span></div>
     </div>
     ${_costBreakdownHtml()}`;

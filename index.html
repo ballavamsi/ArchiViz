@@ -121,6 +121,45 @@
   }
 </script>
 <link rel="stylesheet" href="src/app.css"/>
+<style>
+#ph-badge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  animation: phFadeIn 0.6s ease-out;
+  transition: opacity 0.2s ease;
+}
+#ph-badge:hover {
+  opacity: 1;
+}
+#ph-badge:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+#ph-badge img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  opacity: 0.85;
+}
+#ph-badge:hover img {
+  opacity: 1;
+}
+@keyframes phFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+}
+</style>
 </head>
 <body>
 
@@ -294,6 +333,7 @@
       <div class="pal-tip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><path d="M5 9l4 4 4-4"/><path d="M5 4h14"/><path d="M5 20h14"/></svg><span>Drag to canvas</span></div>
       <div class="pal-tip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/></svg><span>Hover node → connect via ports</span></div>
       <div class="pal-tip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Drop onto edge to insert</span></div>
+      <a id="ph-badge" href="https://www.producthunt.com/products/archi-flow?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-archi-flow" target="_blank" rel="noopener noreferrer"><img alt="Archi-Flow - Visualize cloud architecture with live traffic simulations | Product Hunt" width="200" height="43" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1156402&amp;theme=light&amp;t=1779805188941"></a>
     </div>
   </div>
 
