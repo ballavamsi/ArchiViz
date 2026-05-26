@@ -1103,22 +1103,23 @@ textarea.prop-inp {
 }
 
 /* ══ NOTIFICATION BELL BADGE ══════════════════════════════════════════ */
-#btn-notif { position: relative; color: var(--fg, #c9d1d9); }
-#btn-notif svg { display: block; color: inherit; }
+#btn-notif { position: relative; color: var(--fg, #c9d1d9); overflow: visible; }
+#btn-notif svg { display: block; color: inherit; position: relative; z-index: 1; }
 #notif-badge {
   position: absolute;
-  top: 3px; right: 3px;
-  min-width: 16px; height: 16px;
-  padding: 0 4px;
+  top: -7px; right: -7px;
+  min-width: 17px; height: 17px;
+  padding: 0 5px;
   border-radius: 99px;
   background: var(--red);
   color: #fff;
   font-size: 9px;
-  font-weight: 700;
-  line-height: 16px;
+  font-weight: 800;
+  line-height: 17px;
   text-align: center;
   pointer-events: none;
-  box-shadow: 0 0 0 2px var(--bg);
+  z-index: 3;
+  box-shadow: 0 0 0 2px var(--surface), 0 2px 6px rgba(0,0,0,0.18);
 }
 
 /* ══ NOTIFICATION SIDE PANEL ══════════════════════════════════════════ */

@@ -102,6 +102,24 @@ try {
   assert.match(ringState.backgroundImage, /conic-gradient/, 'health ring should retain percent ring fill');
   assert.ok(ringState.label, 'health ring should show a visible label');
 
+  const notifBadgeState = await page.locator('#btn-notif').evaluate(btn => {
+    const badge = document.getElementById('notif-badge');
+    badge.style.display = 'block';
+    badge.textContent = '6';
+    const bell = btn.querySelector('svg').getBoundingClientRect();
+    const bb = badge.getBoundingClientRect();
+    const bellCenter = { x: bell.left + bell.width / 2, y: bell.top + bell.height / 2 };
+    return {
+      badgeTop: bb.top,
+      bellTop: bell.top,
+      bellCenterCovered:
+        bellCenter.x >= bb.left && bellCenter.x <= bb.right &&
+        bellCenter.y >= bb.top && bellCenter.y <= bb.bottom,
+    };
+  });
+  assert.ok(notifBadgeState.badgeTop < notifBadgeState.bellTop, 'notification badge should sit above the bell icon');
+  assert.equal(notifBadgeState.bellCenterCovered, false, 'notification badge should not cover the bell center');
+
   await page.locator('#btn-more').click();
   const menuState = await page.locator('#more-menu').evaluate(el => {
     const cs = getComputedStyle(el);
