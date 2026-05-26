@@ -203,6 +203,43 @@ function getDiagramTitle() {
   return document.getElementById('diagram-title')?.value || 'Untitled Architecture';
 }
 
+// ── Title input behaviour ─────────────────────────────────────────────────
+(function wireTitleInput() {
+  const inp = document.getElementById('diagram-title');
+  const badge = document.getElementById('title-saved-badge');
+  if (!inp) return;
+  let _savedTimer = null;
+
+  function flashSaved() {
+    if (!badge) return;
+    badge.classList.add('visible');
+    clearTimeout(_savedTimer);
+    _savedTimer = setTimeout(() => badge.classList.remove('visible'), 1800);
+  }
+
+  inp.addEventListener('input', () => {
+    S.title = inp.value;
+    document.title = (inp.value || 'Untitled') + ' — Archi-Flow';
+    autoSave();
+  });
+
+  inp.addEventListener('blur', () => {
+    if (!inp.value.trim()) inp.value = 'Untitled Architecture';
+    S.title = inp.value;
+    document.title = inp.value + ' — Archi-Flow';
+    autoSave();
+    flashSaved();
+  });
+
+  // Select all on focus for easy rename
+  inp.addEventListener('focus', () => inp.select());
+
+  // Confirm with Enter
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { inp.blur(); }
+  });
+})();
+
 function setExampleSelect(id) {
   const sel = document.getElementById('example-sel');
   const idx = [...sel.options].findIndex(o => o.value === (id || ''));

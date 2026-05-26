@@ -36,6 +36,62 @@ body {
 #toolbar { height: 44px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 4px; padding: 0 12px; flex-shrink: 0; overflow: visible; min-width: 0; position: relative; z-index: 120; }
 #toolbar .logo { font-size: 14px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; margin-right: 8px; }
 #toolbar .sep  { width: 1px; height: 20px; background: var(--border2); margin: 0 4px; }
+
+/* ── Diagram title ── */
+#title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+  flex-shrink: 1;
+  min-width: 0;
+}
+#diagram-title {
+  height: 30px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 8px;
+  outline: none;
+  min-width: 60px;
+  max-width: 160px;
+  width: 140px;
+  flex-shrink: 1;
+  transition: all 0.15s;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+#diagram-title:hover { background: var(--surface2); border-color: var(--border2); }
+#diagram-title:focus {
+  background: rgba(79,156,249,0.07);
+  border-color: rgba(79,156,249,0.45);
+  cursor: text;
+  width: 180px;
+}
+#title-edit-icon {
+  color: var(--muted);
+  opacity: 0;
+  flex-shrink: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+#title-wrap:hover #title-edit-icon { opacity: 0.6; }
+#title-wrap:focus-within #title-edit-icon { opacity: 0; }
+
+#title-saved-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #34d058;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0.01em;
+}
+#title-saved-badge.visible { opacity: 1; }
 .tbtn { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; line-height: 1; }
 .tbtn:hover { background: var(--border); color: var(--text); border-color: var(--border2); }
 .tbtn.active { background: #1f6feb22; color: var(--accent); border-color: #1f6feb55; }
@@ -1914,6 +1970,11 @@ body[data-theme="light"] .tbtn-collab:hover {
 }
 .user-menu-item { color: var(--text2); }
 .user-menu-divider { border-top-color: var(--border); }
+
+body[data-theme="light"] #diagram-title { color: #172033; }
+body[data-theme="light"] #diagram-title:hover { background: #f1f5f9; border-color: #cbd5e1; }
+body[data-theme="light"] #diagram-title:focus { background: rgba(37,99,235,0.05); border-color: rgba(37,99,235,0.35); }
+body[data-theme="light"] #title-edit-icon { color: #64748b; }
 
 body[data-theme="light"] #toolbar .logo span {
   background: linear-gradient(90deg,#172033,#2563eb) !important;
