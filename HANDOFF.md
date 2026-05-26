@@ -12,20 +12,22 @@
 
 ## Latest Update
 
-**Latest local iteration:** High-fidelity SVG/PNG export
+**Latest local iteration:** PDF architecture audit detail
 
-SVG and PNG export were updated after the user reported that exported diagrams did not match the website view.
+PDF export was updated after the user reported that Component Performance showed irrelevant canvas box size and missed key technical/cost assumptions.
 
-Current export behavior:
-- SVG export uses live rendered node HTML through `foreignObject`, so it preserves real icons, tile styling, tool chips, badges, fonts, and label sizing from the app.
-- PNG export uses a compatible native-SVG renderer with the same real component icons and tool-chip treatment. This is intentionally separate because drawing `foreignObject` SVG into a canvas taints the canvas in Chromium and blocks PNG downloads.
-- Exported grid now includes both minor 10px and major 40px lines, matching the draw.io/Lucid-style canvas more closely.
+Current PDF behavior:
+- Component Performance no longer includes node pixel size.
+- It now includes Config / Cost Drivers, Traffic Out, and Read / Write columns.
+- A new Traffic & Cost Assumptions section explains input/output rates, cache hit/miss behavior, read replicas, event rates, and effective edge split logic.
+- Component Configuration exports all configured tool properties from `src/components.js`, including CPU, memory, DB type, replicas, storage, latency, capacity, and cost fields.
+- Traffic split semantics were corrected: explicit edge percentages reserve that share, blank edges split the remaining traffic, and fully blank downstream edges split evenly.
 
 Files changed:
-- `src/app.js` — export renderer split into live HTML SVG export and native PNG-safe SVG export
-- `scripts/browser-smoke.mjs` — now downloads and verifies SVG/PNG exports
-- `test/smoke.test.mjs` — image export regression checks
-- `.claude/TASKS.md` — recorded as Iteration 6.3
+- `src/app.js` — PDF data model, traffic assumptions, component configuration export, and split calculation
+- `scripts/browser-smoke.mjs` — checks new PDF sections/columns
+- `test/smoke.test.mjs` — PDF export regression checks
+- `.claude/TASKS.md` — recorded as Iteration 6.4
 
 Verification already completed:
 ```bash

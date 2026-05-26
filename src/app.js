@@ -1296,12 +1296,12 @@ function _renderEdgePanel(edge) {
         <div class="prop-lbl">Traffic %</div>
         <input id="edge-traffic-pct" class="prop-inp" type="number" min="0" max="100" step="1" value="${esc(String(pctVal))}" placeholder="Auto"/>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:-4px;line-height:1.4">Set a weight for this connection. Leave blank for equal split. The sim normalises all outgoing weights from each node.</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:-4px;line-height:1.4">Set an explicit split for this connection. Blank connections share the remaining traffic. If no split is set, traffic is divided equally.</div>
       ${flowStr ? `
       <div style="background:rgba(79,156,249,0.07);border:1px solid rgba(79,156,249,0.2);border-radius:8px;padding:10px 12px;margin-top:4px">
         <div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Live Flow</div>
         <div style="font-size:18px;font-weight:800;color:#4f9cf9;letter-spacing:-.02em">${esc(flowStr)}</div>
-        ${edge.trafficPct != null ? `<div style="font-size:10px;color:var(--muted);margin-top:3px">${edge.trafficPct}% of upstream traffic</div>` : ''}
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${Math.round(outgoingSplitPercent(edge) * 10) / 10}% effective upstream split</div>
       </div>` : ''}
     </div>
     <div style="padding:10px 14px;border-top:1px solid var(--border)">
@@ -1780,6 +1780,38 @@ function sourceRate(n) {
   return (n.props.userCount || 100) * (n.props.requestsPerUser || 1);
 }
 
+function outgoingSplitDetails(srcId) {
+  const down = S.edges.filter(e => e.src === srcId && !e.dashed && !e._warn && S.nodes[e.tgt]);
+  if (!down.length) return [];
+  const explicit = down.filter(e => e.trafficPct != null);
+  if (!explicit.length) {
+    const pct = 100 / down.length;
+    return down.map(edge => ({ edge, pct, mode: 'equal' }));
+  }
+  const explicitTotal = explicit.reduce((sum, e) => sum + Math.max(0, Number(e.trafficPct) || 0), 0);
+  const implicit = down.filter(e => e.trafficPct == null);
+  if (implicit.length) {
+    const remaining = Math.max(0, 100 - explicitTotal);
+    const autoPct = remaining / implicit.length;
+    return down.map(edge => ({
+      edge,
+      pct: edge.trafficPct == null ? autoPct : Math.max(0, Number(edge.trafficPct) || 0),
+      mode: edge.trafficPct == null ? 'remainder' : 'explicit'
+    }));
+  }
+  const total = explicitTotal || down.length;
+  return down.map(edge => ({
+    edge,
+    pct: (Math.max(0, Number(edge.trafficPct) || 0) / total) * 100,
+    mode: explicitTotal === 100 ? 'explicit' : 'normalised'
+  }));
+}
+
+function outgoingSplitPercent(edge) {
+  const found = outgoingSplitDetails(edge.src).find(x => x.edge.id === edge.id);
+  return found?.pct ?? 0;
+}
+
 // ── Remote simulation (serverless) ───────────────────────────────────────────
 // Calls /api/simulate with the current graph; falls back to local tick if the
 // request fails (e.g. dev server without Netlify Functions running).
@@ -1862,12 +1894,10 @@ function runTickLocal() {
       else if (n.defId==='cache') fwd = inn*(1-(n.props.hitRate||80)/100);
       else if (n.defId==='firewall') fwd = inn*(1-(n.props.blockRate||5)/100);
       else if (n.defId==='deviceapp') fwd = inn*(n.props.eventsPerInput||1);
-      const down = S.edges.filter(e => e.src===cur && !e.dashed && !e._warn && S.nodes[e.tgt]);
-      if (down.length && fwd > 0) {
-        const hasW = down.some(e => e.trafficPct != null);
-        const totalW = hasW ? (down.reduce((s,e)=>s+(e.trafficPct||0),0)||down.length) : down.length;
-        down.forEach(edge => {
-          const w = hasW ? (edge.trafficPct||0)/totalW : 1/down.length;
+      const splits = outgoingSplitDetails(cur);
+      if (splits.length && fwd > 0) {
+        splits.forEach(({ edge, pct }) => {
+          const w = pct / 100;
           const flow = fwd * w;
           eFlowNew[edge.id] = flow;
           incoming[edge.tgt] = (incoming[edge.tgt] || 0) + flow;
@@ -3168,35 +3198,100 @@ function toExportValue(key, value) {
   if (value == null || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (key === 'autoScale') return value ? 'Enabled' : 'Disabled';
-  if (['cacheHitRate','blockRate','errorRate'].includes(key)) return `${value}%`;
+  if (['cacheHitRate','hitRate','blockRate','errorRate','samplingRate','rejectionRate'].includes(key)) return `${value}%`;
+  if (key === 'cost' && typeof value === 'number') return `$${value.toLocaleString()}/mo`;
   if (key === 'maxConnections' && typeof value === 'number') return String(value);
   return String(value);
+}
+
+function componentPropDefs(def) {
+  const seen = new Set();
+  return [...(def?.properties || []), ...(def?.scaleProps || [])].filter(p => {
+    if (!p?.key || seen.has(p.key)) return false;
+    seen.add(p.key);
+    return true;
+  });
+}
+
+function propLabel(def, key) {
+  return componentPropDefs(def).find(p => p.key === key)?.label || ({
+    label: 'Label', region: 'Region', zone: 'Zone', runtime: 'Runtime', cpu: 'CPU', cpuRequest: 'CPU Request',
+    memory: 'Memory', memoryRequest: 'Memory Request', storage: 'Storage', storageTB: 'Storage (TB)',
+    capacity: 'Capacity', maxConnections: 'Max connections', userCount: 'Users', requestsPerUser: 'Events/User/s',
+    eventRate: 'Event rate', changeRate: 'Change rate', readReplicas: 'Read replicas', autoScale: 'Auto-scale',
+    scaleUpAt: 'Scale-up threshold', scaleUpThreshold: 'Scale-up threshold', maxReplicas: 'Max replicas',
+    cost: 'Cost', errorRate: 'Error rate', latencyMs: 'Base latency', avgLatencyMs: 'Avg latency',
+    concurrency: 'Concurrency', cacheHitRate: 'Cache hit rate', hitRate: 'Hit rate', blockRate: 'Block rate'
+  }[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()));
+}
+
+function visiblePropRows(n) {
+  const props = n.props || {};
+  const def = COMPONENT_DEFS.find(d => d.id === n.defId) || {};
+  const keys = componentPropDefs(def).map(p => p.key);
+  Object.keys(props).forEach(key => {
+    if (!key.startsWith('_') && !keys.includes(key)) keys.push(key);
+  });
+  return keys
+    .filter(key => key !== 'label' && !key.startsWith('_') && props[key] != null && props[key] !== '')
+    .map(key => ({ label: propLabel(def, key), value: toExportValue(key, props[key]), key }));
+}
+
+function compactPropList(n, limit = 6) {
+  const rows = visiblePropRows(n).filter(r => !['cost'].includes(r.key));
+  return rows.slice(0, limit).map(r => `<span class="mini-chip"><strong>${esc(r.label)}:</strong> ${esc(r.value)}</span>`).join('');
+}
+
+function nodeTrafficProfile(n) {
+  const sim = S.simLoad[n.id];
+  const outgoing = S.edges.filter(e => e.src === n.id && !e.dashed && !e._warn && S.nodes[e.tgt]);
+  const outFlow = outgoing.reduce((sum, e) => sum + (S.eFlow[e.id] || 0), 0);
+  const incoming = sim?.incoming ?? (SOURCE_DEFS.has(n.defId) ? sourceRate(n) : 0);
+  const props = n.props || {};
+  const def = COMPONENT_DEFS.find(d => d.id === n.defId) || {};
+  const reads = ['database','cache','queryengine','searchengine','vectordb','objectstorage','datalake','tableformat'].includes(n.defId) ? incoming : null;
+  const writes = ['database','queue','kafkatopic','eventbus','pubsub','objectstorage','datalake','warehouse','logging','appinsights'].includes(n.defId) ? incoming : null;
+  const assumptions = [];
+  if (n.defId === 'users') assumptions.push(`${compactNum(props.userCount || 100)} users × ${props.requestsPerUser || 1} events/user/s`);
+  if (n.defId === 'deviceapp') assumptions.push(`Emits ×${props.eventsPerInput || 1} events per upstream event`);
+  if (n.defId === 'eventsource') assumptions.push(`${formatFlow(props.eventRate || 0)} source event rate`);
+  if (n.defId === 'cdcsource') assumptions.push(`${formatFlow(props.changeRate || props.capacity || 0)} database changes`);
+  if (n.defId === 'cdn') assumptions.push(`${props.cacheHitRate || 85}% cache hit; forwards ${100 - (props.cacheHitRate || 85)}%`);
+  if (n.defId === 'cache') assumptions.push(`${props.hitRate || 80}% cache hit; forwards ${100 - (props.hitRate || 80)}% misses`);
+  if (n.defId === 'firewall' || n.defId === 'waf') assumptions.push(`${props.blockRate || 5}% blocked before downstream`);
+  if (n.defId === 'database' && props.readReplicas > 0) assumptions.push(`${props.readReplicas} read replica(s); read capacity treated as primary + replicas`);
+  if (outgoing.length) {
+    const splitText = outgoingSplitDetails(n.id).map(({ edge, pct, mode }) => {
+      const tgt = S.nodes[edge.tgt];
+      const tgtDef = COMPONENT_DEFS.find(d => d.id === tgt?.defId);
+      const label = tgt?.props?.label || tgtDef?.name || edge.tgt;
+      return `${Math.round(pct * 10) / 10}% → ${label}${mode === 'remainder' ? ' (remaining)' : mode === 'equal' ? ' (equal)' : ''}`;
+    }).join('; ');
+    assumptions.push(`Outgoing split: ${splitText}`);
+  }
+  return {
+    incoming,
+    outgoing: outFlow,
+    reads,
+    writes,
+    assumptions: assumptions.length ? assumptions.join('. ') : `${def.name || n.defId} uses configured capacity/cost properties.`
+  };
 }
 
 function nodeSettingsHtml(n) {
   const props = n.props || {};
   const def = COMPONENT_DEFS.find(d => d.id === n.defId) || {};
+  const traffic = nodeTrafficProfile(n);
   const lines = [];
-  lines.push({ label: 'Component', value: esc(props.label || def.name || n.id) });
-  lines.push({ label: 'Type', value: esc(def.name || n.defId) });
-  lines.push({ label: 'Size', value: `${n.w || '–'}×${n.h || '–'} px` });
-  const keys = [
-    'region','zone','type','runtime','cpu','memory','storage','capacity','maxConnections',
-    'userCount','requestsPerUser','eventRate','changeRate','readReplicas','autoScale',
-    'scaleUpThreshold','maxReplicas','cost','errorRate','avgLatencyMs','concurrency','cacheHitRate','blockRate'
-  ];
-  keys.forEach(key => {
-    if (props[key] != null && props[key] !== '' && key !== 'type') {
-      const label = {
-        region: 'Region', zone: 'Zone', runtime: 'Runtime', cpu: 'CPU', memory: 'Memory', storage: 'Storage',
-        capacity: 'Capacity', maxConnections: 'Max connections', userCount: 'Users', requestsPerUser: 'Reqs/user',
-        eventRate: 'Event rate', changeRate: 'Change rate', readReplicas: 'Read replicas', autoScale: 'Auto-scale',
-        scaleUpThreshold: 'Scale-up threshold', maxReplicas: 'Max replicas', cost: 'Cost/mo', errorRate: 'Error %',
-        avgLatencyMs: 'Avg latency (ms)', concurrency: 'Concurrency', cacheHitRate: 'Cache hit %', blockRate: 'Block %'
-      }[key] || key;
-      lines.push({ label, value: esc(toExportValue(key, props[key])) });
-    }
-  });
+  lines.push({ label: 'Tool', value: esc(def.name || n.defId) });
+  lines.push({ label: 'Category', value: esc(def.category || '—') });
+  lines.push({ label: 'Traffic in', value: esc(formatFlow(traffic.incoming)) });
+  if (traffic.outgoing > 0) lines.push({ label: 'Traffic out', value: esc(formatFlow(traffic.outgoing)) });
+  if (traffic.reads != null) lines.push({ label: 'Read ops', value: esc(formatFlow(traffic.reads, 'reads/s')) });
+  if (traffic.writes != null) lines.push({ label: 'Write ops', value: esc(formatFlow(traffic.writes, 'writes/s')) });
+  visiblePropRows(n).forEach(row => lines.push({ label: row.label, value: esc(row.value) }));
+  if (def.description) lines.push({ label: 'Cost basis', value: esc(def.description.slice(0, 180) + (def.description.length > 180 ? '…' : '')) });
+  lines.push({ label: 'Assumptions', value: esc(traffic.assumptions) });
   if (n.defId === 'textnote' && props.text) {
     lines.push({ label: 'Text', value: esc(props.text.slice(0, 150) + (props.text.length > 150 ? '…' : '')) });
   }
@@ -3272,6 +3367,7 @@ function exportPdfReport() {
     const def  = COMPONENT_DEFS.find(d => d.id === n.defId);
     const sim  = S.simLoad[n.id];
     const cost = Number(n.props?.cost || 0);
+    const traffic = nodeTrafficProfile(n);
     const lat  = sim?.latencyMs;
     const p95  = sim?.p95Ms;
     const err  = sim?.errorRate;
@@ -3283,15 +3379,35 @@ function exportPdfReport() {
         <div style="font-weight:700;color:#1a2030;font-size:12px">${esc(n.props.label || def?.name || n.id)}</div>
         <div style="font-size:10px;color:#8896a5;margin-top:1px">${esc(def?.name || n.defId)}${region ? ` · ${region}` : ''}</div>
       </td>
-      <td style="font-variant-numeric:tabular-nums">${n.w && n.h ? esc(`${n.w}×${n.h}`) : '<span class="dim">—</span>'}</td>
+      <td>${compactPropList(n, 5) || '<span class="dim">—</span>'}</td>
       <td>${sim ? loadBar(sim.loadPct) : '<span class="dim">—</span>'}</td>
       <td style="font-variant-numeric:tabular-nums">${sim ? esc(formatFlow(sim.incoming)) : '<span class="dim">—</span>'}</td>
+      <td style="font-variant-numeric:tabular-nums">${traffic.outgoing > 0 ? esc(formatFlow(traffic.outgoing)) : '<span class="dim">—</span>'}</td>
+      <td style="font-variant-numeric:tabular-nums">
+        ${traffic.reads != null ? `<div>${esc(formatFlow(traffic.reads, 'read/s'))}</div>` : ''}
+        ${traffic.writes != null ? `<div>${esc(formatFlow(traffic.writes, 'write/s'))}</div>` : ''}
+        ${traffic.reads == null && traffic.writes == null ? '<span class="dim">—</span>' : ''}
+      </td>
       <td style="font-variant-numeric:tabular-nums">${sim && typeof sim.capacity==='number' ? esc(formatFlow(sim.capacity)) : '<span class="dim">—</span>'}</td>
       <td style="font-variant-numeric:tabular-nums">${lat != null ? lat+'<span class="unit">ms</span>' : '<span class="dim">—</span>'}</td>
       <td style="font-variant-numeric:tabular-nums">${p95 != null ? p95+'<span class="unit">ms</span>' : '<span class="dim">—</span>'}</td>
       <td>${err != null ? `<span style="color:${err>5?'#f85149':err>1?'#f5b731':'#34d058'};font-weight:700">${err}%</span>` : '<span class="dim">—</span>'}</td>
       <td>${slaNum != null ? `<span style="font-weight:700;color:${slaNum>=99.9?'#34d058':slaNum>=99?'#f5b731':'#f85149'}">${slaNum.toFixed(2)}%</span>` : '<span class="dim">—</span>'}</td>
       <td style="font-weight:700;color:#1a2030;font-variant-numeric:tabular-nums">${cost > 0 ? '$'+cost.toLocaleString() : '<span class="dim">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  const assumptionRows = realNodes.map(n => {
+    const def = COMPONENT_DEFS.find(d => d.id === n.defId);
+    const traffic = nodeTrafficProfile(n);
+    return `<tr>
+      <td>
+        <div style="font-weight:750;color:#1a2030">${esc(n.props.label || def?.name || n.id)}</div>
+        <div style="font-size:10px;color:#8896a5">${esc(def?.name || n.defId)}</div>
+      </td>
+      <td style="font-variant-numeric:tabular-nums">${esc(formatFlow(traffic.incoming))}</td>
+      <td style="font-variant-numeric:tabular-nums">${traffic.outgoing > 0 ? esc(formatFlow(traffic.outgoing)) : '<span class="dim">—</span>'}</td>
+      <td>${esc(traffic.assumptions)}</td>
     </tr>`;
   }).join('');
 
@@ -3415,6 +3531,8 @@ function exportPdfReport() {
     td{padding:9px 11px;vertical-align:middle}
     .unit{font-size:9px;color:#8896a5;margin-left:1px}
     .dim{color:#b0bec8}
+    .mini-chip{display:inline-block;margin:0 4px 4px 0;padding:2px 6px;border-radius:7px;background:#eef4fb;border:1px solid #d9e3ef;color:#334155;font-size:9.5px;line-height:1.35;white-space:nowrap}
+    .mini-chip strong{color:#64748b;font-weight:800}
 
     /* ── Pills ── */
     .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
@@ -3466,6 +3584,7 @@ function exportPdfReport() {
     tbody tr{border-color:#21262d}
     tbody tr:nth-child(even){background:#161b22}
     td{color:#c9d1d9}.unit,.dim{color:#8b949e}
+    .mini-chip{background:#161b22;border-color:#30363d;color:#c9d1d9}.mini-chip strong{color:#8b949e}
     .pill-idle{background:#21262d;color:#8b949e;border-color:#30363d}
     .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:14px}
     .setting-card{background:#0b1118;border:1px solid #21262d;border-radius:16px;padding:16px}
@@ -3562,9 +3681,11 @@ function exportPdfReport() {
         <thead>
           <tr>
             <th>Component</th>
-            <th style="min-width:70px">Size</th>
+            <th style="min-width:160px">Config / Cost Drivers</th>
             <th style="min-width:90px">Load</th>
             <th>Traffic In</th>
+            <th>Traffic Out</th>
+            <th>Read / Write</th>
             <th>Capacity</th>
             <th>Avg Lat</th>
             <th>P95 Lat</th>
@@ -3586,9 +3707,24 @@ function exportPdfReport() {
     </div>
 
     <div class="section" style="padding-top:0">
+      <div class="sec-title"><span class="sec-icon" style="background:#fff7ed">🧮</span>Traffic & Cost Assumptions</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Input</th>
+            <th>Output</th>
+            <th>Assumption / Split Logic</th>
+          </tr>
+        </thead>
+        <tbody>${assumptionRows}</tbody>
+      </table>
+    </div>
+
+    <div class="section" style="padding-top:0">
       <div class="sec-title"><span class="sec-icon" style="background:#eefcfd">🛠</span>Component Configuration</div>
       <div class="settings-grid">
-        ${realNodes.filter(n => n.defId !== 'textnote').map(nodeSettingsHtml).join('')}
+        ${realNodes.map(nodeSettingsHtml).join('')}
       </div>
     </div>
 

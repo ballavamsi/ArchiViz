@@ -121,6 +121,14 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 - Export grid now uses the same minor/major diagram grid structure as the canvas instead of only coarse 40px lines.
 - Browser smoke test now downloads SVG and PNG exports and verifies live SVG tiles, tool chips, no old placeholder icons, and non-empty PNG output.
 
+### Iteration 6.4 — PDF Architecture Audit Detail
+**Status:** ✅ Done
+- Removed irrelevant canvas pixel size from the PDF Component Performance table.
+- Added Config / Cost Drivers, Traffic Out, and Read / Write columns to the PDF component table.
+- Added a Traffic & Cost Assumptions section with per-component input/output, cache/read/write/event assumptions, and effective edge split logic.
+- Component Configuration now exports all configured component properties from each tool definition, including CPU, memory, DB type, replicas, storage, latency, capacity, and cost fields.
+- Fixed traffic split semantics: explicit percentages reserve that share, blank downstream edges split the remaining traffic; if no percentages are set, traffic splits evenly.
+
 ---
 
 ## Pending Tasks

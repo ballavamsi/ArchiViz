@@ -236,6 +236,9 @@ try {
   await pdfPage.waitForLoadState('domcontentloaded');
   await pdfPage.locator('text=Architecture Diagram').waitFor({ state: 'visible', timeout: 5000 });
   await pdfPage.locator('text=Component Performance').waitFor({ state: 'visible', timeout: 5000 });
+  await pdfPage.locator('text=Traffic & Cost Assumptions').waitFor({ state: 'visible', timeout: 5000 });
+  await pdfPage.locator('text=Config / Cost Drivers').waitFor({ state: 'visible', timeout: 5000 });
+  await pdfPage.locator('text=Read / Write').waitFor({ state: 'visible', timeout: 5000 });
   await pdfPage.close();
 
   await page.selectOption('#example-sel', 'load-balanced');
