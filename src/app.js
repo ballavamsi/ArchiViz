@@ -1188,30 +1188,32 @@ function renderEdges() {
       txt.textContent = flowLabel;
       labelsG.appendChild(txt);
 
-      // Particles: only show when zoomed in enough
-      const particleColor = cls === 'edge-crit' ? '#f85149' : cls === 'edge-warn' ? '#f0a732' : '#4f9cf9';
-      // Max 2 particles per edge — more than that is visual noise
-      const count = z < 0.35 ? 0 : Math.max(1, Math.min(2, Math.ceil(flow / 800)));
-      const dur = Math.max(1.8, 4.0 - Math.min(flow, 1600) / 800);
-      for (let i = 0; i < count; i++) {
-        const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
-        dot.setAttribute('class', 'flow-particle');
-        // Small crisp dots — readable without overwhelming the edge
-        const baseR = 2.8;
-        dot.setAttribute('r', String(Math.max(1.0, baseR * Math.max(0.45, z))));
-        dot.setAttribute('fill', particleColor);
-        dot.style.color = particleColor;
-        const anim = document.createElementNS('http://www.w3.org/2000/svg','animateMotion');
-        anim.setAttribute('dur', dur + 's');
-        anim.setAttribute('begin', (i * dur / count).toFixed(2) + 's');
-        anim.setAttribute('repeatCount', 'indefinite');
-        anim.setAttribute('rotate', 'auto');
-        const mpath = document.createElementNS('http://www.w3.org/2000/svg','mpath');
-        mpath.setAttributeNS('http://www.w3.org/1999/xlink','href', '#edge-path-' + edge.id);
-        mpath.setAttribute('href', '#edge-path-' + edge.id);
-        anim.appendChild(mpath);
-        dot.appendChild(anim);
-        particlesG.appendChild(dot);
+      // Particles: only show when zoomed in enough and only for valid flow edges
+      if (!edge._warn) {
+        const particleColor = cls === 'edge-crit' ? '#f85149' : cls === 'edge-warn' ? '#f0a732' : '#4f9cf9';
+        // Max 2 particles per edge — more than that is visual noise
+        const count = z < 0.35 ? 0 : Math.max(1, Math.min(2, Math.ceil(flow / 800)));
+        const dur = Math.max(1.8, 4.0 - Math.min(flow, 1600) / 800);
+        for (let i = 0; i < count; i++) {
+          const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+          dot.setAttribute('class', 'flow-particle');
+          // Small crisp dots — readable without overwhelming the edge
+          const baseR = 2.8;
+          dot.setAttribute('r', String(Math.max(1.0, baseR * Math.max(0.45, z))));
+          dot.setAttribute('fill', particleColor);
+          dot.style.color = particleColor;
+          const anim = document.createElementNS('http://www.w3.org/2000/svg','animateMotion');
+          anim.setAttribute('dur', dur + 's');
+          anim.setAttribute('begin', (i * dur / count).toFixed(2) + 's');
+          anim.setAttribute('repeatCount', 'indefinite');
+          anim.setAttribute('rotate', 'auto');
+          const mpath = document.createElementNS('http://www.w3.org/2000/svg','mpath');
+          mpath.setAttributeNS('http://www.w3.org/1999/xlink','href', '#edge-path-' + edge.id);
+          mpath.setAttribute('href', '#edge-path-' + edge.id);
+          anim.appendChild(mpath);
+          dot.appendChild(anim);
+          particlesG.appendChild(dot);
+        }
       }
     }
   });
