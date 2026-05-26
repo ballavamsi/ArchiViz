@@ -638,12 +638,6 @@ body { background: #070b10; letter-spacing: -0.01em; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* hidden by default, revealed on node hover */
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-.a-node:hover .node-type,
-.a-node.selected .node-type {
   opacity: 1;
 }
 .node-tool-dot {
