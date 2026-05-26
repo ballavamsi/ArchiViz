@@ -1158,7 +1158,8 @@ body[data-theme="light"] #statusbar {
   max-height: 80px;
   overflow: hidden;
   font-weight: 400;
-  opacity: 0.88;
+  opacity: 1;
+  color: var(--text);
 }
 
 /* ── DRAG GHOST ── */

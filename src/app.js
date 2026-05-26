@@ -592,7 +592,7 @@ function renderNode(id) {
 
   const noteAccent = n.defId === 'textnote' ? (TONE_THEME[n.props.tone] || TONE_THEME['Neutral']).accent : null;
   const noteToneLabel = n.defId === 'textnote' ? (n.props.tone || 'Neutral') : null;
-  const noteTextColor = n.defId === 'textnote' ? (TONE_THEME[n.props.tone] || TONE_THEME['Neutral']).text : null;
+  const noteTextColor = n.defId === 'textnote' ? 'var(--text)' : null;
   const toolName = n.defId === 'textnote' ? esc(noteToneLabel) : safeType;
   const toolTitle = n.defId === 'textnote' ? `Note type: ${esc(noteToneLabel)}` : `Tool: ${safeType}`;
 
