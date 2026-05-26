@@ -1972,10 +1972,11 @@ body[data-theme="light"] .leg-item {
   color: #475569;
 }
 body[data-theme="light"] #sim-speed-sel,
-body[data-theme="light"] #sim-users-val {
-  background: #f1f5f9;
-  color: #172033;
-  border-color: #c8d2de;
+body[data-theme="light"] #sim-users-val,
+body[data-theme="light"] #users-input {
+  background: #ffffff !important;
+  color: #172033 !important;
+  border-color: #c8d2de !important;
 }
 
 /* ── Light theme: property panel inputs ───────────────────────────────────── */
