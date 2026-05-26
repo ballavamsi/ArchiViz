@@ -425,7 +425,15 @@ function renderNode(id) {
     el.addEventListener('mousedown', e => {
       if (e.target.classList.contains('port')) return;
       e.stopPropagation();
-      select(id, e.shiftKey);
+      // If clicking a node already in the multi-selection (without shift),
+      // keep the group intact so the drag moves all of them.
+      // Only re-select (and clear the group) if clicking outside current selection.
+      if (!e.shiftKey && S.selSet.size > 1 && S.selSet.has(id)) {
+        // just focus props on this node without disturbing the set
+        S.sel = id;
+      } else {
+        select(id, e.shiftKey);
+      }
       // Group drag: record start positions for all selected nodes
       const origins = {};
       S.selSet.forEach(nid => {
