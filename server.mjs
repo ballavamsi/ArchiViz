@@ -227,19 +227,63 @@ function getSB() {
   return (url && key) ? { url, key } : null;
 }
 
-async function sbFetch(sb, path, method = 'GET', body) {
+function getSBConfig() {
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  return (url && anonKey) ? { url, anonKey, serviceKey } : null;
+}
+
+async function sbFetch(sb, path, method = 'GET', body, authKey = sb.key) {
   const res = await fetch(`${sb.url}/rest/v1${path}`, {
     method,
     headers: {
       'apikey':        sb.key,
-      'Authorization': `Bearer ${sb.key}`,
+      'Authorization': `Bearer ${authKey}`,
       'Content-Type':  'application/json',
-      'Prefer':        method === 'POST' ? 'return=minimal' : 'return=representation',
+      'Prefer':        'return=representation',
     },
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
   return { ok: res.ok, status: res.status, data: text ? JSON.parse(text) : null };
+}
+
+function bearerToken(req) {
+  const h = req.headers.authorization || '';
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1] : '';
+}
+
+async function verifySupabaseUser(sb, token) {
+  if (!token) return null;
+  const res = await fetch(`${sb.url}/auth/v1/user`, {
+    headers: {
+      apikey: sb.anonKey,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+function diagramStats(payload) {
+  const nodes = Array.isArray(payload?.nodes) ? payload.nodes : [];
+  const edges = Array.isArray(payload?.edges) ? payload.edges : [];
+  return { node_count: nodes.length, edge_count: edges.length };
+}
+
+function validDiagramPayload(payload) {
+  return payload && typeof payload === 'object' && Array.isArray(payload.nodes) && Array.isArray(payload.edges);
+}
+
+async function requireDiagramUser(req, res) {
+  const sb = getSBConfig();
+  if (!sb) { json(res, 503, { error: 'Supabase not configured' }); return null; }
+  const token = bearerToken(req);
+  const user = await verifySupabaseUser(sb, token);
+  if (!user?.id) { json(res, 401, { error: 'Authentication required' }); return null; }
+  return { sb, user, dbKey: sb.serviceKey || token };
 }
 
 function genShortId() {
@@ -253,7 +297,7 @@ function genShortId() {
 async function handleAPI(pathname, method, req, res) {
   // CORS preflight
   if (method === 'OPTIONS') {
-    res.writeHead(204, { 'Access-Control-Allow-Origin':'*', 'Access-Control-Allow-Methods':'GET,POST,OPTIONS', 'Access-Control-Allow-Headers':'Content-Type' });
+    res.writeHead(204, { 'Access-Control-Allow-Origin':'*', 'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers':'Content-Type,Authorization' });
     res.end(); return true;
   }
 
@@ -299,6 +343,84 @@ async function handleAPI(pathname, method, req, res) {
     const { ok, data } = await sbFetch(sb, `/diagrams?id=eq.${id}&select=payload,title`);
     if (!ok || !data?.[0]) { json(res, 404, { error: 'Not found' }); return true; }
     json(res, 200, data[0]);
+    return true;
+  }
+
+  // Private user diagram library. Requires Supabase Auth bearer token.
+  if (pathname === '/api/diagrams' && method === 'GET') {
+    const ctx = await requireDiagramUser(req, res); if (!ctx) return true;
+    const params = new URL(req.url, `http://localhost`).searchParams;
+    const limit = Math.max(1, Math.min(100, Number(params.get('limit') || 50)));
+    const query = (params.get('query') || '').trim();
+    let path = `/user_diagrams?user_id=eq.${encodeURIComponent(ctx.user.id)}&select=id,title,node_count,edge_count,created_at,updated_at&order=updated_at.desc&limit=${limit}`;
+    if (query) path += `&title=ilike.*${encodeURIComponent(query)}*`;
+    const { ok, status, data } = await sbFetch({ url: ctx.sb.url, key: ctx.sb.anonKey }, path, 'GET', null, ctx.dbKey);
+    json(res, ok ? 200 : status, ok ? { diagrams: data || [] } : { error: 'Could not list diagrams' });
+    return true;
+  }
+
+  if (pathname === '/api/diagrams' && method === 'POST') {
+    const ctx = await requireDiagramUser(req, res); if (!ctx) return true;
+    try {
+      const { title, payload, thumbnail_svg } = await readBody(req);
+      if (!validDiagramPayload(payload)) { json(res, 400, { error: 'valid payload with nodes and edges required' }); return true; }
+      const stats = diagramStats(payload);
+      const row = {
+        user_id: ctx.user.id,
+        title: String(title || payload.title || 'Untitled Architecture').trim() || 'Untitled Architecture',
+        payload,
+        thumbnail_svg: thumbnail_svg || null,
+        ...stats,
+      };
+      const { ok, status, data } = await sbFetch({ url: ctx.sb.url, key: ctx.sb.anonKey }, '/user_diagrams?select=id,title,node_count,edge_count,created_at,updated_at', 'POST', row, ctx.dbKey);
+      json(res, ok ? 201 : status, ok ? data?.[0] || {} : { error: 'Could not save diagram' });
+    } catch (err) {
+      json(res, err.message === 'Bad JSON' ? 400 : 500, { error: err.message });
+    }
+    return true;
+  }
+
+  const diagMatch = pathname.match(/^\/api\/diagrams\/([0-9a-f-]{36})$/i);
+  if (diagMatch && method === 'GET') {
+    const ctx = await requireDiagramUser(req, res); if (!ctx) return true;
+    const id = diagMatch[1];
+    const path = `/user_diagrams?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(ctx.user.id)}&select=id,title,payload,node_count,edge_count,created_at,updated_at`;
+    const { ok, status, data } = await sbFetch({ url: ctx.sb.url, key: ctx.sb.anonKey }, path, 'GET', null, ctx.dbKey);
+    if (!ok) { json(res, status, { error: 'Could not load diagram' }); return true; }
+    if (!data?.[0]) { json(res, 404, { error: 'Not found' }); return true; }
+    json(res, 200, data[0]);
+    return true;
+  }
+
+  if (diagMatch && method === 'PUT') {
+    const ctx = await requireDiagramUser(req, res); if (!ctx) return true;
+    const id = diagMatch[1];
+    try {
+      const body = await readBody(req);
+      const patch = { updated_at: new Date().toISOString() };
+      if (body.title != null) patch.title = String(body.title).trim() || 'Untitled Architecture';
+      if (body.payload != null) {
+        if (!validDiagramPayload(body.payload)) { json(res, 400, { error: 'valid payload with nodes and edges required' }); return true; }
+        patch.payload = body.payload;
+        Object.assign(patch, diagramStats(body.payload));
+      }
+      const path = `/user_diagrams?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(ctx.user.id)}&select=id,title,node_count,edge_count,created_at,updated_at`;
+      const { ok, status, data } = await sbFetch({ url: ctx.sb.url, key: ctx.sb.anonKey }, path, 'PATCH', patch, ctx.dbKey);
+      if (!ok) { json(res, status, { error: 'Could not update diagram' }); return true; }
+      if (!data?.[0]) { json(res, 404, { error: 'Not found' }); return true; }
+      json(res, 200, data[0]);
+    } catch (err) {
+      json(res, err.message === 'Bad JSON' ? 400 : 500, { error: err.message });
+    }
+    return true;
+  }
+
+  if (diagMatch && method === 'DELETE') {
+    const ctx = await requireDiagramUser(req, res); if (!ctx) return true;
+    const id = diagMatch[1];
+    const path = `/user_diagrams?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(ctx.user.id)}`;
+    const { ok, status } = await sbFetch({ url: ctx.sb.url, key: ctx.sb.anonKey }, path, 'DELETE', null, ctx.dbKey);
+    json(res, ok ? 200 : status, ok ? { ok: true } : { error: 'Could not delete diagram' });
     return true;
   }
 
@@ -357,5 +479,5 @@ createServer(async (req, res) => {
   }
 }).listen(port, () => {
   console.log(`Archi-Flow running at http://localhost:${port}`);
-  console.log(`  API routes: /api/simulate  /api/components  /api/rules  /api/shortlink`);
+  console.log(`  API routes: /api/simulate  /api/components  /api/rules  /api/shortlink  /api/diagrams`);
 });

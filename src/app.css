@@ -1275,14 +1275,24 @@ body[data-theme="light"] #statusbar {
 /* ── MY DIAGRAMS PANEL ── */
 #my-diagrams-modal { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(4px); }
 #my-diagrams-modal.open { display:flex; }
-.diagrams-box { background:#0f1520;border:1px solid rgba(79,156,249,0.25);border-radius:16px;padding:22px;width:400px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+.diagrams-box { background:#0f1520;border:1px solid rgba(79,156,249,0.25);border-radius:16px;padding:22px;width:620px;max-width:95vw;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+.diagrams-head { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px; }
 .diagrams-box h2 { font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:7px; }
 .diagrams-box .sub { font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:14px; }
+.storage-badge { border:1px solid rgba(79,156,249,0.28);background:rgba(79,156,249,0.1);color:var(--accent);font-size:10px;font-weight:800;border-radius:999px;padding:4px 8px;white-space:nowrap; }
+.storage-badge.local { border-color:rgba(245,183,49,0.28);background:rgba(245,183,49,0.1);color:var(--yellow); }
 .save-row { display:flex;gap:7px;margin-bottom:14px; }
 .save-row input { flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none; }
 .save-row input:focus { border-color:var(--accent); }
 .save-row button { background:var(--accent);color:#fff;border:none;border-radius:8px;padding:0 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap; }
 .save-row button:hover { background:var(--accent2); }
+.save-row button.secondary { background:rgba(255,255,255,0.06);border:1px solid var(--border2);color:var(--text2); }
+.save-row button.secondary:hover { background:rgba(79,156,249,0.14);border-color:var(--accent);color:var(--accent); }
+.diagram-tools-row { display:flex;gap:7px;margin-bottom:12px; }
+.diagram-tools-row input { flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none;min-width:0; }
+.diagram-tools-row input:focus { border-color:var(--accent); }
+.diagram-tools-row button { background:rgba(255,255,255,0.05);border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap; }
+.diagram-tools-row button:hover { background:rgba(79,156,249,0.14);border-color:var(--accent);color:var(--accent); }
 #my-diagrams-list { flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px;min-height:0; }
 #my-diagrams-list::-webkit-scrollbar { width:4px; }
 #my-diagrams-list::-webkit-scrollbar-thumb { background:var(--border2);border-radius:2px; }
@@ -1293,12 +1303,14 @@ body[data-theme="light"] #statusbar {
 .diag-info { flex:1;min-width:0; }
 .diag-name { font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .diag-ts   { font-size:10px;color:var(--muted);margin-top:1px; }
+.diag-meta { font-size:10px;color:var(--muted);margin-top:2px; }
 .diag-btn  { padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;flex-shrink:0;transition:all 0.12s; }
 .diag-btn:hover { background:rgba(79,156,249,0.15);border-color:var(--accent);color:var(--accent); }
 .diag-btn.del { border-color:transparent;color:var(--muted);padding:4px 7px; }
 .diag-btn.del:hover { color:var(--red);background:rgba(248,81,73,0.1);border-color:rgba(248,81,73,0.3); }
 .storage-notice { margin-top:12px;padding:9px 11px;background:rgba(245,183,49,0.06);border:1px solid rgba(245,183,49,0.2);border-radius:8px;font-size:10.5px;color:var(--muted);line-height:1.55; }
 .storage-notice b { color:var(--yellow); }
+.diagram-empty { font-size:11px;color:var(--muted);text-align:center;padding:22px 8px;border:1px dashed var(--border2);border-radius:10px; }
 
 /* ── COLLABORATION ── */
 .tbtn-collab { border-color: rgba(168,85,247,0.4) !important; color: #c084fc !important; background: rgba(168,85,247,0.08) !important; font-weight: 600; gap: 6px; }
@@ -2789,4 +2801,3 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
 
 /* ── Theme toolbar button ────────────────────────────────────────────────────── */
 #btn-theme-toolbar { font-size: 0; }
-

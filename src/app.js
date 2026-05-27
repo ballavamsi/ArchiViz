@@ -70,6 +70,9 @@ let S = {
   sidebarOpen: (() => { try { return localStorage.getItem('archviz.sidebar') !== 'closed'; } catch { return true; } })(),
   gridSize: 40,
   title: 'Untitled Architecture',
+  currentDiagramId: null,
+  currentDiagramTitle: '',
+  dirty: false,
   suggestionsOn: (() => {
     try { return localStorage.getItem('archviz.suggestions') !== 'off'; }
     catch { return true; }
@@ -2786,6 +2789,8 @@ function clearCanvas(silent) {
   if (!silent && !confirm('Clear the canvas?')) return;
   S.nodes={}; S.edges=[]; S.eFlow={}; S.simLoad={}; S.sel=null; S.selEdge=null;
   S.activeExample='';
+  setCurrentDiagram({});
+  S.dirty = false;
   S.nSeq=0; S.eSeq=0;
   setExampleSelect('');
   cNodes.innerHTML=''; edgesG.innerHTML=''; labelsG.innerHTML=''; particlesG.innerHTML='';
@@ -2879,6 +2884,7 @@ function importArchitecture(payload) {
   document.getElementById('canvas-empty').style.display = Object.keys(S.nodes).length ? 'none' : '';
   renderAll(); updateStats(); updateCost(); showProps(null);
   if (!Number.isFinite(next.view?.zoom)) setTimeout(fitView, 50);
+  S.dirty = false;
 }
 
 function architecturePayload() {
@@ -3904,6 +3910,7 @@ function updateShareHash() {
 const LS_KEY  = 'archviz.saved';
 const LS_AUTO = 'archviz.autosave';
 let _autoSaveTimer = null;
+let _diagramSearchTimer = null;
 
 function lsGetSaved() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
@@ -3913,6 +3920,7 @@ function lsSetSaved(list) {
 }
 
 function autoSave() {
+  S.dirty = true;
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = setTimeout(() => {
     if (!Object.keys(S.nodes).length) return; // nothing to save
@@ -3929,11 +3937,72 @@ function loadAutoSavedDiagram() {
   return true;
 }
 
+function diagramCountLabel(payload = architecturePayload()) {
+  const nodes = Array.isArray(payload.nodes) ? payload.nodes.length : Object.keys(S.nodes).length;
+  const edges = Array.isArray(payload.edges) ? payload.edges.length : S.edges.length;
+  return `${nodes} node${nodes === 1 ? '' : 's'} · ${edges} edge${edges === 1 ? '' : 's'}`;
+}
+
+function fmtDiagramTime(ts) {
+  return new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+async function currentSessionToken() {
+  const sb = getSB();
+  if (!sb) return '';
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    return session?.access_token || '';
+  } catch { return ''; }
+}
+
+async function cloudDiagramRequest(path, opts = {}) {
+  const token = await currentSessionToken();
+  if (!token) throw new Error('Sign in required');
+  const resp = await fetch(path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...(opts.headers || {}),
+    },
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+  return data;
+}
+
+async function hasCloudLibrary() {
+  return !!(sbReady() && await currentSessionToken());
+}
+
+async function startGoogleSignIn() {
+  const sb = getSB();
+  if (!sb) {
+    pushToast('Cloud sign-in is not configured on this deployment.', 'warn');
+    return;
+  }
+  localStorage.removeItem('archviz.guest');
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: location.origin },
+  });
+}
+
+function setCurrentDiagram(meta = {}) {
+  S.currentDiagramId = meta.id || null;
+  S.currentDiagramTitle = meta.title || getDiagramTitle();
+  S.dirty = false;
+  const inp = document.getElementById('save-diag-name');
+  if (inp) inp.value = S.currentDiagramTitle || getDiagramTitle();
+}
+
 function saveNamedDiagram(name) {
   const list = lsGetSaved();
   const id   = 'diag_' + Date.now();
   list.unshift({ id, name: name || getDiagramTitle() || 'Untitled', ts: Date.now(), payload: architecturePayload() });
   lsSetSaved(list.slice(0, 20)); // keep last 20
+  S.dirty = false;
   updateDiagramsPanel();
   pushToast(`"${name}" saved to browser.`, 'info');
   track('diagram_saved_local', { name });
@@ -3946,37 +4015,230 @@ function deleteSavedDiagram(id) {
 
 function loadSavedDiagram(d) {
   importArchitecture(d.payload);
+  setCurrentDiagram({ title: d.name });
   pushToast(`Loaded "${d.name}".`, 'info');
   track('diagram_loaded_local', { name: d.name });
 }
 
-function updateDiagramsPanel() {
+async function saveCloudDiagram({ saveAs = false } = {}) {
+  const title = (document.getElementById('save-diag-name')?.value || getDiagramTitle() || 'Untitled Architecture').trim();
+  const payload = architecturePayload();
+  if (!saveAs && S.currentDiagramId) {
+    const updated = await cloudDiagramRequest(`/api/diagrams/${S.currentDiagramId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title, payload }),
+    });
+    setCurrentDiagram(updated);
+    pushToast(`Saved "${updated.title}".`, 'info');
+    track('diagram_saved_cloud', { mode: 'update', node_count: Object.keys(S.nodes).length });
+  } else {
+    const created = await cloudDiagramRequest('/api/diagrams', {
+      method: 'POST',
+      body: JSON.stringify({ title, payload }),
+    });
+    setCurrentDiagram(created);
+    pushToast(`Saved "${created.title}".`, 'info');
+    track('diagram_saved_cloud', { mode: 'create', node_count: Object.keys(S.nodes).length });
+  }
+  await updateDiagramsPanel();
+}
+
+async function saveCurrentDiagram(saveAs = false) {
+  try {
+    if (await hasCloudLibrary()) await saveCloudDiagram({ saveAs });
+    else saveNamedDiagram(document.getElementById('save-diag-name')?.value.trim() || getDiagramTitle());
+  } catch (err) {
+    pushToast(`Save failed: ${err.message}`, 'warn');
+  }
+}
+
+async function loadCloudDiagram(id) {
+  try {
+    if (S.dirty && Object.keys(S.nodes).length && !confirm('Open this diagram and discard unsaved changes?')) return;
+    const d = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}`);
+    importArchitecture(d.payload);
+    setCurrentDiagram(d);
+    pushToast(`Opened "${d.title}".`, 'info');
+    track('diagram_loaded_cloud', { node_count: d.node_count || 0 });
+    document.getElementById('my-diagrams-modal')?.classList.remove('open');
+  } catch (err) {
+    pushToast(`Open failed: ${err.message}`, 'warn');
+  }
+}
+
+async function renameCloudDiagram(id, currentTitle) {
+  const title = prompt('Rename diagram', currentTitle || 'Untitled Architecture');
+  if (title == null) return;
+  try {
+    const updated = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title }),
+    });
+    if (S.currentDiagramId === id) setCurrentDiagram(updated);
+    pushToast('Diagram renamed.', 'info');
+    await updateDiagramsPanel();
+  } catch (err) {
+    pushToast(`Rename failed: ${err.message}`, 'warn');
+  }
+}
+
+async function deleteCloudDiagram(id, title) {
+  if (!confirm(`Delete "${title}"?`)) return;
+  try {
+    await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (S.currentDiagramId === id) setCurrentDiagram({});
+    pushToast('Diagram deleted.', 'info');
+    await updateDiagramsPanel();
+  } catch (err) {
+    pushToast(`Delete failed: ${err.message}`, 'warn');
+  }
+}
+
+async function downloadCloudDiagram(id) {
+  try {
+    const d = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}`);
+    const name = (d.title || 'architecture').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').toLowerCase();
+    downloadBlob(new Blob([JSON.stringify(d.payload, null, 2)], { type: 'application/json' }), `${name}.json`);
+  } catch (err) {
+    pushToast(`Download failed: ${err.message}`, 'warn');
+  }
+}
+
+async function importDiagramJsonToLibrary() {
+  const input = document.getElementById('import-file');
+  input.onchange = async e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    try {
+      const payload = JSON.parse(await file.text());
+      importArchitecture(payload);
+      if (await hasCloudLibrary()) {
+        document.getElementById('save-diag-name').value = payload.title || file.name.replace(/\.json$/i, '');
+        await saveCloudDiagram({ saveAs: true });
+      } else {
+        saveNamedDiagram(payload.title || file.name.replace(/\.json$/i, ''));
+      }
+    } catch (err) {
+      alert('Could not import JSON: ' + err.message);
+    } finally {
+      e.target.value = '';
+      wireDefaultImportHandler();
+    }
+  };
+  input.click();
+}
+
+async function migrateLocalSavesToCloud() {
+  const local = lsGetSaved();
+  if (!local.length) return;
+  if (!confirm(`Move ${local.length} browser save${local.length === 1 ? '' : 's'} to cloud? Browser copies will stay until upload succeeds.`)) return;
+  try {
+    for (const d of local) {
+      await cloudDiagramRequest('/api/diagrams', {
+        method: 'POST',
+        body: JSON.stringify({ title: d.name, payload: d.payload }),
+      });
+    }
+    lsSetSaved([]);
+    pushToast('Browser saves moved to cloud.', 'info');
+    await updateDiagramsPanel();
+  } catch (err) {
+    pushToast(`Move failed: ${err.message}`, 'warn');
+  }
+}
+
+async function updateDiagramsPanel() {
   const panel = document.getElementById('my-diagrams-list');
   if (!panel) return;
+  const badge = document.getElementById('diagrams-storage-badge');
+  const sub = document.getElementById('diagrams-sub');
+  const notice = document.getElementById('diagrams-storage-notice');
+  const migrateBtn = document.getElementById('btn-migrate-local');
+  const signInBtn = document.getElementById('btn-diagrams-signin');
+  const search = document.getElementById('diagram-search');
+  const cloud = await hasCloudLibrary();
   const list   = lsGetSaved();
   const auto   = (() => { try { return JSON.parse(localStorage.getItem(LS_AUTO)||'null'); } catch { return null; } })();
-  const fmt    = ts => new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  if (badge) {
+    badge.textContent = cloud ? 'Cloud' : 'Browser';
+    badge.classList.toggle('local', !cloud);
+  }
+  if (sub) sub.innerHTML = cloud
+    ? 'Cloud diagrams are private to your signed-in account. Search, open, rename, delete, import or download them anytime.'
+    : 'You are using browser-only storage. Sign in with Google to save diagrams to your private cloud library.';
+  if (notice) notice.innerHTML = cloud
+    ? '<b>Cloud library active.</b> Local autosave still protects work during refreshes. Existing browser saves can be moved to cloud.'
+    : '<b>Browser-only storage.</b> Clearing browser data will erase saved diagrams. Export JSON or sign in for cloud saves.';
+  if (migrateBtn) migrateBtn.style.display = cloud && list.length ? '' : 'none';
+  if (signInBtn) signInBtn.style.display = !cloud && sbReady() ? '' : 'none';
+
+  if (cloud) {
+    panel.innerHTML = '<div class="diagram-empty">Loading cloud diagrams...</div>';
+    try {
+      const q = (search?.value || '').trim();
+      const data = await cloudDiagramRequest(`/api/diagrams?limit=50${q ? `&query=${encodeURIComponent(q)}` : ''}`);
+      const diagrams = data.diagrams || [];
+      if (!diagrams.length) {
+        panel.innerHTML = `<div class="diagram-empty">${q ? 'No diagrams match your search.' : 'No cloud diagrams yet. Save the current canvas to create one.'}</div>`;
+        return;
+      }
+      panel.innerHTML = diagrams.map(d => `
+        <div class="diag-row" data-id="${esc(d.id)}">
+          <div class="diag-icon">▣</div>
+          <div class="diag-info">
+            <div class="diag-name">${esc(d.title || 'Untitled Architecture')}</div>
+            <div class="diag-ts">Updated ${fmtDiagramTime(d.updated_at || d.created_at)}</div>
+            <div class="diag-meta">${d.node_count || 0} nodes · ${d.edge_count || 0} edges</div>
+          </div>
+          <button class="diag-btn" data-action="open" data-id="${esc(d.id)}">Open</button>
+          <button class="diag-btn" data-action="rename" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">Rename</button>
+          <button class="diag-btn" data-action="download" data-id="${esc(d.id)}">JSON</button>
+          <button class="diag-btn del" data-action="delete" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}" title="Delete">×</button>
+        </div>`).join('');
+      return;
+    } catch (err) {
+      panel.innerHTML = `<div class="diagram-empty">Cloud library unavailable: ${esc(err.message)}<br>Browser saves are still available below.</div>`;
+    }
+  }
 
   let html = '';
   if (auto && auto.ts) {
     html += `<div class="diag-row auto-row" data-autosave="1">
-      <div class="diag-icon">⏱</div>
-      <div class="diag-info"><div class="diag-name">Auto-save</div><div class="diag-ts">${fmt(auto.ts)}</div></div>
-      <button class="diag-btn" onclick="loadSavedDiagram(JSON.parse(localStorage.getItem('archviz.autosave')).payload && {payload:JSON.parse(localStorage.getItem('archviz.autosave')).payload,name:'Auto-save'})">Load</button>
+      <div class="diag-icon">◷</div>
+      <div class="diag-info"><div class="diag-name">Auto-save</div><div class="diag-ts">${fmtDiagramTime(auto.ts)}</div><div class="diag-meta">${diagramCountLabel(auto.payload)}</div></div>
+      <button class="diag-btn" data-action="load-auto">Load</button>
     </div>`;
   }
   if (!list.length && !auto) {
-    html = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:18px 0">No saved diagrams yet.<br>Build something and click Save.</div>';
+    html = '<div class="diagram-empty">No browser saves yet.<br>Build something and click Save.</div>';
   }
   list.forEach(d => {
     html += `<div class="diag-row" data-id="${esc(d.id)}">
-      <div class="diag-icon">📐</div>
-      <div class="diag-info"><div class="diag-name">${esc(d.name)}</div><div class="diag-ts">${fmt(d.ts)}</div></div>
-      <button class="diag-btn" onclick="loadSavedDiagram(lsGetSaved().find(x=>x.id==='${esc(d.id)}'))">Load</button>
-      <button class="diag-btn del" onclick="if(confirm('Delete?')){deleteSavedDiagram('${esc(d.id)}')}" title="Delete">×</button>
+      <div class="diag-icon">▣</div>
+      <div class="diag-info"><div class="diag-name">${esc(d.name)}</div><div class="diag-ts">${fmtDiagramTime(d.ts)}</div><div class="diag-meta">${diagramCountLabel(d.payload)}</div></div>
+      <button class="diag-btn" data-action="load-local" data-id="${esc(d.id)}">Open</button>
+      <button class="diag-btn" data-action="download-local" data-id="${esc(d.id)}">JSON</button>
+      <button class="diag-btn del" data-action="delete-local" data-id="${esc(d.id)}" title="Delete">×</button>
     </div>`;
   });
   panel.innerHTML = html;
+}
+
+function wireDefaultImportHandler() {
+  const fileInput = document.getElementById('import-file');
+  fileInput.onchange = async e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    try {
+      importArchitecture(JSON.parse(await file.text()));
+      setCurrentDiagram({});
+      S.dirty = true;
+      track('diagram_imported', { file_name: file.name });
+    } catch (err) {
+      alert('Could not import JSON: ' + err.message);
+    } finally {
+      e.target.value = '';
+    }
+  };
 }
 
 function shareToLinkedIn() {
@@ -4091,27 +4353,46 @@ document.getElementById('cc-zoomin').onclick  = () => { S.zoom=Math.min(2.5,S.zo
 document.getElementById('cc-zoomout').onclick = () => { S.zoom=Math.max(0.25,S.zoom/1.2); renderAll(); updateZoomLabel(); };
 document.getElementById('btn-my-diagrams').onclick = () => {
   updateDiagramsPanel();
+  const nameInp = document.getElementById('save-diag-name');
+  if (nameInp && !nameInp.value) nameInp.value = getDiagramTitle();
   document.getElementById('my-diagrams-modal').classList.add('open');
   document.getElementById('more-menu').style.display = 'none';
 };
 document.getElementById('my-diagrams-modal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+document.getElementById('btn-close-diagrams').onclick = () => document.getElementById('my-diagrams-modal').classList.remove('open');
+document.getElementById('btn-save-diagram').onclick = () => saveCurrentDiagram(false);
+document.getElementById('btn-save-diagram-as').onclick = () => saveCurrentDiagram(true);
+document.getElementById('btn-import-diagram-json').onclick = importDiagramJsonToLibrary;
+document.getElementById('btn-migrate-local').onclick = migrateLocalSavesToCloud;
+document.getElementById('btn-diagrams-signin').onclick = startGoogleSignIn;
+document.getElementById('diagram-search').oninput = () => {
+  clearTimeout(_diagramSearchTimer);
+  _diagramSearchTimer = setTimeout(updateDiagramsPanel, 180);
+};
+document.getElementById('my-diagrams-list').onclick = e => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if (action === 'open') loadCloudDiagram(id);
+  if (action === 'rename') renameCloudDiagram(id, btn.dataset.title);
+  if (action === 'download') downloadCloudDiagram(id);
+  if (action === 'delete') deleteCloudDiagram(id, btn.dataset.title);
+  if (action === 'load-auto') loadSavedDiagram(JSON.parse(localStorage.getItem(LS_AUTO) || '{}'));
+  if (action === 'load-local') loadSavedDiagram(lsGetSaved().find(x => x.id === id));
+  if (action === 'download-local') {
+    const d = lsGetSaved().find(x => x.id === id);
+    if (d) downloadBlob(new Blob([JSON.stringify(d.payload, null, 2)], { type: 'application/json' }), `${(d.name || 'architecture').replace(/[^\w.-]+/g, '-').toLowerCase()}.json`);
+  }
+  if (action === 'delete-local' && confirm('Delete?')) deleteSavedDiagram(id);
+};
 
 document.getElementById('btn-clear').onclick  = () => {
   track('canvas_cleared', { node_count: Object.keys(S.nodes).length, edge_count: S.edges.length });
   clearCanvas(false);
 };
 document.getElementById('btn-import').onclick = () => document.getElementById('import-file').click();
-document.getElementById('import-file').onchange = async e => {
-  const file = e.target.files?.[0]; if (!file) return;
-  try {
-    importArchitecture(JSON.parse(await file.text()));
-    track('diagram_imported', { file_name: file.name });
-  } catch (err) {
-    alert('Could not import JSON: ' + err.message);
-  } finally {
-    e.target.value = '';
-  }
-};
+wireDefaultImportHandler();
 document.getElementById('btn-export').onclick = () => {
   track('diagram_exported', { format: 'json', node_count: Object.keys(S.nodes).length, edge_count: S.edges.length });
   const blob=new Blob([JSON.stringify(architecturePayload(),null,2)],{type:'application/json'});
@@ -4370,10 +4651,7 @@ speedSel.onchange = () => {
     const btn = document.getElementById('auth-google-btn');
     btn.disabled = true;
     btn.textContent = 'Redirecting…';
-    await sb.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: location.origin },
-    });
+    await startGoogleSignIn();
   };
 
   document.getElementById('auth-guest-btn').onclick = () => {
@@ -4414,6 +4692,7 @@ function _onUserLoggedIn(user, isNewLogin = false) {
   if (isNewLogin) {
     setTimeout(() => _showWelcomePopup(firstName), 600);
   }
+  if (document.getElementById('my-diagrams-modal')?.classList.contains('open')) updateDiagramsPanel();
 }
 
 function _injectUserChip(name, firstName, avatar, email) {

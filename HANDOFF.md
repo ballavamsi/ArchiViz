@@ -12,7 +12,44 @@
 
 ## Latest Update
 
-**Latest local iteration:** PDF number formatting
+**Latest local iteration:** Cloud Diagram Library
+
+Implemented a Supabase-backed private “My Diagrams” library while keeping browser-only saves as the guest/offline fallback.
+
+Current cloud library behavior:
+- Signed-in users save diagrams to a new private `user_diagrams` table, separate from public short links.
+- The modal supports save, save as, search, open, rename, delete, JSON download, JSON import, and moving browser saves to cloud.
+- Frontend sends the Supabase access token as `Authorization: Bearer ...`.
+- `server.mjs` validates the Supabase user before listing/loading/updating/deleting diagrams and scopes every operation by `user_id`.
+- If `SUPABASE_SERVICE_ROLE_KEY` is present, the server uses it for DB access; otherwise it uses the signed-in user's bearer token so Supabase RLS still protects rows.
+- Local autosave remains in localStorage for reload/crash recovery.
+- Google Drive is intentionally deferred; current Google login is Supabase identity, not Drive file access.
+
+Setup required in Supabase before production use:
+```sql
+-- Run this in Supabase SQL editor
+-- Source file: supabase-user-diagrams.sql
+```
+
+Files changed:
+- `server.mjs` — private `/api/diagrams` CRUD routes with Supabase Auth validation
+- `src/app.js` — cloud/local library client, modal actions, current file tracking
+- `src/app.css` — wider file-manager modal and cloud/local states
+- `index.html` — file-manager controls
+- `supabase-user-diagrams.sql` — table, indexes, and RLS policies
+- `test/smoke.test.mjs` — regression checks for cloud library hooks
+
+Verification to run:
+```bash
+npm test
+npm run build
+```
+
+---
+
+## Previous Update
+
+**Previous local iteration:** PDF number formatting
 
 PDF export was updated after the user reported unreadable raw billion-scale values in Component Performance chips.
 

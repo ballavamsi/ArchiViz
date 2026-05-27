@@ -625,21 +625,28 @@
 <!-- My Diagrams Modal -->
 <div id="my-diagrams-modal">
   <div class="diagrams-box">
-    <h2>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      My Diagrams
-    </h2>
-    <p class="sub">Diagrams are saved to <b>this browser</b>. Use Export JSON to back them up or share them permanently.</p>
+    <div class="diagrams-head">
+      <h2>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        My Diagrams
+      </h2>
+      <span id="diagrams-storage-badge" class="storage-badge">Browser</span>
+    </div>
+    <p class="sub" id="diagrams-sub">Save, search, open, rename and delete your architecture diagrams.</p>
     <div class="save-row">
       <input id="save-diag-name" placeholder="Name this diagram…"/>
-      <button onclick="saveNamedDiagram(document.getElementById('save-diag-name').value.trim()||getDiagramTitle())">Save current</button>
+      <button id="btn-save-diagram">Save</button>
+      <button id="btn-save-diagram-as" class="secondary">Save as</button>
+    </div>
+    <div class="diagram-tools-row">
+      <input id="diagram-search" placeholder="Search diagrams…"/>
+      <button id="btn-import-diagram-json">Import JSON</button>
+      <button id="btn-diagrams-signin" style="display:none">Sign in</button>
+      <button id="btn-migrate-local" style="display:none">Move browser saves to cloud</button>
     </div>
     <div id="my-diagrams-list"></div>
-    <div class="storage-notice">
-      <b>⚠ Browser-only storage.</b> Clearing browser data will erase saved diagrams.
-      Use <b>Export JSON</b> to keep a permanent backup — or <b>Share link</b> to embed the diagram in a URL (no server needed, but long URLs may get truncated by some apps).
-    </div>
-    <button class="collab-btn secondary" onclick="document.getElementById('my-diagrams-modal').classList.remove('open')" style="margin-top:10px">Close</button>
+    <div class="storage-notice" id="diagrams-storage-notice"></div>
+    <button class="collab-btn secondary" id="btn-close-diagrams" style="margin-top:10px">Close</button>
   </div>
 </div>
 

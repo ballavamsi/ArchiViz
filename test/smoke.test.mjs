@@ -142,3 +142,36 @@ test('netlify config publishes explicit build output', () => {
   assert.match(config, /publish\s*=\s*"dist"/, 'Netlify should publish dist/');
   assert.match(config, /npm test && npm run build/, 'Netlify build should run tests then build static output');
 });
+
+test('cloud diagram library has private API and UI hooks', () => {
+  const html = readFileSync(rootFile('index.html'), 'utf8');
+  const appJs = readFileSync(rootFile('src/app.js'), 'utf8');
+  const server = readFileSync(rootFile('server.mjs'), 'utf8');
+  const sql = readFileSync(rootFile('supabase-user-diagrams.sql'), 'utf8');
+
+  for (const id of [
+    'diagrams-storage-badge',
+    'diagram-search',
+    'btn-save-diagram',
+    'btn-save-diagram-as',
+    'btn-import-diagram-json',
+    'btn-diagrams-signin',
+    'btn-migrate-local',
+  ]) {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `cloud library UI missing #${id}`);
+  }
+
+  assert.match(appJs, /cloudDiagramRequest/, 'frontend should call the private diagram API');
+  assert.match(appJs, /Authorization.*Bearer/s, 'frontend should send Supabase bearer token');
+  assert.match(appJs, /migrateLocalSavesToCloud/, 'frontend should move browser saves to cloud');
+  assert.match(appJs, /currentDiagramId/, 'frontend should track the currently open cloud file');
+
+  assert.match(server, /\/api\/diagrams/, 'server should expose private diagram routes');
+  assert.match(server, /verifySupabaseUser/, 'server should validate Supabase users');
+  assert.match(server, /user_id=eq\./, 'server should scope diagram queries to the signed-in user');
+  assert.match(server, /Authentication required/, 'server should reject unauthenticated library requests');
+
+  assert.match(sql, /create table if not exists public\.user_diagrams/, 'Supabase schema should create user_diagrams');
+  assert.match(sql, /enable row level security/, 'Supabase schema should enable RLS');
+  assert.match(sql, /auth\.uid\(\) = user_id/g, 'RLS policies should scope rows to the owner');
+});
