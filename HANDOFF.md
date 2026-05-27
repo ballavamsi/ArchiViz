@@ -1,6 +1,6 @@
 # Archi-Flow — Agent Handoff
 
-**Date:** 2026-05-26  
+**Date:** 2026-05-27  
 **Repo:** `/Users/ballavamsi/Downloads/ArchiViz/ArchiViz`  
 **Branch:** `release/serverside`  
 **Primary server:** `node server.mjs`  
@@ -12,20 +12,48 @@
 
 ## Latest Update
 
-**Latest local iteration:** Guest Sign-in Recovery + Compact Menu/Cockpit
+**Latest local iteration:** Public View-Only Sharing + Review Foundation
 
-**Latest connector polish:** Magnetic endpoints + reconnect handles
+Implemented the first roadmap pass on top of the Supabase-backed My Flows library.
 
-Connector behavior now supports:
-- Magnetic port snapping while drawing a new connector. Nearby valid ports glow green; unusual-but-allowed architecture targets glow amber.
-- Selected edges render draggable start/end handles.
-- Dragging an endpoint handle to another port reconnects that side of the arrow.
-- Duplicate reconnects are blocked with a toast.
-- Reconnect recalculates warning/dashed/animated state from the new source/target component types.
+Public sharing:
+- Saved cloud flows now have `is_public`, `public_slug`, `published_at`, `published_by`, and `last_opened_at` fields.
+- Owners can publish/unpublish flows, copy `/view/:slug` links, and keep legacy `/s/:id` snapshot links intact.
+- `/view/:slug` loads a read-only public canvas with editor chrome hidden, compact cockpit behavior, Comments, Export PDF, and signed-in `Duplicate to My Flows`.
+- Public API route: `GET /api/public/flows/:slug`.
+
+Private flow UX:
+- My Flows rows now show Public/Private state.
+- Row actions include Open, Rename, Duplicate, Versions, Publish/Unpublish, Copy Link, JSON, Delete.
+- Opening a cloud flow updates `last_opened_at`.
+
+Version history:
+- New `flow_versions` table records a lightweight version on cloud create/update/restore.
+- Latest 50 versions are kept per flow.
+- API routes: `GET /api/diagrams/:id/versions`, `GET /api/diagrams/:id/versions/:versionId`, `POST /api/diagrams/:id/restore/:versionId`.
+- UI exposes a Version History modal with restore.
+
+Review comments:
+- New `flow_comments` table with RLS.
+- Public viewers can read unresolved comments on published flows.
+- Signed-in users can comment on public flows.
+- Flow owner can resolve/delete comments via API foundation.
+- Public view includes a review drawer; node/edge clicks scope comments to that target.
+
+Templates, explainability, reports:
+- Starter gallery now includes SaaS Web App, Event Streaming, Lakehouse, Multi-Region HA, AI/RAG System, and Kubernetes Microservices.
+- Examples now carry category, difficulty, tags, and summary metadata.
+- Node properties include a `Why this status / cost?` explainability panel using current simulation/cost data.
+- PDF export accepts report mode and includes Public View mode plus review comments when exporting from public review context.
+
+Connector status:
+- Magnetic endpoints + reconnect handles remain v1 complete.
+- This pass only refined selected endpoint cursor/hit affordance; elbow/avoid-node routing remains deferred.
 
 Verification:
 ```bash
 node --check src/app.js
+node --check server.mjs
 npm test
 npm run build
 ```

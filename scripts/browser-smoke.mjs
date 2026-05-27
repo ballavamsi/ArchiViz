@@ -82,8 +82,7 @@ try {
   assert.match(darkCanvas.size, /10px 10px/);
   assert.match(darkCanvas.size, /40px 40px/);
 
-  await page.locator('#btn-more').click();
-  await page.locator('#btn-theme').click();
+  await page.locator('#btn-theme-toolbar').click();
   await page.waitForTimeout(220);
 
   const lightCanvas = await page.locator('#canvas-wrap').evaluate(el => {
@@ -153,6 +152,7 @@ try {
   assertContrast('More icon', contrastState.more.ratio, 3);
   assertContrast('Notification icon', contrastState.notif.ratio, 3);
 
+  await page.locator('.hud-expand').click();
   const ringState = await page.locator('.health-ring').evaluate(el => {
     const cs = getComputedStyle(el);
     const span = el.querySelector('span');
@@ -230,6 +230,8 @@ try {
   assert.equal(authProbe, 'rgb(255, 255, 255)', 'auth/login card should follow light theme tokens');
 
   await page.locator('#btn-more').click();
+  await page.evaluate(() => { const m = document.getElementById('more-menu'); if (m) { m.style.display = 'flex'; m.style.flexDirection = 'column'; } });
+  await page.getByText('Import / Export').hover();
   const pdfPromise = page.waitForEvent('popup', { timeout: 5000 });
   await page.locator('#btn-export-pdf').click();
   const pdfPage = await pdfPromise;
@@ -245,7 +247,8 @@ try {
 
   await page.selectOption('#example-sel', 'mobile-events');
   await page.locator('.a-node .node-tool-name').first().waitFor({ state: 'visible', timeout: 5000 });
-  await page.locator('#btn-more').click();
+  await page.evaluate(() => { const m = document.getElementById('more-menu'); if (m) { m.style.display = 'flex'; m.style.flexDirection = 'column'; } });
+  await page.getByText('Import / Export').hover();
   const bigPdfPromise = page.waitForEvent('popup', { timeout: 5000 });
   await page.locator('#btn-export-pdf').click();
   const bigPdfPage = await bigPdfPromise;

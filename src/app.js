@@ -73,6 +73,12 @@ let S = {
   title: 'Untitled Architecture',
   currentDiagramId: null,
   currentDiagramTitle: '',
+  readOnly: location.pathname.startsWith('/view/'),
+  publicSlug: '',
+  publicFlowMeta: null,
+  publicComments: [],
+  commentTarget: { type: 'flow', id: null },
+  reportMode: 'technical',
   dirty: false,
   suggestionsOn: (() => {
     try { return localStorage.getItem('archviz.suggestions') !== 'off'; }
@@ -416,7 +422,8 @@ function initExamples() {
   const sel = document.getElementById('example-sel');
   EXAMPLES.forEach(ex => {
     const o = document.createElement('option');
-    o.value = ex.id; o.textContent = ex.name + ' — ' + ex.description;
+    const meta = [ex.category, ex.difficulty].filter(Boolean).join(' · ');
+    o.value = ex.id; o.textContent = `${ex.name}${meta ? ` (${meta})` : ''} — ${ex.summary || ex.description}`;
     sel.appendChild(o);
   });
   sel.onchange = () => { if (sel.value) loadExample(sel.value); };
@@ -447,6 +454,7 @@ function loadExample(id) {
 
 // ══ NODE MANAGEMENT ═══════════════════════════════════════════════════════════
 function addNode(defId, x, y) {
+  if (isReadOnlyMode()) return null;
   snapshot();
   S.activeExample = '';
   setExampleSelect('');
@@ -465,6 +473,7 @@ function addNode(defId, x, y) {
 }
 
 function deleteNode(id) {
+  if (isReadOnlyMode()) return;
   const defId = S.nodes[id]?.defId;
   track('node_deleted', { component_type: defId });
   snapshot();
@@ -507,6 +516,10 @@ function compactMoney(value) {
   return '$' + compactNum(value);
 }
 
+function isReadOnlyMode() {
+  return !!S.readOnly;
+}
+
 function nodeScreenPos(n) {
   return { x: n.x * S.zoom + S.panX, y: n.y * S.zoom + S.panY };
 }
@@ -523,6 +536,11 @@ function renderNode(id) {
     el.addEventListener('mousedown', e => {
       if (e.target.classList.contains('port')) return;
       e.stopPropagation();
+      if (isReadOnlyMode()) {
+        select(id);
+        openReviewDrawer('node', id);
+        return;
+      }
       // If clicking a node already in the multi-selection (without shift),
       // keep the group intact so the drag moves all of them.
       // Only re-select (and clear the group) if clicking outside current selection.
@@ -581,7 +599,9 @@ function renderNode(id) {
 
   // Badges
   let badges = '';
-  if (n.props._isReplica) badges += `<span class="badge" style="background:#a855f722;color:#a855f7;border:1px solid #a855f744">📖 Read Replica</span>`;
+  const nodeCommentCount = (S.publicComments || []).filter(c => c.target_type === 'node' && c.target_id === id && !c.resolved).length;
+  if (nodeCommentCount) badges += `<span class="badge badge-comment">${nodeCommentCount} comment${nodeCommentCount === 1 ? '' : 's'}</span>`;
+  if (n.props._isReplica) badges += `<span class="badge" style="background:#a855f722;color:#a855f7;border:1px solid #a855f744">Read Replica</span>`;
   if (n.defId === 'users') badges += `<span class="badge badge-info">${esc(compactNum(n.props.userCount || 0))} users</span>`;
   if (n.defId === 'eventsource') badges += `<span class="badge badge-info">${esc(formatFlow(n.props.eventRate || 0))}</span>`;
   if (n.defId === 'deviceapp') badges += `<span class="badge badge-info">×${esc(n.props.eventsPerInput || 1)} emit</span>`;
@@ -863,6 +883,7 @@ function renderMiniMap() {
 
 // ══ EDGE MANAGEMENT ══════════════════════════════════════════════════════════
 function addEdge(src, tgt, opts = {}) {
+  if (isReadOnlyMode()) return;
   if (S.edges.find(e => e.src === src && e.tgt === tgt)) return;
   const srcNode = S.nodes[src];
   const tgtNode = S.nodes[tgt];
@@ -891,6 +912,7 @@ function addEdge(src, tgt, opts = {}) {
 }
 
 function deleteEdge(id) {
+  if (isReadOnlyMode()) return;
   snapshot();
   S.edges = S.edges.filter(e => e.id !== id);
   if (S.selEdge === id) S.selEdge = null;
@@ -1153,7 +1175,11 @@ function renderEdges() {
     hit.setAttribute('d',d);
     hit.style.pointerEvents = 'stroke';
     hit.style.cursor = 'pointer';
-    hit.onclick = e => { e.stopPropagation(); selectEdge(edge.id); };
+    hit.onclick = e => {
+      e.stopPropagation();
+      selectEdge(edge.id);
+      if (isReadOnlyMode()) openReviewDrawer('edge', edge.id);
+    };
     // Hover tooltip showing traffic info
     hit.addEventListener('mouseenter', () => {
       const flow = S.eFlow[edge.id] || 0;
@@ -1202,9 +1228,9 @@ function renderEdges() {
     delTxt.setAttribute('text-anchor','middle'); delTxt.setAttribute('dominant-baseline','middle');
     delTxt.setAttribute('font-size','11'); delTxt.setAttribute('fill','#f85149'); delTxt.textContent = '×';
     delG.appendChild(delBg); delG.appendChild(delTxt);
-    g.appendChild(delG);
+    if (!isReadOnlyMode()) g.appendChild(delG);
 
-    if (isSelected) {
+    if (isSelected && !isReadOnlyMode()) {
       [['src', s, ss], ['tgt', t, ts]].forEach(([end, pt, side]) => {
         const h = document.createElementNS('http://www.w3.org/2000/svg','circle');
         h.setAttribute('class', `edge-end-handle edge-end-${end}`);
@@ -1522,6 +1548,72 @@ function showProps(id) {
   }
 
   refreshSimStats(id);
+  const whyBtn = document.getElementById('btn-node-why');
+  if (!whyBtn) {
+    const btn = document.createElement('button');
+    btn.id = 'btn-node-why';
+    btn.className = 'btn-secondary';
+    btn.style.cssText = 'margin:10px 14px 0;width:calc(100% - 28px)';
+    btn.textContent = 'Why this status / cost?';
+    btn.onclick = () => showExplainabilityPanel(id);
+    cont.appendChild(btn);
+  } else {
+    whyBtn.onclick = () => showExplainabilityPanel(id);
+  }
+}
+
+function explainNodeLoad(id) {
+  const n = S.nodes[id];
+  if (!n) return null;
+  const def = COMPONENT_DEFS.find(d => d.id === n.defId) || {};
+  const sim = S.simLoad[id] || {};
+  const incoming = Number(sim.incoming || 0);
+  const cap = sim.scaledCap || sim.capacity || n.props.capacity || n.props.maxConnections || 'not set';
+  const pct = Number(sim.loadPct || 0);
+  const cost = Number(n.props.cost || 0);
+  const keyDriver = n.props.readReplicas ? `${n.props.readReplicas} read replicas` :
+    n.props.memoryGB ? `${n.props.memoryGB} GB RAM` :
+    n.props.cpuCores ? `${n.props.cpuCores} CPU cores` :
+    n.props.storageTB ? `${n.props.storageTB} TB storage` :
+    n.props.capacity ? `${compactNum(n.props.capacity)} capacity` : 'configured capacity';
+  const fixes = [];
+  if (pct > 85) fixes.push('Increase capacity or add autoscaling before this component saturates.');
+  if (n.defId === 'database') fixes.push('Add cache, tune read replicas, and split heavy read/write paths.');
+  if (n.defId === 'cache') fixes.push('Raise hit rate or memory before scaling downstream data stores.');
+  if (cost > 1000) fixes.push('Review storage, replicas, retention, and reserved pricing.');
+  if (!fixes.length) fixes.push('Current load is within limits; watch growth and downstream split assumptions.');
+  return { def, sim, incoming, cap, pct, cost, keyDriver, fixes };
+}
+
+function showExplainabilityPanel(id) {
+  const info = explainNodeLoad(id);
+  if (!info) return;
+  const n = S.nodes[id];
+  const overlay = document.createElement('div');
+  overlay.className = 'versions-overlay';
+  overlay.innerHTML = `
+    <div class="versions-box explain-box">
+      <div class="versions-head">
+        <div>
+          <div class="versions-title">Why this status?</div>
+          <div class="versions-sub">${esc(n.props.label || info.def.name || id)}</div>
+        </div>
+        <button class="versions-close" aria-label="Close">×</button>
+      </div>
+      <div class="explain-grid">
+        <div><b>Incoming</b><span>${esc(formatFlow(info.incoming))}</span></div>
+        <div><b>Effective capacity</b><span>${esc(typeof info.cap === 'number' ? formatFlow(info.cap) : info.cap)}</span></div>
+        <div><b>Load</b><span>${Math.round(info.pct)}%</span></div>
+        <div><b>Cost driver</b><span>${esc(info.keyDriver)}</span></div>
+      </div>
+      <div class="explain-actions">
+        <b>Recommended fixes</b>
+        <ul>${info.fixes.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('.versions-close').onclick = () => overlay.remove();
 }
 
 const COMPUTE_CATS = new Set(['compute','network']);
@@ -3500,7 +3592,7 @@ function nodeSettingsHtml(n) {
       <div class="setting-row"${idx===0?' style="font-weight:800;color:#111"':''}><div>${row.label}</div><div>${row.value}</div></div>`).join('')}</div>`;
 }
 
-function exportPdfReport() {
+function exportPdfReport(mode = S.reportMode || (S.readOnly ? 'public' : 'technical')) {
   const payload = architecturePayload();
   const svg     = diagramSvgString();
   const win = window.open('', '_blank');
@@ -3513,6 +3605,8 @@ function exportPdfReport() {
   const warning   = loads.filter(x => x.loadPct > 60 && x.loadPct <= 85).length;
   const healthy   = loads.filter(x => x.loadPct <= 60 && x.status !== 'source').length;
   const simActive = S.simOn || loads.length > 0;
+  const reportModeLabel = mode === 'public' ? 'Public View' : mode === 'executive' ? 'Executive' : 'Technical';
+  const commentSummary = (S.publicComments || []).filter(c => !c.resolved);
 
   const ts     = new Date().toLocaleString(undefined, { dateStyle:'medium', timeStyle:'short' });
   const tsISO  = new Date().toISOString().slice(0,10);
@@ -3860,12 +3954,13 @@ function exportPdfReport() {
             <span class="brand-name">Archi-Flow</span>
           </div>
           <h1>${esc(payload.title || 'Architecture Report')}</h1>
-          <div class="sub">${realNodes.length} components &middot; ${payload.edges.length} connections${simActive ? ' &middot; Live simulation data' : ''}</div>
+          <div class="sub">${reportModeLabel} report &middot; ${realNodes.length} components &middot; ${payload.edges.length} connections${simActive ? ' &middot; Live simulation data' : ''}</div>
           <div class="cover-chips">
             ${simActive ? `<span class="chip chip-sim">● Simulation Active</span>` : '<span class="chip">No sim data</span>'}
             ${critical > 0 ? `<span class="chip chip-crit">⚠ ${critical} Critical</span>` : ''}
             ${totalCost > 0 ? `<span class="chip">${compactMoney(totalCost)}/mo</span>` : ''}
             ${S.reservedPricing ? '<span class="chip chip-sim">Reserved −35%</span>' : ''}
+            ${mode === 'public' ? '<span class="chip chip-sim">Read-only public view</span>' : ''}
           </div>
         </div>
         <div class="cover-right">
@@ -4004,6 +4099,14 @@ function exportPdfReport() {
         ${realNodes.map(nodeSettingsHtml).join('')}
       </div>
     </div>
+
+    ${commentSummary.length ? `
+    <div class="section" style="padding-top:0">
+      <div class="sec-title"><span class="sec-icon" style="background:#eef2ff">💬</span>Review Comments</div>
+      <div class="settings-grid">
+        ${commentSummary.map(c => `<div class="setting-card"><div class="setting-card-title">${esc(c.target_type || 'flow')}${c.target_id ? ': ' + esc(c.target_id) : ''}</div><div class="setting-row" style="font-weight:800;color:#111"><div>${esc(c.author_name || 'Reviewer')}</div><div>${esc(fmtDiagramTime(c.created_at))}</div></div><div class="setting-row"><div style="width:100%">${esc(c.body)}</div></div></div>`).join('')}
+      </div>
+    </div>` : ''}
 
     <!-- ▸ FOOTER ─────────────────────────────────────────── -->
     <div class="footer">
@@ -4154,6 +4257,16 @@ async function cloudDiagramRequest(path, opts = {}) {
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
   return data;
+}
+
+async function optionalCloudRequest(path, opts = {}) {
+  const token = await currentSessionToken();
+  if (!token) throw new Error('Sign in required');
+  return cloudDiagramRequest(path, opts);
+}
+
+function publicFlowUrl(slug) {
+  return `${location.origin}/view/${slug}`;
 }
 
 async function hasCloudLibrary() {
@@ -4337,6 +4450,92 @@ async function downloadCloudDiagram(id) {
   }
 }
 
+async function duplicateCloudDiagram(id) {
+  try {
+    const created = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}/duplicate`, { method: 'POST' });
+    pushToast(`Duplicated "${created.title}".`, 'info');
+    await updateDiagramsPanel();
+  } catch (err) {
+    pushToast(`Duplicate failed: ${err.message}`, 'warn');
+  }
+}
+
+async function publishCloudDiagram(id) {
+  try {
+    const published = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}/publish`, { method: 'POST' });
+    const url = publicFlowUrl(published.public_slug);
+    try { await navigator.clipboard.writeText(url); } catch {}
+    pushToast('Public view link is ready and copied.', 'info');
+    await updateDiagramsPanel();
+  } catch (err) {
+    pushToast(`Publish failed: ${err.message}`, 'warn');
+  }
+}
+
+async function unpublishCloudDiagram(id) {
+  if (!confirm('Unpublish this public view link?')) return;
+  try {
+    await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}/unpublish`, { method: 'POST' });
+    pushToast('Public view disabled.', 'info');
+    await updateDiagramsPanel();
+  } catch (err) {
+    pushToast(`Unpublish failed: ${err.message}`, 'warn');
+  }
+}
+
+async function copyPublicFlowLink(slug) {
+  if (!slug) return pushToast('Publish this flow first.', 'warn');
+  const url = publicFlowUrl(slug);
+  try { await navigator.clipboard.writeText(url); pushToast('Public view link copied.', 'info'); }
+  catch { prompt('Copy this public view link', url); }
+}
+
+async function showVersionHistory(id, title) {
+  try {
+    const data = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}/versions`);
+    const versions = data.versions || [];
+    const overlay = document.createElement('div');
+    overlay.className = 'versions-overlay';
+    overlay.innerHTML = `
+      <div class="versions-box">
+        <div class="versions-head">
+          <div>
+            <div class="versions-title">Version History</div>
+            <div class="versions-sub">${esc(title || 'Untitled Flow')}</div>
+          </div>
+          <button class="versions-close" aria-label="Close">×</button>
+        </div>
+        <div class="versions-list">
+          ${versions.length ? versions.map(v => `
+            <div class="version-row">
+              <div>
+                <b>v${esc(v.version_number)}</b>
+                <span>${esc(fmtDiagramTime(v.created_at))}</span>
+                <small>${esc(v.node_count || 0)} nodes · ${esc(v.edge_count || 0)} edges</small>
+              </div>
+              <button data-version="${esc(v.id)}">Restore</button>
+            </div>`).join('') : '<div class="diagram-empty">No saved versions yet.</div>'}
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    overlay.querySelector('.versions-close').onclick = close;
+    overlay.querySelector('.versions-list').onclick = async e => {
+      const btn = e.target.closest('button[data-version]');
+      if (!btn || !confirm('Restore this version over the current flow?')) return;
+      const restored = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(id)}/restore/${encodeURIComponent(btn.dataset.version)}`, { method: 'POST' });
+      importArchitecture(restored.payload);
+      setCurrentDiagram(restored);
+      pushToast(`Restored "${restored.title}".`, 'info');
+      close();
+      updateDiagramsPanel();
+    };
+  } catch (err) {
+    pushToast(`Version history failed: ${err.message}`, 'warn');
+  }
+}
+
 async function importDiagramJsonToLibrary() {
   const input = document.getElementById('import-file');
   input.onchange = async e => {
@@ -4419,12 +4618,16 @@ async function updateDiagramsPanel() {
         <div class="diag-row" data-id="${esc(d.id)}">
           <div class="diag-icon">▣</div>
           <div class="diag-info">
-            <div class="diag-name">${esc(d.title || 'Untitled Architecture')}</div>
+            <div class="diag-name">${esc(d.title || 'Untitled Architecture')} <span class="diag-state ${d.is_public ? 'public' : ''}">${d.is_public ? 'Public' : 'Private'}</span></div>
             <div class="diag-ts">Updated ${fmtDiagramTime(d.updated_at || d.created_at)}</div>
             <div class="diag-meta">${d.node_count || 0} nodes · ${d.edge_count || 0} edges</div>
           </div>
           <button class="diag-btn" data-action="open" data-id="${esc(d.id)}">Open</button>
           <button class="diag-btn" data-action="rename" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">Rename</button>
+          <button class="diag-btn" data-action="duplicate" data-id="${esc(d.id)}">Duplicate</button>
+          <button class="diag-btn" data-action="versions" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">Versions</button>
+          <button class="diag-btn" data-action="${d.is_public ? 'unpublish' : 'publish'}" data-id="${esc(d.id)}">${d.is_public ? 'Unpublish' : 'Publish'}</button>
+          ${d.public_slug ? `<button class="diag-btn" data-action="copy-public" data-slug="${esc(d.public_slug)}">Copy Link</button>` : ''}
           <button class="diag-btn" data-action="download" data-id="${esc(d.id)}">JSON</button>
           <button class="diag-btn del" data-action="delete" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}" title="Delete">×</button>
         </div>`).join('');
@@ -4521,13 +4724,19 @@ function shareToLinkedIn() {
 
 async function shareArchitecture() {
   const url = updateShareHash();
+  const cloud = await hasCloudLibrary();
+  const canPublishCurrent = cloud && S.currentDiagramId;
   // Show share options modal
   const overlay = document.createElement('div');
   overlay.className = 'share-overlay';
   overlay.innerHTML = `
     <div class="share-box">
       <div class="share-title">Share Architecture</div>
-      <div class="share-copy">The architecture is <b>encoded in the URL</b> — no server, no account needed.</div>
+      <div class="share-copy">${canPublishCurrent ? 'Publish a <b>read-only public view</b> from the saved cloud flow, or use the legacy snapshot URL.' : 'Save to My Flows to publish a read-only public view. The legacy URL below encodes the diagram snapshot.'}</div>
+      ${canPublishCurrent ? `<button id="sh-public" class="share-action">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>
+        Publish read-only view
+      </button>` : ''}
       ${sbReady() ? `
       <div class="shortlink-box" id="sh-short-box">
         <div class="sl-label">✦ Permanent short link</div>
@@ -4560,6 +4769,17 @@ async function shareArchitecture() {
   const close = () => document.body.removeChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
   document.getElementById('sh-close').onclick = close;
+  document.getElementById('sh-public')?.addEventListener('click', async () => {
+    try {
+      const published = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(S.currentDiagramId)}/publish`, { method: 'POST' });
+      const publicUrl = publicFlowUrl(published.public_slug);
+      await navigator.clipboard.writeText(publicUrl).catch(() => {});
+      pushToast('Public view link copied.', 'info');
+      close();
+    } catch (err) {
+      pushToast(`Publish failed: ${err.message}`, 'warn');
+    }
+  });
 
   // Kick off short-link save in background immediately
   initShortLink();
@@ -4596,6 +4816,146 @@ function loadFromHash() {
   } catch (err) {
     console.warn('Could not load shared architecture', err);
     return false;
+  }
+}
+
+async function loadFromPublicPath() {
+  const match = location.pathname.match(/^\/view\/([a-z0-9-]{8,80})$/i);
+  if (!match) return false;
+  const slug = match[1];
+  try {
+    const resp = await fetch(`/api/public/flows/${encodeURIComponent(slug)}`);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    S.readOnly = true;
+    S.publicSlug = slug;
+    S.publicFlowMeta = data;
+    S.cockpitCompact = true;
+    importArchitecture(data.payload);
+    applyReadOnlyMode(data);
+    await loadPublicComments(slug);
+    return true;
+  } catch (err) {
+    pushToast(`Public flow could not load: ${err.message}`, 'warn');
+    return false;
+  }
+}
+
+function applyReadOnlyMode(meta = S.publicFlowMeta || {}) {
+  S.readOnly = true;
+  document.body.classList.add('read-only-mode');
+  renderPublicViewBar(meta);
+  updateCockpitButton?.();
+}
+
+function renderPublicViewBar(meta = {}) {
+  let bar = document.getElementById('public-view-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'public-view-bar';
+    document.body.prepend(bar);
+  }
+  bar.innerHTML = `
+    <div class="public-title">
+      <b>${esc(meta.title || getDiagramTitle())}</b>
+      <span>Read-only public view</span>
+    </div>
+    <div class="public-actions">
+      <button id="public-comments-btn">Comments</button>
+      <button id="public-pdf-btn">Export PDF</button>
+      <button id="public-duplicate-btn" style="display:none">Duplicate to My Flows</button>
+    </div>`;
+  document.getElementById('public-comments-btn').onclick = () => openReviewDrawer('flow', null);
+  document.getElementById('public-pdf-btn').onclick = () => exportPdfReport('public');
+  const dup = document.getElementById('public-duplicate-btn');
+  currentSessionToken().then(token => { if (token) dup.style.display = ''; }).catch(() => {});
+  dup.onclick = duplicatePublicFlowToLibrary;
+}
+
+async function duplicatePublicFlowToLibrary() {
+  if (!S.publicSlug) return;
+  try {
+    const created = await optionalCloudRequest(`/api/public/flows/${encodeURIComponent(S.publicSlug)}/duplicate`, { method: 'POST' });
+    pushToast(`Duplicated to My Flows as "${created.title}".`, 'info');
+  } catch (err) {
+    if (/sign in/i.test(err.message)) startGoogleSignIn();
+    else pushToast(`Duplicate failed: ${err.message}`, 'warn');
+  }
+}
+
+async function loadPublicComments(slug = S.publicSlug) {
+  if (!slug) return;
+  try {
+    const resp = await fetch(`/api/public/flows/${encodeURIComponent(slug)}/comments`);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    S.publicComments = data.comments || [];
+    renderAll();
+    renderReviewDrawer();
+  } catch (err) {
+    console.warn('Could not load public comments', err);
+  }
+}
+
+function openReviewDrawer(targetType = 'flow', targetId = null) {
+  S.commentTarget = { type: targetType, id: targetId };
+  renderReviewDrawer(true);
+}
+
+function targetCommentLabel(target = S.commentTarget) {
+  if (target.type === 'node' && target.id && S.nodes[target.id]) return `Node: ${S.nodes[target.id].props.label || target.id}`;
+  if (target.type === 'edge' && target.id) return `Edge: ${target.id}`;
+  return 'Flow';
+}
+
+function renderReviewDrawer(open = false) {
+  if (!S.readOnly && !S.publicSlug) return;
+  let drawer = document.getElementById('review-drawer');
+  if (!drawer) {
+    drawer = document.createElement('aside');
+    drawer.id = 'review-drawer';
+    document.body.appendChild(drawer);
+  }
+  if (open) drawer.classList.add('open');
+  const target = S.commentTarget || { type: 'flow', id: null };
+  const comments = (S.publicComments || []).filter(c =>
+    c.target_type === target.type && String(c.target_id || '') === String(target.id || '') && !c.resolved
+  );
+  drawer.innerHTML = `
+    <div class="review-head">
+      <div><b>Review Comments</b><span>${esc(targetCommentLabel(target))}</span></div>
+      <button id="review-close" aria-label="Close">×</button>
+    </div>
+    <div class="review-comments">
+      ${comments.length ? comments.map(c => `
+        <div class="review-comment">
+          <b>${esc(c.author_name || 'Reviewer')}</b>
+          <p>${esc(c.body)}</p>
+          <small>${esc(fmtDiagramTime(c.created_at))}</small>
+        </div>`).join('') : '<div class="diagram-empty">No comments for this target yet.</div>'}
+    </div>
+    <div class="review-compose">
+      <textarea id="review-text" placeholder="Add a signed-in review comment"></textarea>
+      <button id="review-submit">Comment</button>
+    </div>`;
+  drawer.querySelector('#review-close').onclick = () => drawer.classList.remove('open');
+  drawer.querySelector('#review-submit').onclick = submitReviewComment;
+}
+
+async function submitReviewComment() {
+  const text = document.getElementById('review-text')?.value.trim();
+  if (!text) return;
+  try {
+    await optionalCloudRequest(`/api/public/flows/${encodeURIComponent(S.publicSlug)}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ target_type: S.commentTarget.type, target_id: S.commentTarget.id, body: text }),
+    });
+    await loadPublicComments();
+    document.getElementById('review-text').value = '';
+    pushToast('Comment added.', 'info');
+  } catch (err) {
+    if (/sign in/i.test(err.message)) startGoogleSignIn();
+    else pushToast(`Comment failed: ${err.message}`, 'warn');
   }
 }
 
@@ -4647,6 +5007,11 @@ document.getElementById('my-diagrams-list').onclick = e => {
   const action = btn.dataset.action;
   if (action === 'open') loadCloudDiagram(id);
   if (action === 'rename') renameCloudDiagram(id, btn.dataset.title);
+  if (action === 'duplicate') duplicateCloudDiagram(id);
+  if (action === 'versions') showVersionHistory(id, btn.dataset.title);
+  if (action === 'publish') publishCloudDiagram(id);
+  if (action === 'unpublish') unpublishCloudDiagram(id);
+  if (action === 'copy-public') copyPublicFlowLink(btn.dataset.slug);
   if (action === 'download') downloadCloudDiagram(id);
   if (action === 'delete') deleteCloudDiagram(id, btn.dataset.title);
   if (action === 'load-auto') loadSavedDiagram(JSON.parse(localStorage.getItem(LS_AUTO) || '{}'));
@@ -4877,7 +5242,8 @@ speedSel.onchange = () => {
   initSugTrayObserver();
 
   // 3. Load saved diagram from URL (short path or hash), otherwise restore autosave
-  const loaded = await loadFromShortPath();
+  const publicLoaded = await loadFromPublicPath();
+  const loaded = publicLoaded || await loadFromShortPath();
   if (!loaded) {
     const hashLoaded = loadFromHash();
     if (!hashLoaded) {

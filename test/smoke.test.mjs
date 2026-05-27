@@ -55,6 +55,10 @@ test('examples reference valid nodes and edges', () => {
   for (const example of EXAMPLES) {
     assert.ok(example.id, 'example requires id');
     assert.ok(example.name, `${example.id} requires name`);
+    assert.ok(example.category, `${example.id} requires category metadata`);
+    assert.ok(example.difficulty, `${example.id} requires difficulty metadata`);
+    assert.ok(Array.isArray(example.tags), `${example.id} requires tags metadata`);
+    assert.ok(example.summary, `${example.id} requires summary metadata`);
     assert.ok(example.nodes.length > 0, `${example.id} requires nodes`);
 
     const nodeIds = new Set(example.nodes.map((n) => n.id));
@@ -71,6 +75,10 @@ test('examples reference valid nodes and edges', () => {
       assert.ok(nodeIds.has(edge.source), `${example.id}/${edge.id} source missing`);
       assert.ok(nodeIds.has(edge.target), `${example.id}/${edge.id} target missing`);
     }
+  }
+
+  for (const id of ['saas-web-app', 'event-streaming', 'lakehouse', 'multi-region-ha', 'ai-rag-system', 'kubernetes-microservices']) {
+    assert.ok(EXAMPLES.some((example) => example.id === id), `starter gallery should include ${id}`);
   }
 });
 
@@ -107,7 +115,7 @@ test('index.html contains required app hooks', () => {
   assert.match(html, /Archi-Flow/, 'app should use Archi-Flow branding');
   assert.match(appSource, /function diagramSvgString\(/, 'app should support diagram image export');
   assert.match(appSource, /foreignObject/, 'diagram image export should use live HTML node tiles');
-  assert.match(appSource, /function exportPdfReport\(\)/, 'app should support PDF report export');
+  assert.match(appSource, /function exportPdfReport\(/, 'app should support PDF report export');
   assert.match(appSource, /Traffic & Cost Assumptions/, 'PDF export should include traffic and cost assumptions');
   assert.match(appSource, /Executive Summary/, 'PDF export should include an executive summary');
   assert.match(appSource, /Recommended actions/, 'PDF export should include recommended actions');
@@ -181,6 +189,43 @@ test('cloud flow library has private API and UI hooks', () => {
   assert.match(sql, /create table if not exists public\.user_diagrams/, 'Supabase schema should create user_diagrams');
   assert.match(sql, /enable row level security/, 'Supabase schema should enable RLS');
   assert.match(sql, /auth\.uid\(\) = user_id/g, 'RLS policies should scope rows to the owner');
+});
+
+test('public sharing, versions, and review comments are wired', () => {
+  const appJs = readFileSync(rootFile('src/app.js'), 'utf8');
+  const css = readFileSync(rootFile('src/app.css'), 'utf8');
+  const server = readFileSync(rootFile('server.mjs'), 'utf8');
+  const sql = readFileSync(rootFile('supabase-user-diagrams.sql'), 'utf8');
+
+  for (const fragment of [
+    '/publish',
+    '/unpublish',
+    '/api/public/flows',
+    '/versions',
+    'restore',
+    '/comments',
+    '/duplicate',
+  ]) {
+    assert.match(server, new RegExp(fragment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `server should expose ${fragment}`);
+  }
+
+  assert.match(server, /isPublicViewPath/, 'server should serve the SPA for /view/:slug');
+  assert.match(sql, /is_public boolean/, 'schema should track public share state');
+  assert.match(sql, /public_slug text unique/, 'schema should track unique public slugs');
+  assert.match(sql, /last_opened_at timestamptz/, 'schema should track last opened time');
+  assert.match(sql, /create table if not exists public\.flow_versions/, 'schema should create flow_versions');
+  assert.match(sql, /create table if not exists public\.flow_comments/, 'schema should create flow_comments');
+  assert.match(sql, /Published flow comments are readable/, 'comments should be readable on published flows');
+
+  assert.match(appJs, /function loadFromPublicPath\(/, 'frontend should load /view/:slug public flows');
+  assert.match(appJs, /function applyReadOnlyMode\(/, 'frontend should apply read-only mode');
+  assert.match(appJs, /Duplicate to My Flows/, 'public viewers should be able to duplicate when signed in');
+  assert.match(appJs, /function showVersionHistory\(/, 'frontend should expose version history');
+  assert.match(appJs, /function openReviewDrawer\(/, 'frontend should expose review comments');
+  assert.match(appJs, /function explainNodeLoad\(/, 'frontend should explain node load/cost states');
+  assert.match(appJs, /Public View/, 'PDF export should support public-view report mode');
+  assert.match(css, /body\.read-only-mode/, 'read-only public view should hide editor chrome');
+  assert.match(css, /#review-drawer/, 'review drawer should be styled');
 });
 
 test('more menu and cockpit stay compact', () => {

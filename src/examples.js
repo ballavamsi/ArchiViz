@@ -174,5 +174,151 @@ export const EXAMPLES = [
       { id: "e17", source: "n15", target: "n10", animated: true },
       { id: "e18", source: "n15", target: "n11", animated: true }
     ]
+  },
+
+  {
+    id: "saas-web-app",
+    name: "SaaS Web App",
+    description: "Browser users through CDN, gateway, app tier, cache, database, and observability.",
+    category: "Application",
+    difficulty: "Beginner",
+    tags: ["saas", "web", "cache", "observability"],
+    summary: "A presentation-ready web application baseline with clear cache and database cost drivers.",
+    nodes: [
+      { id:"n1", type:"users", position:{x:60,y:240}, data:{defId:"users", props:{userCount:250000, requestsPerUser:2, label:"Customers"}} },
+      { id:"n2", type:"cdn", position:{x:300,y:240}, data:{defId:"cdn", props:{capacity:1000000, cacheHitRate:70, cost:120, label:"CDN"}} },
+      { id:"n3", type:"apigateway", position:{x:540,y:240}, data:{defId:"apigateway", props:{capacity:600000, authType:"JWT", cost:260, label:"API Gateway"}} },
+      { id:"n4", type:"appserver", position:{x:780,y:160}, data:{defId:"appserver", props:{capacity:220000, runtime:"Node.js", workers:16, cost:480, label:"Web/API App"}} },
+      { id:"n5", type:"cache", position:{x:1020,y:160}, data:{defId:"cache", props:{capacity:500000, type:"Redis", hitRate:85, memoryGB:32, cost:360, label:"Redis Cache"}} },
+      { id:"n6", type:"database", position:{x:1020,y:340}, data:{defId:"database", props:{capacity:180000, type:"PostgreSQL", readReplicas:2, storageGB:1024, cost:900, label:"Primary DB"}} },
+      { id:"n7", type:"appinsights", position:{x:780,y:360}, data:{defId:"appinsights", props:{capacity:100000, samplingRate:20, cost:150, label:"Telemetry"}} }
+    ],
+    edges: [
+      {id:"e1",source:"n1",target:"n2",animated:true},{id:"e2",source:"n2",target:"n3",animated:true},{id:"e3",source:"n3",target:"n4",animated:true},
+      {id:"e4",source:"n4",target:"n5",animated:true,trafficPct:70},{id:"e5",source:"n4",target:"n6",animated:true,trafficPct:30},{id:"e6",source:"n4",target:"n7",animated:true}
+    ]
+  },
+
+  {
+    id: "event-streaming",
+    name: "Event Streaming Platform",
+    description: "Product events through webhook ingestion, Kafka, stream processing, lake storage, and query.",
+    category: "Data",
+    difficulty: "Intermediate",
+    tags: ["kafka", "flink", "lakehouse", "events"],
+    summary: "Shows high-volume event flow, retention, partitions, and processing capacity.",
+    nodes: [
+      { id:"n1", type:"eventsource", position:{x:60,y:260}, data:{defId:"eventsource", props:{eventRate:250000, label:"Product Events"}} },
+      { id:"n2", type:"taskhook", position:{x:300,y:260}, data:{defId:"taskhook", props:{capacity:300000, trigger:"Webhook", retries:3, label:"Ingestion Hook"}} },
+      { id:"n3", type:"kafkatopic", position:{x:540,y:260}, data:{defId:"kafkatopic", props:{capacity:500000, partitions:240, replicationFactor:3, retentionDays:7, label:"events.raw"}} },
+      { id:"n4", type:"streamprocessor", position:{x:780,y:260}, data:{defId:"streamprocessor", props:{capacity:450000, engine:"Flink", parallelism:128, checkpointSeconds:30, label:"Flink Processor"}} },
+      { id:"n5", type:"objectstorage", position:{x:1020,y:160}, data:{defId:"objectstorage", props:{capacity:500000, storageTB:180, cost:420, label:"Object Storage"}} },
+      { id:"n6", type:"queryengine", position:{x:1260,y:160}, data:{defId:"queryengine", props:{capacity:120000, engine:"Trino", concurrency:80, cost:520, label:"Query Engine"}} },
+      { id:"n7", type:"appinsights", position:{x:780,y:420}, data:{defId:"appinsights", props:{capacity:100000, samplingRate:10, label:"Pipeline Metrics"}} }
+    ],
+    edges: [
+      {id:"e1",source:"n1",target:"n2",animated:true},{id:"e2",source:"n2",target:"n3",animated:true},{id:"e3",source:"n3",target:"n4",animated:true},
+      {id:"e4",source:"n4",target:"n5",animated:true},{id:"e5",source:"n5",target:"n6",animated:true},{id:"e6",source:"n4",target:"n7",animated:true}
+    ]
+  },
+
+  {
+    id: "multi-region-ha",
+    name: "Multi-Region HA",
+    description: "Global traffic manager with active-active regional stacks and replicated data.",
+    category: "Reliability",
+    difficulty: "Advanced",
+    tags: ["multi-region", "ha", "failover", "replication"],
+    summary: "A resilient architecture starter for discussing capacity, failover, and data replication cost.",
+    nodes: [
+      { id:"n1", type:"users", position:{x:60,y:280}, data:{defId:"users", props:{userCount:800000, requestsPerUser:1, label:"Global Users"}} },
+      { id:"n2", type:"cdn", position:{x:300,y:280}, data:{defId:"cdn", props:{capacity:1200000, cacheHitRate:65, cost:300, label:"Global Edge"}} },
+      { id:"n3", type:"loadbalancer", position:{x:540,y:160}, data:{defId:"loadbalancer", props:{capacity:450000, algorithm:"Geo", cost:180, label:"US LB"}} },
+      { id:"n4", type:"loadbalancer", position:{x:540,y:400}, data:{defId:"loadbalancer", props:{capacity:450000, algorithm:"Geo", cost:180, label:"EU LB"}} },
+      { id:"n5", type:"appserver", position:{x:780,y:160}, data:{defId:"appserver", props:{capacity:350000, runtime:"Go", autoScale:true, maxReplicas:8, cost:700, label:"US App"}} },
+      { id:"n6", type:"appserver", position:{x:780,y:400}, data:{defId:"appserver", props:{capacity:350000, runtime:"Go", autoScale:true, maxReplicas:8, cost:700, label:"EU App"}} },
+      { id:"n7", type:"database", position:{x:1040,y:280}, data:{defId:"database", props:{capacity:700000, type:"PostgreSQL Global", readReplicas:3, cost:1800, label:"Global Database"}} }
+    ],
+    edges: [
+      {id:"e1",source:"n1",target:"n2",animated:true},{id:"e2",source:"n2",target:"n3",animated:true,trafficPct:55},{id:"e3",source:"n2",target:"n4",animated:true,trafficPct:45},
+      {id:"e4",source:"n3",target:"n5",animated:true},{id:"e5",source:"n4",target:"n6",animated:true},{id:"e6",source:"n5",target:"n7",animated:true},{id:"e7",source:"n6",target:"n7",animated:true}
+    ]
+  },
+
+  {
+    id: "lakehouse",
+    name: "Lakehouse Analytics",
+    description: "Object storage, open table format, metastore, quality gates, and Trino query serving.",
+    category: "Data",
+    difficulty: "Intermediate",
+    tags: ["lakehouse", "iceberg", "trino", "quality"],
+    summary: "A compact lakehouse starter focused on storage, catalog, compaction, and query cost drivers.",
+    nodes: [
+      { id:"n1", type:"objectstorage", position:{x:80,y:220}, data:{defId:"objectstorage", props:{capacity:300000, storageTB:250, cost:600, label:"Object Storage"}} },
+      { id:"n2", type:"tableformat", position:{x:330,y:220}, data:{defId:"tableformat", props:{capacity:300000, format:"Apache Iceberg", compaction:true, cost:120, label:"Iceberg Tables"}} },
+      { id:"n3", type:"metastore", position:{x:580,y:120}, data:{defId:"metastore", props:{capacity:120000, catalog:"Hive Metastore", schemas:80, lineage:true, cost:160, label:"Catalog"}} },
+      { id:"n4", type:"dataquality", position:{x:580,y:320}, data:{defId:"dataquality", props:{capacity:150000, tool:"Great Expectations", checks:220, cost:140, label:"Quality Gates"}} },
+      { id:"n5", type:"queryengine", position:{x:830,y:220}, data:{defId:"queryengine", props:{capacity:200000, engine:"Trino", concurrency:120, cacheEnabled:true, cost:950, label:"Trino Query"}} },
+      { id:"n6", type:"warehouse", position:{x:1080,y:220}, data:{defId:"warehouse", props:{capacity:160000, platform:"BI Warehouse", computeSize:"Large", concurrency:80, cost:1200, label:"Analytics"}} }
+    ],
+    edges: [
+      {id:"e1",source:"n1",target:"n2",animated:true},{id:"e2",source:"n2",target:"n3",animated:true},{id:"e3",source:"n2",target:"n4",animated:true},{id:"e4",source:"n3",target:"n5",animated:true},{id:"e5",source:"n4",target:"n5",animated:true},{id:"e6",source:"n5",target:"n6",animated:true}
+    ]
+  },
+
+  {
+    id: "ai-rag-system",
+    name: "AI / RAG System",
+    description: "User questions retrieve context from object storage/search before calling model-serving APIs.",
+    category: "AI",
+    difficulty: "Intermediate",
+    tags: ["rag", "ai", "search", "object-storage"],
+    summary: "A practical RAG starter using existing generic app, search, storage, and telemetry components.",
+    nodes: [
+      { id:"n1", type:"users", position:{x:60,y:260}, data:{defId:"users", props:{userCount:50000, requestsPerUser:3, label:"Analysts"}} },
+      { id:"n2", type:"apigateway", position:{x:300,y:260}, data:{defId:"apigateway", props:{capacity:200000, authType:"OAuth", cost:180, label:"AI API"}} },
+      { id:"n3", type:"appserver", position:{x:540,y:180}, data:{defId:"appserver", props:{capacity:120000, runtime:"Python", workers:24, cost:900, label:"RAG Orchestrator"}} },
+      { id:"n4", type:"searchengine", position:{x:780,y:180}, data:{defId:"searchengine", props:{capacity:160000, engine:"Vector Search", shards:12, cost:850, label:"Vector Search"}} },
+      { id:"n5", type:"objectstorage", position:{x:780,y:360}, data:{defId:"objectstorage", props:{capacity:200000, storageTB:40, cost:110, label:"Document Store"}} },
+      { id:"n6", type:"appserver", position:{x:1020,y:260}, data:{defId:"appserver", props:{capacity:90000, runtime:"Model API", workers:16, cost:2200, label:"LLM Endpoint"}} },
+      { id:"n7", type:"appinsights", position:{x:540,y:420}, data:{defId:"appinsights", props:{capacity:50000, samplingRate:100, label:"Prompt Telemetry"}} }
+    ],
+    edges: [
+      {id:"e1",source:"n1",target:"n2",animated:true},{id:"e2",source:"n2",target:"n3",animated:true},{id:"e3",source:"n3",target:"n4",animated:true,trafficPct:45},
+      {id:"e4",source:"n3",target:"n5",animated:true,trafficPct:20},{id:"e5",source:"n3",target:"n6",animated:true,trafficPct:35},{id:"e6",source:"n3",target:"n7",animated:true}
+    ]
+  },
+
+  {
+    id: "kubernetes-microservices",
+    name: "Kubernetes Microservices",
+    description: "Ingress, gateway, pods, queue, cache, database, autoscaling, logs, and metrics.",
+    category: "Platform",
+    difficulty: "Intermediate",
+    tags: ["kubernetes", "microservices", "autoscaling", "queue"],
+    summary: "A cloud-native system starter with scale controls and observability already modeled.",
+    nodes: [
+      { id:"n1", type:"users", position:{x:60,y:300}, data:{defId:"users", props:{userCount:300000, requestsPerUser:2, label:"Users"}} },
+      { id:"n2", type:"apigateway", position:{x:300,y:300}, data:{defId:"apigateway", props:{capacity:700000, authType:"JWT", label:"Ingress Gateway"}} },
+      { id:"n3", type:"pod", position:{x:540,y:160}, data:{defId:"pod", props:{capacity:180000, replicas:6, cpuCores:12, memoryGB:48, cost:600, label:"Orders Pods"}} },
+      { id:"n4", type:"pod", position:{x:540,y:300}, data:{defId:"pod", props:{capacity:180000, replicas:6, cpuCores:12, memoryGB:48, cost:600, label:"Catalog Pods"}} },
+      { id:"n5", type:"pod", position:{x:540,y:440}, data:{defId:"pod", props:{capacity:120000, replicas:4, cpuCores:8, memoryGB:32, cost:400, label:"Notification Pods"}} },
+      { id:"n6", type:"cache", position:{x:780,y:300}, data:{defId:"cache", props:{capacity:300000, hitRate:78, memoryGB:64, cost:520, label:"Redis Cluster"}} },
+      { id:"n7", type:"queue", position:{x:780,y:440}, data:{defId:"queue", props:{capacity:500000, cost:240, label:"Work Queue"}} },
+      { id:"n8", type:"database", position:{x:1020,y:300}, data:{defId:"database", props:{capacity:280000, type:"PostgreSQL", readReplicas:2, cost:1100, label:"Service DB"}} },
+      { id:"n9", type:"autoscaler", position:{x:540,y:20}, data:{defId:"autoscaler", props:{scaleUpThreshold:70, maxReplicas:20, label:"HPA"}} },
+      { id:"n10", type:"logging", position:{x:1020,y:480}, data:{defId:"logging", props:{capacity:200000, ingestGBDay:120, retentionDays:30, cost:450, label:"Logs"}} }
+    ],
+    edges: [
+      {id:"e1",source:"n1",target:"n2",animated:true},{id:"e2",source:"n2",target:"n3",animated:true},{id:"e3",source:"n2",target:"n4",animated:true},{id:"e4",source:"n2",target:"n5",animated:true},
+      {id:"e5",source:"n3",target:"n6",animated:true},{id:"e6",source:"n4",target:"n6",animated:true},{id:"e7",source:"n5",target:"n7",animated:true},{id:"e8",source:"n6",target:"n8",animated:true},
+      {id:"e9",source:"n9",target:"n3",animated:false,style:{strokeDasharray:"5,5"}},{id:"e10",source:"n9",target:"n4",animated:false,style:{strokeDasharray:"5,5"}},{id:"e11",source:"n3",target:"n10",animated:true}
+    ]
   }
-];
+].map(example => ({
+  category: 'General',
+  difficulty: 'Beginner',
+  tags: [],
+  summary: example.description,
+  ...example,
+}));
