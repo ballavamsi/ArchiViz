@@ -958,7 +958,21 @@ function renderNode(id) {
   });
 
   // Context menu
-  el.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); select(id); _nodeContextMenu(id, e.clientX+4, e.clientY+4); };
+  el.oncontextmenu = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isMobile()) {
+      S.sel = id;
+      S.selEdge = null;
+      S.selSet.clear();
+      S.selSet.add(id);
+      renderAll();
+      window._showMobileNodeActions?.(id, e.clientX + 4, e.clientY + 4);
+      return;
+    }
+    select(id);
+    _nodeContextMenu(id, e.clientX+4, e.clientY+4);
+  };
 
   const labelEl = el.querySelector('.node-label');
   labelEl.ondblclick = e => {
@@ -3446,6 +3460,15 @@ function _attachCtxMenu(id) {
   if (!el) return;
   el.oncontextmenu = e => {
     e.preventDefault(); e.stopPropagation();
+    if (isMobile()) {
+      S.sel = id;
+      S.selEdge = null;
+      S.selSet.clear();
+      S.selSet.add(id);
+      renderAll();
+      window._showMobileNodeActions?.(id, e.clientX + 4, e.clientY + 4);
+      return;
+    }
     select(id);
     _nodeContextMenu(id, e.clientX + 4, e.clientY + 4);
   };
@@ -7555,6 +7578,7 @@ setTimeout(startTour, 1200);
       if (action === 'delete' && confirm('Delete this component?')) deleteNode(id);
     };
   }
+  window._showMobileNodeActions = showMobileNodeActions;
 
   const mobConnectBtn = document.getElementById('mob-props-connect-btn');
   if (mobConnectBtn) mobConnectBtn.addEventListener('click', () => {
