@@ -116,6 +116,8 @@ async function click(selector) {
 }
 
 // Drag palette item → canvas viewport position (tx, ty)
+// Cursor animates the drag visually; window.dropNodeAt is the ONLY node placer
+// (no real mousedown/up — that would double-place via the app's drag handler)
 async function dragFromPalette(defId, searchTerm, tx, ty) {
   await page.fill('#pal-search', searchTerm);
   await wait(300);
@@ -126,11 +128,11 @@ async function dragFromPalette(defId, searchTerm, tx, ty) {
   const sx  = src.x + src.width / 2;
   const sy  = src.y + src.height / 2;
 
+  // Hover on palette item (no click / mousedown)
   await moveTo(sx, sy, 20);
   await wait(250);
-  await page.mouse.down();
-  await wait(100);
 
+  // Animate cursor from palette → drop point (purely visual — no drag events)
   const steps = 32;
   for (let i = 1; i <= steps; i++) {
     await page.mouse.move(
@@ -140,11 +142,9 @@ async function dragFromPalette(defId, searchTerm, tx, ty) {
     );
     await wait(18);
   }
-  await wait(120);
-  await page.mouse.up();
-  await wait(200);
+  await wait(150);
 
-  // JS helper ensures node is actually placed
+  // Place the node via JS helper (single source of truth)
   const canvasBox = await page.locator('#canvas-wrap').boundingBox();
   const tf = await page.evaluate(() => window.getCanvasTransform());
   const cx = (tx - canvasBox.x - tf.panX) / tf.zoom - 80;
@@ -161,6 +161,7 @@ async function dragFromPalette(defId, searchTerm, tx, ty) {
 }
 
 // Animate cursor drag + wire edge via JS helper
+// Cursor moves visually from source port → target; connectByLabel is the sole wirer
 async function connectNodes(srcLabel, tgtLabel) {
   const pos = await page.evaluate(({ s, t }) => {
     const find = lbl => [...document.querySelectorAll('.a-node')]
@@ -173,12 +174,11 @@ async function connectNodes(srcLabel, tgtLabel) {
   }, { s: srcLabel, t: tgtLabel });
 
   if (pos) {
+    // Visual-only cursor animation — no mousedown/up to avoid double-wiring
     await moveTo(pos.sx - 20, pos.sy, 14);
     await wait(180);
     await moveTo(pos.sx, pos.sy, 10);
     await wait(200);
-    await page.mouse.down();
-    await wait(80);
     for (let i = 1; i <= 28; i++) {
       await page.mouse.move(
         pos.sx + (pos.tx - pos.sx) * (i / 28),
@@ -187,11 +187,10 @@ async function connectNodes(srcLabel, tgtLabel) {
       );
       await wait(16);
     }
-    await wait(100);
-    await page.mouse.up();
-    await wait(300);
+    await wait(200);
   }
 
+  // Wire via JS helper (single source of truth)
   await page.evaluate(({ s, t }) => window.connectByLabel(s, t), { s: srcLabel, t: tgtLabel });
   await page.evaluate(() => window.forceRenderEdges());
   await wait(250);
