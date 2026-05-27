@@ -1052,56 +1052,116 @@ function pushToast(message, type = 'info') {
 }
 
 // ── Notification bell panel ───────────────────────────────────────────
-const NOTIF_MAX_STORED = 200; // keep at most this many in the panel
+const NOTIF_MAX_STORED = 200;
+
+// SVG icons per type (inline, no emoji)
+function _notifSvgIcon(type) {
+  if (type === 'warn') return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  if (type === 'crit' || type === 'error') return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  if (type === 'success') return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+}
+
+// Relative timestamp: "just now", "2m ago", "1h ago"
+function _relTime(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 10)  return 'just now';
+  if (diff < 60)  return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+// Tick relative timestamps every 30s
+let _relTimeTicker = null;
+function _startRelTimeTicker() {
+  if (_relTimeTicker) return;
+  _relTimeTicker = setInterval(() => {
+    document.querySelectorAll('.notif-card-time[data-ts]').forEach(el => {
+      el.textContent = _relTime(parseInt(el.dataset.ts, 10));
+    });
+  }, 30000);
+}
+
+// Active filter: 'all' | 'warn' | 'error' | 'info' | 'success'
+let _notifFilter = 'all';
+
+function _applyNotifFilter() {
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  list.querySelectorAll('.notif-card').forEach(card => {
+    const show = _notifFilter === 'all' || card.dataset.type === _notifFilter ||
+                 (_notifFilter === 'error' && card.dataset.type === 'crit');
+    card.style.display = show ? '' : 'none';
+  });
+  // update filter button active states
+  document.querySelectorAll('.notif-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === _notifFilter);
+  });
+}
 
 function addNotification(message, type = 'info', title = null) {
   const list  = document.getElementById('notif-list');
   const empty = document.getElementById('notif-empty');
   if (!list) return;
   if (empty) empty.style.display = 'none';
+  _startRelTimeTicker();
 
-  const icon = type === 'warn' ? '⚠️' : (type === 'crit' || type === 'error') ? '🔴' : (type === 'success' ? '✅' : 'ℹ️');
-  const cls  = type === 'error' ? 'crit' : type;
+  const cls = type === 'error' ? 'crit' : type;
 
-  // Deduplicate: if the topmost card has identical message, increment counter
+  // Deduplicate: if the topmost visible card has identical message, bump counter
   const topCard = list.querySelector('.notif-card');
   if (topCard && topCard.dataset.msg === message) {
     const counter = topCard.querySelector('.notif-dup-count');
     const n = parseInt(counter?.textContent?.replace('×','') || '1', 10) + 1;
     if (counter) { counter.textContent = `×${n}`; }
     else {
-      const timeEl = topCard.querySelector('.notif-card-time');
       const dup = document.createElement('span');
       dup.className = 'notif-dup-count';
-      dup.textContent = `×2`;
-      timeEl?.before(dup);
+      dup.textContent = '×2';
+      topCard.querySelector('.notif-card-meta')?.prepend(dup);
+    }
+    // refresh timestamp
+    const timeEl = topCard.querySelector('.notif-card-time[data-ts]');
+    if (timeEl) {
+      timeEl.dataset.ts = Date.now();
+      timeEl.textContent = 'just now';
     }
     _updateNotifBadge();
     return;
   }
 
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+  const ts = Date.now();
   const card = document.createElement('div');
   card.className = `notif-card ${cls}`;
-  card.dataset.msg = message;
+  card.dataset.msg  = message;
+  card.dataset.type = cls;
 
   card.innerHTML = `
-    <div class="notif-card-icon">${icon}</div>
+    <div class="notif-card-icon-wrap">
+      ${_notifSvgIcon(type)}
+    </div>
     <div class="notif-card-body">
       ${title ? `<div class="notif-card-title">${esc(title)}</div>` : ''}
       <div class="notif-card-msg">${esc(message)}</div>
-      <div class="notif-card-time">${timeStr}</div>
+      <div class="notif-card-meta">
+        <span class="notif-card-time" data-ts="${ts}">${_relTime(ts)}</span>
+      </div>
     </div>
-    <button class="notif-card-close" title="Dismiss">×</button>`;
+    <button class="notif-card-close" title="Dismiss" aria-label="Dismiss">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>`;
 
   card.querySelector('.notif-card-close').onclick = () => {
-    card.style.opacity = '0';
-    card.style.transform = 'translateX(14px)';
-    card.style.transition = 'opacity 0.2s, transform 0.2s';
-    setTimeout(() => { card.remove(); _updateNotifBadge(); }, 200);
+    card.classList.add('notif-card-removing');
+    setTimeout(() => { card.remove(); _updateNotifBadge(); }, 220);
   };
+
+  // hide if filtered out
+  if (_notifFilter !== 'all' && _notifFilter !== cls &&
+      !(_notifFilter === 'error' && cls === 'crit')) {
+    card.style.display = 'none';
+  }
 
   list.prepend(card);
 
@@ -1158,6 +1218,13 @@ function _initNotifPanel() {
     const list = document.getElementById('notif-list');
     list?.querySelectorAll('.notif-card').forEach(c => c.remove());
     _updateNotifBadge();
+  });
+  // filter tab clicks
+  document.getElementById('notif-filters')?.addEventListener('click', e => {
+    const btn = e.target.closest('.notif-filter-btn');
+    if (!btn) return;
+    _notifFilter = btn.dataset.filter;
+    _applyNotifFilter();
   });
 }
 _initNotifPanel();
