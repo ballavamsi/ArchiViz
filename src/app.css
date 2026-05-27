@@ -1157,17 +1157,18 @@ textarea.prop-inp {
   color: var(--text2);
 }
 #canvas-hud.compact {
-  width: 268px;
+  width: auto;
+  max-width: 240px;
   padding: 0;
-  border-radius: 13px;
+  border-radius: 12px;
 }
 .hud-expand {
   width: 100%;
-  min-height: 54px;
+  min-height: 0;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 6px 10px 6px 8px;
   border: 0;
   background: transparent;
   color: var(--text);
@@ -1175,8 +1176,8 @@ textarea.prop-inp {
   text-align: left;
 }
 .hud-mini-ring {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -1184,32 +1185,37 @@ textarea.prop-inp {
   flex: 0 0 auto;
   background: conic-gradient(var(--ring-color) var(--health), var(--border) 0);
   color: var(--text);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 900;
-  box-shadow: inset 0 0 0 6px var(--surface);
+  box-shadow: inset 0 0 0 5px var(--surface);
 }
 .hud-mini-body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 .hud-mini-body strong {
-  max-width: 170px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11.5px;
-  line-height: 1.2;
+  font-size: 11px;
+  line-height: 1.25;
 }
-.hud-mini-body span { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.hud-mini-body span {
+  color: var(--muted);
+  font-size: 9.5px;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+.hud-expand > svg { margin-left: auto; opacity: 0.35; flex-shrink: 0; }
 .hud-collapse {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 25px;
-  height: 25px;
-  border-radius: 8px;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--control);
   color: var(--muted);
@@ -1217,6 +1223,7 @@ textarea.prop-inp {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  font-size: 11px;
 }
 .hud-collapse:hover { color: var(--text); border-color: var(--accent); }
 #sug-tray-badge:hover { background: rgba(20,28,42,0.95); }
