@@ -775,8 +775,6 @@ function renderNode(id) {
         if (hint) hint.style.display = 'none';
         return;
       }
-      select(id);
-      window._mobileShowProps?.(id);
     }, { passive: false });
     el.addEventListener('mousedown', e => {
       if (isMobile()) return;
@@ -7329,9 +7327,17 @@ setTimeout(startTour, 1200);
         const nodeEl = el?.closest('[id^="node-"]');
         if (nodeEl) {
           const id = nodeEl.id.replace('node-', '');
-          select(id);
-          if (isMobile()) showMobileNodeActions(id, t.clientX + 4, t.clientY + 4);
-          else _nodeContextMenu(id, t.clientX + 4, t.clientY + 4);
+          if (isMobile()) {
+            S.sel = id;
+            S.selEdge = null;
+            S.selSet.clear();
+            S.selSet.add(id);
+            renderAll();
+            showMobileNodeActions(id, t.clientX + 4, t.clientY + 4);
+          } else {
+            select(id);
+            _nodeContextMenu(id, t.clientX + 4, t.clientY + 4);
+          }
         }
       }, 500);
       // Double-tap on canvas background → open palette
@@ -7534,15 +7540,19 @@ setTimeout(startTour, 1200);
     if (!menu) return;
     menu.innerHTML = `
       <div class="ctx-item" data-action="properties">Properties</div>
-      <div class="ctx-item" data-action="move">Move</div>`;
+      <div class="ctx-item" data-action="move">Move</div>
+      <div class="ctx-item" data-action="connect">Connect node</div>
+      <div class="ctx-item danger" data-action="delete">Delete</div>`;
     menu.style.display = 'block';
     menu.style.left = Math.min(x, window.innerWidth - 170) + 'px';
-    menu.style.top = Math.min(y, window.innerHeight - 104) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - 196) + 'px';
     menu.onclick = e => {
       const action = e.target.closest('.ctx-item')?.dataset.action;
       menu.style.display = 'none';
       if (action === 'properties') updateMobilePropsSheet(id);
       if (action === 'move') setMoveMode(true, id);
+      if (action === 'connect') setConnectMode(true, id);
+      if (action === 'delete' && confirm('Delete this component?')) deleteNode(id);
     };
   }
 
