@@ -494,7 +494,10 @@
       <button class="cc-btn" id="cc-zoomout" title="Zoom out">−</button>
       <button class="cc-btn" id="cc-fit"     title="Fit">⊙</button>
     </div>
-    <div id="minimap"><svg id="minimap-svg"></svg></div>
+    <div id="minimap">
+      <button id="minimap-toggle" title="Collapse overview" onclick="toggleMinimap()" aria-label="Toggle overview map">−</button>
+      <svg id="minimap-svg"></svg>
+    </div>
   </div>
 
   <!-- PROPERTIES -->

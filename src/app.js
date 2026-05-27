@@ -2047,6 +2047,22 @@ function toggleCockpitCompact(force) {
 }
 window.toggleCockpitCompact = toggleCockpitCompact;
 
+// ── Minimap collapse ──────────────────────────────────────────────────────────
+let _minimapOpen = (() => { try { return localStorage.getItem('archviz.minimap') !== 'closed'; } catch { return true; } })();
+function toggleMinimap(force) {
+  _minimapOpen = typeof force === 'boolean' ? force : !_minimapOpen;
+  try { localStorage.setItem('archviz.minimap', _minimapOpen ? 'open' : 'closed'); } catch {}
+  const mm  = document.getElementById('minimap');
+  const btn = document.getElementById('minimap-toggle');
+  if (!mm) return;
+  mm.classList.toggle('minimap-collapsed', !_minimapOpen);
+  if (btn) btn.title = _minimapOpen ? 'Collapse overview' : 'Expand overview';
+  if (btn) btn.textContent = _minimapOpen ? '−' : '+';
+}
+window.toggleMinimap = toggleMinimap;
+// Apply initial state
+toggleMinimap(_minimapOpen);
+
 function updateCockpitButton() {
   const btn = document.getElementById('btn-cockpit-view');
   if (!btn) return;
@@ -6367,6 +6383,16 @@ const _origDeleteEdge = deleteEdge;
 window.deleteEdge = function(id) {
   _origDeleteEdge(id);
   if (C.active) pushToY(null);
+};
+
+// Automation helpers for recording / testing
+window.dropNodeAt = function(defId, cx, cy) {
+  const id = addNode(defId, cx, cy);
+  renderAll(); updateStats(); updateCost();
+  return id;
+};
+window.getCanvasTransform = function() {
+  return { panX: S.panX, panY: S.panY, zoom: S.zoom };
 };
 
 // Wrap clearCanvas

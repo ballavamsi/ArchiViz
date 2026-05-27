@@ -1,0 +1,128 @@
+1
+00:00:00,000 --> 00:00:04,000
+Welcome to Archi-Flow — design cloud architectures with live simulation
+
+2
+00:00:04,600 --> 00:00:08,600
+Step 1 — Drag components from the palette onto the canvas
+
+3
+00:00:05,400 --> 00:00:07,900
+Drag "Users" — represents your user base
+
+4
+00:00:07,900 --> 00:00:10,400
+Add a Load Balancer to distribute traffic evenly
+
+5
+00:00:10,400 --> 00:00:12,900
+Drop two App Servers for horizontal scaling
+
+6
+00:00:15,900 --> 00:00:18,400
+Add a Database for persistent storage
+
+7
+00:00:18,400 --> 00:00:20,900
+And a Cache layer to reduce Database load
+
+8
+00:00:22,200 --> 00:00:26,200
+Step 2 — Connect components by dragging from port dots
+
+9
+00:00:23,000 --> 00:00:26,500
+Hover a node to reveal its blue port dots, then drag to connect
+
+10
+00:00:27,500 --> 00:00:30,500
+Load Balancer splits traffic equally to both App Servers
+
+11
+00:00:36,000 --> 00:00:39,000
+App Servers read from Cache first, then fall back to Database
+
+12
+00:00:52,000 --> 00:00:55,000
+Architecture wired — 6 components, 6 connections
+
+13
+00:00:54,500 --> 00:00:58,500
+Step 3 — Hit Run Sim to push live traffic through the design
+
+14
+00:01:01,000 --> 00:01:05,000
+Green nodes — system is healthy with 100 users at low latency
+
+15
+00:01:02,800 --> 00:01:06,800
+Click any node to inspect live stats: load %, latency, P95, SLA
+
+16
+00:01:06,800 --> 00:01:10,300
+Live metrics update in real-time as traffic flows through the node
+
+17
+00:01:11,500 --> 00:01:15,500
+Click an edge to inspect traffic flow and set custom split percentages
+
+18
+00:01:16,300 --> 00:01:20,300
+Set custom traffic split percentages per edge — or let Archi-Flow auto-balance
+
+19
+00:01:22,000 --> 00:01:25,500
+The Overview minimap helps you navigate large architectures
+
+20
+00:01:25,500 --> 00:01:28,500
+Collapse it with one click to reclaim canvas space
+
+21
+00:01:29,700 --> 00:01:32,200
+Expand it again whenever you need it
+
+22
+00:01:33,200 --> 00:01:37,200
+The Architecture Cockpit shows real-time cost, health, and node counts
+
+23
+00:01:37,200 --> 00:01:40,700
+Minimize it to a compact ring indicator — maximizing your canvas space
+
+24
+00:01:41,700 --> 00:01:44,700
+Expand back to full cockpit for the complete breakdown
+
+25
+00:01:46,000 --> 00:01:50,000
+Now ramp to 10,000 users — watch the bottlenecks appear
+
+26
+00:01:49,800 --> 00:01:53,800
+App Servers turn red — overloaded! The bottleneck is clear
+
+27
+00:01:52,800 --> 00:01:56,300
+The Suggestions panel auto-detects problems and proposes fixes
+
+28
+00:01:56,300 --> 00:02:00,300
+One-click fixes: increase capacity, add replicas, or enable auto-scaling
+
+29
+00:02:00,300 --> 00:02:04,300
+Enable auto-scaling on App Server 1 — watch replicas spin up automatically
+
+30
+00:02:07,100 --> 00:02:11,100
+Replicas spin up — load distributes, nodes return to healthy green
+
+31
+00:02:14,600 --> 00:02:18,100
+Export a PDF report, share a live link, or save to the cloud
+
+32
+00:02:19,700 --> 00:02:24,700
+Archi-Flow — design, simulate, and present cloud architectures in minutes
+

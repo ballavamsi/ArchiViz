@@ -987,6 +987,7 @@ body[data-theme="light"] .node-titles .node-type {
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.05);
   backdrop-filter: blur(20px);
   overflow: hidden;
+  transition: height 0.22s cubic-bezier(0.22,1,0.36,1), opacity 0.18s ease;
 }
 #minimap::before {
   content: "OVERVIEW";
@@ -997,6 +998,27 @@ body[data-theme="light"] .node-titles .node-type {
   font-family: 'Inter', sans-serif;
 }
 #minimap svg { position: absolute; inset: 24px 8px 8px; width: calc(100% - 16px); height: calc(100% - 32px); }
+/* Minimap toggle button */
+#minimap-toggle {
+  position: absolute;
+  top: 3px; right: 6px;
+  width: 18px; height: 18px;
+  border: none; border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px; line-height: 18px; text-align: center;
+  cursor: pointer; z-index: 2;
+  padding: 0;
+  opacity: 0.5;
+  transition: opacity 0.15s, background 0.15s;
+}
+#minimap-toggle:hover { opacity: 1; background: rgba(255,255,255,0.08); }
+/* Collapsed state — just show the label strip */
+#minimap.minimap-collapsed {
+  height: 26px;
+  overflow: hidden;
+}
+#minimap.minimap-collapsed svg { opacity: 0; pointer-events: none; }
 /* viewport rect */
 .mini-view { fill: rgba(79,156,249,0.06); stroke: rgba(79,156,249,0.5); stroke-width: 1; rx: 2; }
 
