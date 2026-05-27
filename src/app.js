@@ -2429,11 +2429,21 @@ function outgoingSplitDetails(srcId) {
       mode: edge.trafficPct == null ? 'remainder' : 'explicit'
     }));
   }
-  const total = explicitTotal || down.length;
+  // All edges have explicit percentages — use them as-is (do NOT renormalise).
+  // If they don't add up to 100, the remainder is simply not forwarded.
+  // Only normalise when the user has set values that together exceed 100.
+  if (explicitTotal <= 100) {
+    return down.map(edge => ({
+      edge,
+      pct: Math.max(0, Number(edge.trafficPct) || 0),
+      mode: 'explicit'
+    }));
+  }
+  // Exceeds 100 — normalise proportionally so total stays at 100
   return down.map(edge => ({
     edge,
-    pct: (Math.max(0, Number(edge.trafficPct) || 0) / total) * 100,
-    mode: explicitTotal === 100 ? 'explicit' : 'normalised'
+    pct: (Math.max(0, Number(edge.trafficPct) || 0) / explicitTotal) * 100,
+    mode: 'normalised'
   }));
 }
 
