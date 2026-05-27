@@ -264,7 +264,7 @@ console.log('\n🎬  Recording Archi-Flow comprehensive demo…\n');
 recStart = Date.now();
 
 // ─── Scene 1: Welcome ─────────────────────────────────────────────────────────
-addCue('Welcome to Archi-Flow — design cloud architectures with live simulation', 4000);
+addCue('Welcome to Archi-Flow — design cloud architectures with live simulation', 3500);
 await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await wait(800);
 
@@ -285,26 +285,20 @@ await page.waitForFunction(
 await wait(600);
 
 // ─── Scene 2: Load Example ────────────────────────────────────────────────────
-addCue('Start fast — browse 13+ pre-built architectures in Load Examples', 4000);
+addCue('Load a ready-made architecture or build your own from scratch', 3000);
 await click('#btn-more');
 await wait(600);
 await click('#btn-examples');
 await wait(1000);
 
-// Hover over a few cards to show the modal
 const modalVisible = await page.locator('#examples-modal.open').isVisible().catch(() => false);
 if (modalVisible) {
-  addCue('Filter by category — Web Apps, Data, AI, Multi-Region and more', 3500);
-  // Move cursor across cards
   const cards = await page.locator('.ex-card').all();
   for (let i = 0; i < Math.min(3, cards.length); i++) {
     const cb = await cards[i].boundingBox();
     if (cb) await moveTo(cb.x + cb.width/2, cb.y + cb.height/2, 18);
-    await wait(400);
+    await wait(350);
   }
-
-  addCue('Click any example to instantly load it onto your canvas', 3000);
-  // Load "saas-web-app" example
   await page.evaluate(() => {
     const btn = [...document.querySelectorAll('.ex-card')]
       .find(c => c.dataset.id === 'saas-web-app')
@@ -313,18 +307,15 @@ if (modalVisible) {
   });
   await wait(1200);
 } else {
-  // Fallback: load directly
   await page.evaluate(() => window.loadExample('saas-web-app'));
   await wait(1200);
 }
 
 await page.evaluate(() => window.fitView?.());
-await wait(800);
-addCue('Loaded: SaaS Web App — 8-node production architecture, ready to simulate', 3500);
-await wait(2000);
+await wait(600);
 
 // ─── Scene 3: Clear & build manually ─────────────────────────────────────────
-addCue('Or build from scratch — clear the canvas and design your own', 3500);
+addCue('Or build from scratch — clear the canvas and design your own', 2500);
 
 // Close examples modal if still open before touching the canvas
 await page.evaluate(() => {
@@ -340,8 +331,8 @@ await page.evaluate(() => window.fitView?.());
 await wait(500);
 
 // ─── Scene 4: Drag components ─────────────────────────────────────────────────
-addCue('Drag components from the palette — every major cloud service is here', 4000);
-await wait(600);
+addCue('Drag components from the palette — every major cloud service is here', 3000);
+await wait(400);
 
 const canvasBox = await page.locator('#canvas-wrap').boundingBox();
 const C = {
@@ -353,25 +344,21 @@ const C = {
   cache : { x: canvasBox.x + 790, y: canvasBox.y + 130 },
 };
 
-addCue('Drag "Users" — represents your user base', 2500);
+addCue('Drag Users, add a Load Balancer, then App Servers for horizontal scaling', 3000);
 const idUsers = await dragFromPalette('users',        'users',    C.users.x, C.users.y);
-await wait(300);
-
-addCue('Add a Load Balancer to distribute traffic evenly', 2500);
-const idLB    = await dragFromPalette('loadbalancer', 'load bal', C.lb.x,    C.lb.y);
-await wait(300);
-
-addCue('Two App Servers for horizontal scaling', 2500);
-const idApp1  = await dragFromPalette('appserver',    'app serv', C.app1.x,  C.app1.y);
 await wait(250);
+const idLB    = await dragFromPalette('loadbalancer', 'load bal', C.lb.x,    C.lb.y);
+await wait(250);
+const idApp1  = await dragFromPalette('appserver',    'app serv', C.app1.x,  C.app1.y);
+await wait(200);
 const idApp2  = await dragFromPalette('appserver',    'app serv', C.app2.x,  C.app2.y);
-await wait(300);
+await wait(250);
 
-addCue('A Database and Cache to complete the tier', 2500);
+addCue('Add a Database and Cache to complete the tier', 2500);
 const idDB    = await dragFromPalette('database',     'database', C.db.x,    C.db.y);
-await wait(300);
+await wait(250);
 const idCache = await dragFromPalette('cache',        'cache',    C.cache.x, C.cache.y);
-await wait(400);
+await wait(350);
 
 await page.evaluate(({ a1, a2 }) => {
   window.renameNodeById(a1, 'App Server 1');
@@ -382,49 +369,44 @@ await page.evaluate(() => window.fitView?.());
 await wait(600);
 
 // ─── Scene 5: Connect ─────────────────────────────────────────────────────────
-addCue('Connect components by dragging from port dots — rules are enforced automatically', 4000);
-await wait(600);
-
-await connectNodes('Users',         'Load Balancer');
-await wait(200);
-addCue('Load Balancer distributes traffic to both App Servers', 2500);
-await connectNodes('Load Balancer', 'App Server 1');
-await wait(150);
-await connectNodes('Load Balancer', 'App Server 2');
-await wait(200);
-addCue('App Servers hit Cache first, then fall back to the Database', 2500);
-await connectNodes('App Server 1',  'Cache');
-await wait(150);
-await connectNodes('App Server 2',  'Cache');
-await wait(150);
-await connectNodes('Cache',         'Database');
+addCue('Connect components by dragging from port dots — rules are enforced automatically', 3000);
 await wait(400);
 
-await page.evaluate(() => { window.forceRenderEdges(); window.fitView?.(); });
-await wait(700);
+await connectNodes('Users',         'Load Balancer');
+await wait(150);
+addCue('Load Balancer distributes traffic across App Servers', 2500);
+await connectNodes('Load Balancer', 'App Server 1');
+await wait(100);
+await connectNodes('Load Balancer', 'App Server 2');
+await wait(150);
+addCue('App Servers hit Cache first, then fall back to the Database', 2500);
+await connectNodes('App Server 1',  'Cache');
+await wait(100);
+await connectNodes('App Server 2',  'Cache');
+await wait(100);
+await connectNodes('Cache',         'Database');
+await wait(300);
 
-addCue('Architecture wired — 6 components, 6 connections', 3000);
-await wait(1500);
+await page.evaluate(() => { window.forceRenderEdges(); window.fitView?.(); });
+await wait(500);
 
 // ─── Scene 6: Run simulation (green) ─────────────────────────────────────────
-addCue('Hit Run Sim — live traffic flows through your design instantly', 4000);
-await wait(500);
+addCue('Hit Run Sim — live traffic flows through your design instantly', 3000);
+await wait(400);
 await click('#btn-sim');
 await wait(2500);
 
-addCue('All green — healthy system at 100 users, latency well within SLA', 4000);
-await wait(1800);
+addCue('Healthy at 100 users, latency within SLA', 2500);
+await wait(1200);
 
 // ─── Scene 7: Node stats panel ───────────────────────────────────────────────
-addCue('Click any node to inspect live stats: load %, latency, P95, and SLA status', 4000);
+addCue('Click a node to inspect stats: load, latency, P95, SLA', 2500);
 await clickNode('Load Balancer');
-await wait(1000);
-addCue('Metrics update tick-by-tick as traffic flows through the node', 3500);
-await wait(2000);
+await wait(1800);
 await deselect(canvasBox);
 
 // ─── Scene 8: Edge traffic % panel ───────────────────────────────────────────
-addCue('Click an edge to see live throughput and set custom traffic split percentages', 4000);
+addCue('Click an edge to see throughput and traffic split', 2500);
 // Move to midpoint of Users→LB edge and click
 const usersPos = await page.evaluate(() => {
   const el = [...document.querySelectorAll('.a-node')]
@@ -445,98 +427,62 @@ if (usersPos && lbPos) {
   await page.mouse.click(mx, my);
   await wait(800);
 }
-addCue('Set explicit split ratios or let Archi-Flow auto-balance across all downstream edges', 4000);
-await wait(2200);
+await wait(1500);
 await deselect(canvasBox);
 
 // ─── Scene 9: Collapse overview ───────────────────────────────────────────────
-addCue('The Overview minimap shows your full architecture at a glance', 3500);
+addCue('Overview minimap shows your full architecture at a glance', 2500);
 const mmBox = await page.locator('#minimap').boundingBox().catch(() => null);
 if (mmBox) await moveTo(mmBox.x + mmBox.width/2, mmBox.y + mmBox.height/2, 20);
-await wait(600);
-
-addCue('Collapse it with one click to reclaim canvas space', 3000);
-await click('#minimap-toggle');
-await wait(1200);
-
-addCue('Expand it again whenever you need it', 2500);
+await wait(500);
 await click('#minimap-toggle');
 await wait(900);
+await click('#minimap-toggle');
+await wait(700);
 
 // ─── Scene 10: HUD cockpit toggle ─────────────────────────────────────────────
 const hudBox = await page.locator('#canvas-hud').boundingBox().catch(() => null);
 if (hudBox) {
-  addCue('The Architecture Cockpit shows real-time cost, health score, and node counts', 4000);
+  addCue('The Architecture Cockpit shows cost, health, and node counts', 2500);
   await moveTo(hudBox.x + hudBox.width/2, hudBox.y + 30, 20);
-  await wait(700);
-
-  addCue('Minimize to a compact ring indicator for more canvas space', 3000);
+  await wait(500);
   await page.evaluate(() => window.toggleCockpitCompact?.(true));
-  await wait(1500);
-
-  addCue('Expand back to the full cockpit to see the complete breakdown', 3000);
+  await wait(1000);
   await page.evaluate(() => window.toggleCockpitCompact?.(false));
-  await wait(1200);
+  await wait(800);
 }
 
 // ─── Scene 11: Reserved Instance pricing ─────────────────────────────────────
-addCue('Toggle Reserved Instance pricing — saves ~35% on all compute costs', 4000);
+addCue('Toggle Reserved Instance pricing — save around 35%', 2500);
 await click('#btn-more');
-await wait(600);
-
-// Move cursor to btn-reserved inside menu
+await wait(500);
 const reservedBtn = await page.locator('#btn-reserved').boundingBox().catch(() => null);
 if (reservedBtn) {
   await moveTo(reservedBtn.x + reservedBtn.width/2, reservedBtn.y + reservedBtn.height/2, 18);
-  await wait(300);
+  await wait(200);
   await page.mouse.click(reservedBtn.x + reservedBtn.width/2, reservedBtn.y + reservedBtn.height/2);
-  await wait(400);
+  await wait(300);
 }
-await wait(800);
-
-addCue('Cost drops instantly — Reserved pricing applied across all compute nodes', 3500);
-await wait(1800);
-
-// Toggle it back off for clarity
+await wait(600);
+// Toggle back off
 await click('#btn-more');
-await wait(400);
+await wait(300);
 const reservedBtn2 = await page.locator('#btn-reserved').boundingBox().catch(() => null);
 if (reservedBtn2) {
   await page.mouse.click(reservedBtn2.x + reservedBtn2.width/2, reservedBtn2.y + reservedBtn2.height/2);
-  await wait(300);
 }
 await page.keyboard.press('Escape');
-await wait(500);
+await wait(400);
 
 // ─── Scene 12: Change theme ───────────────────────────────────────────────────
-addCue('Switch between Dark and Light themes — pick the look that suits you', 4000);
-// Open Menu and hover over theme button so viewer can see it
-await click('#btn-more');
-await wait(500);
-const themeBtn = await page.locator('#btn-theme').boundingBox().catch(() => null);
-if (themeBtn) {
-  await moveTo(themeBtn.x + themeBtn.width/2, themeBtn.y + themeBtn.height/2, 18);
-  await wait(400);
-}
-await page.keyboard.press('Escape');
-await wait(300);
-
-// Switch to light via window.setTheme (reliable, no cycle-counting needed)
+addCue('Switch between Dark and Light themes', 2000);
 await page.evaluate(() => window.setTheme('light'));
-await wait(900);
-
-addCue('Light theme — clean and bright for presentations and daytime work', 3500);
-await wait(2200);
-
-// Switch back to dark
+await wait(1800);
 await page.evaluate(() => window.setTheme('dark'));
-await wait(600);
-
-addCue('Back to Dark theme — designed for deep focus sessions', 2500);
-await wait(1200);
+await wait(800);
 
 // ─── Scene 13: Ramp to 10K users ─────────────────────────────────────────────
-addCue('Now stress-test it — ramp to 10,000 users and watch the system respond', 4000);
+addCue('Stress-test to 10,000 users and watch the system respond', 3000);
 await page.evaluate(() => {
   const sl = document.getElementById('users-slider');
   if (sl) {
@@ -546,22 +492,22 @@ await page.evaluate(() => {
 });
 await wait(2800);
 
-addCue('App Servers turn red — overloaded! The bottleneck is crystal clear', 4000);
-await wait(1500);
+addCue('Overloaded App Servers turn red — bottleneck is clear', 2500);
+await wait(1200);
 
 // ─── Scene 14: Suggestions panel ─────────────────────────────────────────────
-addCue('Suggestions panel auto-detects the problem and proposes targeted fixes', 3500);
+addCue('Suggestions panel detects problems and proposes fixes', 2500);
 await deselect(canvasBox);
 const sugBox = await page.locator('#suggestions').boundingBox().catch(() => null);
 if (sugBox) {
   await moveTo(sugBox.x + sugBox.width/2, sugBox.y + 70, 20);
-  await wait(800);
+  await wait(600);
 }
-addCue('One-click fixes: increase capacity, add replicas, or enable auto-scaling', 4000);
-await wait(2000);
+addCue('One-click fixes: add capacity, replicas, or enable auto-scaling', 3000);
+await wait(1500);
 
 // ─── Scene 15: Auto-scale ─────────────────────────────────────────────────────
-addCue('Enable auto-scaling on App Server 1 — replicas spin up automatically', 4000);
+addCue('Enable auto-scaling — replicas spin up automatically', 3000);
 await clickNode('App Server 1');
 await wait(600);
 await page.evaluate(() => {
@@ -573,23 +519,21 @@ await page.evaluate(() => {
 });
 await wait(2800);
 
-addCue('Replicas spin up — load distributes, system returns to healthy green', 4000);
+addCue('Replicas spin up — system returns to healthy green', 3000);
 await page.evaluate(() => window.fitView?.());
 await wait(2200);
 await deselect(canvasBox);
 
 // ─── Scene 16: Live Share ─────────────────────────────────────────────────────
-addCue('Share your architecture — generate a permanent link anyone can view live', 4000);
+addCue('Share your architecture with a live preview link', 2500);
 await click('#btn-share');
 await wait(1200);
-
 const sharePanel = await page.locator('.share-panel, #share-overlay, [class*="share"]').first().boundingBox().catch(() => null);
 if (sharePanel) {
   await moveTo(sharePanel.x + sharePanel.width/2, sharePanel.y + 80, 20);
-  await wait(600);
+  await wait(500);
 }
-addCue('Copy the link — viewers get a live read-only preview of your architecture', 3500);
-await wait(2000);
+await wait(1200);
 
 // Close share panel
 await page.keyboard.press('Escape');
@@ -602,18 +546,18 @@ await page.evaluate(() => {
 await wait(500);
 
 // ─── Scene 17: Outro ──────────────────────────────────────────────────────────
-addCue('Export a PDF report, present in full-screen, or save to the cloud', 3500);
+addCue('Export a PDF, present full-screen, or save to the cloud', 3000);
 await click('#btn-more');
-await wait(700);
+await wait(600);
 const menu = await page.locator('#more-menu').boundingBox().catch(() => null);
 if (menu) await moveTo(menu.x + 40, menu.y + 60, 14);
-await wait(1200);
+await wait(900);
 await page.keyboard.press('Escape');
-await wait(500);
+await wait(400);
 
-addCue('Archi-Flow — design, simulate, and present cloud architectures in minutes', 5000);
+addCue('Archi-Flow — design, simulate, and present cloud architectures in minutes', 4000);
 await page.evaluate(() => window.fitView?.());
-await wait(3800);
+await wait(3000);
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 await ctx.close();
