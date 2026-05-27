@@ -1368,6 +1368,9 @@ function _initNotifPanel() {
 _initNotifPanel();
 window.pushToast = pushToast;
 window.openExamplesModal = openExamplesModal;
+window.loadExample = loadExample;
+window.fitView = fitView;
+window.getExamplesCount = () => EXAMPLES.length; // for automation scripts
 
 // ══ PORT POSITIONS ════════════════════════════════════════════════════════════
 function portXY(nodeId, side) {
@@ -6507,11 +6510,11 @@ const TOUR_STEPS = [
     highlight: false,
   },
   {
-    target: '#example-sel',
+    target: '#btn-more',
     title: 'Start from an Example',
     icon: '⚡',
-    body: 'New to cloud architecture? <strong>Pick a pre-built example</strong> from this dropdown — Microservices, Event-Driven, Data Pipeline and more — to instantly load a working diagram you can explore and edit.',
-    position: 'bottom',
+    body: 'New to cloud architecture? Open <strong>Menu → Load Example</strong> to browse 13 pre-built architectures — Microservices, Event Streaming, AI/RAG, Multi-Region HA and more. Each card shows difficulty, node count and a one-click <strong>Load →</strong> button to instantly populate the canvas.',
+    position: 'right',
     highlight: true,
   },
   {
