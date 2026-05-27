@@ -1323,11 +1323,11 @@ body[data-theme="light"] #statusbar {
 }
 
 /* ── TOASTS ── */
-/* ── Toast stack — slides in from top-left ── */
+/* ── Toast stack — slides in from top-right ── */
 #toast-stack {
   position: fixed;
   top: 52px;           /* just below toolbar */
-  left: 16px;
+  right: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1351,8 +1351,8 @@ body[data-theme="light"] #statusbar {
   backdrop-filter: blur(16px);
   pointer-events: all;
   overflow: hidden;
-  /* start off-screen to the left */
-  transform: translateX(-120%);
+  /* start off-screen to the right */
+  transform: translateX(120%);
   opacity: 0;
   transition: transform 0.32s cubic-bezier(0.22,1,0.36,1), opacity 0.28s ease;
   will-change: transform, opacity;
