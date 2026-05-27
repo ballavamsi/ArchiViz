@@ -8,10 +8,9 @@
 node server.mjs          # serves from dist/ on port 3456
 PORT=3457 node server.mjs # alternate port
 
-# After editing source files:
-cp src/app.js dist/src/app.js
-cp src/app.css dist/src/app.css
-cp index.html dist/index.html
+# After editing source files — ALWAYS use build, not manual cp:
+npm run build            # minifies CSS/JS AND rewrites dist/index.html to reference .min files
+# Manual cp will leave dist/index.html referencing wrong filenames → 404 on CSS/JS
 ```
 
 ---
@@ -142,6 +141,24 @@ Complete rewrite of `exportPdfReport()` in `src/app.js`.
 - Compact monthly cost values across PDF KPI cards, cost charts, top cost drivers, recommendations, and totals.
 - Formats every numeric PDF property from 1K upward using compact K/M/B/T units.
 - Added browser regression coverage against the billion-scale Mobile Event Streaming example.
+
+### Iteration 6.7 — UX Polish: Menu, Port Snap, Auto-Save, Edge Visibility
+**Status:** ✅ Done  
+Commit: `12378a6` on `release/serverside`
+
+**Changes:**
+- **Menu relocated**: Moved ··· more-menu from far right of toolbar to far left; renamed button to "Menu" with hamburger icon (`tbtn-menu`). Submenus now open to the right. Added `::before` pseudo-element hover bridge (12px) on `.more-submenu` so hovering from parent to submenu no longer collapses the panel mid-transit.
+- **Port snap validation**: When dragging a connection, hovering a target port now shows `.port-snap-valid` (green glow) or `.port-snap-warn` (amber glow) based on `validateConnection()` — replaces the old `.port-snap` class that always showed green regardless of rule validity.
+- **Warning edge animation**: Edges created against architecture rules (`edge._warn = true`) no longer animate during simulation — they stay static so users can visually distinguish rule-breaking connections from real traffic flows.
+- **e/s flow readout**: `#flow-readout` span added to statusbar; shown during simulation with live events/s and node count. Hidden when simulation stops.
+- **Auto-save badge** (`#title-saved-badge`): Multi-state indicator near diagram title:
+  - `● Unsaved` (amber) — on any change
+  - `Saving…` (muted) — 1.5s debounce local save in progress
+  - `✓ Saved` (green, fades) — after local save
+  - `☁ Saving…` (blue) — cloud save in progress (10s after last change)
+  - `☁ Saved` (blue, fades) — after cloud save
+- **Cloud auto-save** (`_cloudAutoSaveNow`): Fires 10s after last change when `S.currentDiagramId` is set and `hasCloudLibrary()` returns true. Silently falls back to local-saved state on network error.
+- **Edge visibility**: Increased base stroke from 1.6→2px; idle edges brightened in both dark (`rgba(160,185,220,0.8)`) and light mode (`rgba(71,85,105,0.6)`). Arrowhead markers in SVG brightened (#8ba8cc) and enlarged (markerWidth/Height 6→7).
 
 ---
 

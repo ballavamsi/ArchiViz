@@ -20,7 +20,7 @@ Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that 
 - **Production:** https://archi-flow.onrender.com (auto-deploys from `release/serverside` branch)
 
 ## Architecture Decisions
-1. No build tool — zero friction, edit source and `cp` to `dist/`
+1. Build step via `npm run build` (runs `build-static.mjs`): minifies CSS/JS and rewrites `dist/index.html` to reference `.min` files. Always use `npm run build` after editing source — manual `cp` alone leaves `dist/index.html` with stale references.
 2. All component definitions in `src/components.js` as JSON-serializable objects
 3. Simulation runs on a tick loop (Slow/Normal/Fast) with multi-pass BFS propagation
 4. Color thresholds: green (<60%), yellow (60–85%), red (>85%)
@@ -45,6 +45,7 @@ Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that 
 | 4 | Edge panel + right-click + regions | ✅ Done | Edge traffic %, context menu, region overlay |
 | 5 | Reserved pricing + cost HUD | ✅ Done | −35% compute/network, breakdown by category |
 | 6 | Professional PDF export | ✅ Done | Dark cover, bottleneck analysis, performance table, SLA fix |
+| 6.7 | UX polish | ✅ Done | Menu left + hover bridge, port snap colors, warning edge static, auto-save badge, cloud auto-save, edge visibility |
 | 7 | Multi-select + canvas productivity | ⏳ Next | Rubber-band, shift-click, group move/delete, Ctrl+D |
 | 8 | Formula cost engine | ⏳ Pending | S3, CDN, compute, DB formulas; cost delta preview |
 | 9 | Advanced simulation | ⏳ Pending | Queue backlog, failure mode, burst test, sparklines |
