@@ -6,6 +6,8 @@ dist/
 
 # Playwright browser binaries
 node_modules/
+social-screenshots/
+post/
 
 # LinkedIn post assets (large files — kept locally)
 post/archi-flow-demo.mp4

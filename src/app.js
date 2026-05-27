@@ -2437,7 +2437,7 @@ function outgoingSplitDetails(srcId) {
     return down.map(edge => ({
       edge,
       pct: edge.trafficPct == null ? autoPct : Math.max(0, Number(edge.trafficPct) || 0),
-      mode: edge.trafficPct == null ? 'remainder' : 'explicit'
+      mode: edge.trafficPct == null ? 'equal' : 'explicit'
     }));
   }
   // All edges have explicit percentages — use them as-is (do NOT renormalise).
@@ -3966,7 +3966,7 @@ function nodeTrafficProfile(n) {
       const tgt = S.nodes[edge.tgt];
       const tgtDef = COMPONENT_DEFS.find(d => d.id === tgt?.defId);
       const label = tgt?.props?.label || tgtDef?.name || edge.tgt;
-      return `${Math.round(pct * 10) / 10}% → ${label}${mode === 'remainder' ? ' (remaining)' : mode === 'equal' ? ' (equal)' : ''}`;
+      return `${Math.round(pct * 10) / 10}% → ${label}${mode === 'equal' ? ' (equal)' : ''}`;
     }).join('; ');
     assumptions.push(`Outgoing split: ${splitText}`);
   }
@@ -4521,7 +4521,7 @@ function exportPdfReport(mode = S.reportMode || (S.readOnly ? 'public' : 'techni
           const splitDetails = outgoingSplitDetails(edge.src);
           const thisSplit = splitDetails.find(s => s.edge.id === edge.id);
           const splitPct = thisSplit ? thisSplit.pct.toFixed(1) + '%' : '—';
-          const splitMode = edge.trafficPct != null ? 'Explicit' : (splitDetails.length > 0 ? (thisSplit?.mode === 'equal' ? 'Equal split' : 'Auto remainder') : '—');
+          const splitMode = edge.trafficPct != null ? 'Explicit' : (splitDetails.length > 0 ? 'Equal split' : '—');
           const liveFlow = S.eFlow[edge.id] ? formatFlow(S.eFlow[edge.id]) : '—';
           return `<tr>
             <td style="font-weight:600">${esc(srcLabel)}</td>
@@ -4830,6 +4830,14 @@ function deleteSavedDiagram(id) {
   updateDiagramsPanel();
 }
 
+function renameSavedDiagram(id, currentName) {
+  const title = prompt('Rename flow', currentName || 'Untitled');
+  if (title == null || !title.trim()) return;
+  const list = lsGetSaved().map(d => d.id === id ? { ...d, name: title.trim() } : d);
+  lsSetSaved(list);
+  updateDiagramsPanel();
+}
+
 function loadSavedDiagram(d) {
   importArchitecture(d.payload);
   setCurrentDiagram({ title: d.name });
@@ -4864,8 +4872,16 @@ async function saveCloudDiagram({ saveAs = false } = {}) {
 
 async function saveCurrentDiagram(saveAs = false) {
   try {
-    if (await hasCloudLibrary()) await saveCloudDiagram({ saveAs });
-    else saveNamedDiagram(document.getElementById('save-diag-name')?.value.trim() || getDiagramTitle());
+    if (await hasCloudLibrary()) {
+      await saveCloudDiagram({ saveAs });
+    } else {
+      const name = document.getElementById('save-diag-name')?.value.trim() || getDiagramTitle();
+      saveNamedDiagram(name);
+      // Warn clearly if Supabase is configured but user isn't signed in
+      if (sbReady && sbReady()) {
+        pushToast('Saved to browser — sign in to save to your cloud library.', 'warn');
+      }
+    }
   } catch (err) {
     pushToast(`Save failed: ${err.message}`, 'warn');
   }
@@ -5054,83 +5070,257 @@ async function migrateLocalSavesToCloud() {
 async function updateDiagramsPanel() {
   const panel = document.getElementById('my-diagrams-list');
   if (!panel) return;
-  const badge = document.getElementById('diagrams-storage-badge');
-  const sub = document.getElementById('diagrams-sub');
-  const notice = document.getElementById('diagrams-storage-notice');
+  const badge      = document.getElementById('diagrams-storage-badge');
+  const sub        = document.getElementById('diagrams-sub');
+  const notice     = document.getElementById('diagrams-storage-notice');
   const migrateBtn = document.getElementById('btn-migrate-local');
-  const signInBtn = document.getElementById('btn-diagrams-signin');
-  const search = document.getElementById('diagram-search');
-  const cloud = await hasCloudLibrary();
-  const list   = lsGetSaved();
-  const auto   = (() => { try { return JSON.parse(localStorage.getItem(LS_AUTO)||'null'); } catch { return null; } })();
+  const statusBlock= document.getElementById('diagrams-status-block');
+  const savePrimary= document.getElementById('btn-save-diagram');
+  const saveBtnLbl = document.getElementById('save-btn-label');
+  const search     = document.getElementById('diagram-search');
+  const cloud      = await hasCloudLibrary();
+  const list       = lsGetSaved();
+  const auto       = (() => { try { return JSON.parse(localStorage.getItem(LS_AUTO)||'null'); } catch { return null; } })();
 
-  if (badge) {
-    badge.textContent = cloud ? 'Cloud' : 'Browser';
-    badge.classList.toggle('local', !cloud);
+  // ── Update save button destination label ──────────────────────────────
+  if (savePrimary) {
+    savePrimary.classList.toggle('browser-mode', !cloud);
   }
-  if (sub) sub.innerHTML = cloud
-    ? 'Cloud flows are private to your signed-in account. Search, open, rename, delete, import or download them anytime.'
-    : 'You are using browser-only storage. Sign in with Google to save flows to your private cloud library.';
-  if (notice) notice.innerHTML = cloud
-    ? '<b>Cloud library active.</b> Local autosave still protects work during refreshes. Existing browser saves can be moved to cloud.'
-    : '<b>Browser-only storage.</b> Clearing browser data will erase saved flows. Export JSON or sign in for cloud saves.';
-  if (migrateBtn) migrateBtn.style.display = cloud && list.length ? '' : 'none';
-  if (signInBtn) signInBtn.style.display = !cloud && sbReady() ? '' : 'none';
+  if (saveBtnLbl) saveBtnLbl.textContent = cloud ? 'Save to Cloud' : 'Save to Browser';
 
+  // ── Storage badge + sub ───────────────────────────────────────────────
+  if (badge) { badge.textContent = cloud ? 'Cloud' : 'Browser'; badge.classList.toggle('local', !cloud); }
+  if (sub) sub.textContent = cloud ? 'Your private cloud library' : 'Stored in this browser only';
+
+  // ── Left panel status block ───────────────────────────────────────────
+  if (statusBlock) {
+    let sbHtml = '';
+    if (cloud) {
+      // Signed in — show user info if available
+      let userHtml = '';
+      try {
+        const sb = getSB?.();
+        const session = sb ? (await sb.auth.getSession())?.data?.session : null;
+        const user = session?.user;
+        if (user) {
+          const initials = (user.user_metadata?.full_name || user.email || 'U').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+          const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Signed in';
+          const email = user.email || '';
+          userHtml = `<div class="dsb-user">
+            <div class="dsb-user-avatar">${esc(initials)}</div>
+            <div class="dsb-user-info">
+              <div class="dsb-user-name" title="${esc(name)}">${esc(name)}</div>
+              <div class="dsb-user-email" title="${esc(email)}">${esc(email)}</div>
+            </div>
+          </div>`;
+        }
+      } catch {}
+      sbHtml = `<div class="dsb-cloud">
+        <div class="dsb-cloud-row">
+          <span class="dsb-dot green"></span>
+          <span class="dsb-label">Cloud connected</span>
+        </div>
+        ${userHtml}
+        <div class="dsb-sub">Flows sync to your account and are accessible from any device.</div>
+      </div>`;
+    } else if (sbReady && sbReady()) {
+      sbHtml = `<div class="dsb-cloud">
+        <div class="dsb-cloud-row">
+          <span class="dsb-dot amber"></span>
+          <span class="dsb-label">Not signed in</span>
+        </div>
+        <div class="dsb-sub">Sign in with Google to save flows to your private cloud and access them anywhere.</div>
+        <button class="dsb-signin-btn" id="dsb-signin-trigger">
+          <svg width="13" height="13" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Sign in with Google
+        </button>
+      </div>`;
+    } else {
+      sbHtml = `<div class="dsb-cloud">
+        <div class="dsb-cloud-row">
+          <span class="dsb-dot grey"></span>
+          <span class="dsb-label">Browser only</span>
+        </div>
+        <div class="dsb-sub">Flows are saved in this browser. Clear cache and they're gone. Export JSON to back up.</div>
+      </div>`;
+    }
+    statusBlock.innerHTML = sbHtml;
+    statusBlock.querySelector('#dsb-signin-trigger')?.addEventListener('click', startGoogleSignIn);
+  }
+
+  // ── Footer notice ─────────────────────────────────────────────────────
+  if (notice) {
+    notice.className = cloud ? 'diagrams-footer-notice cloud' : 'diagrams-footer-notice';
+    notice.innerHTML = cloud
+      ? '<b>Cloud active.</b> Autosave still protects unsaved work locally.'
+      : '<b>Browser only.</b> Clearing browser data will erase saves. Export JSON to back up.';
+  }
+  if (migrateBtn) migrateBtn.style.display = cloud && list.length ? '' : 'none';
+
+  // ── Icon constants ────────────────────────────────────────────────────
+  const ICON_FLOW = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="6" rx="1.5"/><rect x="16" y="3" width="6" height="6" rx="1.5"/><rect x="9" y="15" width="6" height="6" rx="1.5"/><path d="M5 9v3a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V9"/><line x1="12" y1="12" x2="12" y2="15"/></svg>`;
+  const ICON_CLOCK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const ICON_RENAME = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const ICON_COPY = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+  const ICON_MORE = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`;
+  const ICON_VERSIONS = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>`;
+  const ICON_PUBLISH = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>`;
+  const ICON_DOWNLOAD = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+  const ICON_TRASH = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+  const ICON_LINK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>`;
+
+  const diagEmptyState = (msg, detail = '') => `<div class="diagram-empty">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <div class="diagram-empty-title">${msg}</div>
+    ${detail ? `<div class="diagram-empty-sub">${detail}</div>` : ''}
+  </div>`;
+
+  // Date-group helper
+  function dateGroup(ts) {
+    const d = new Date(ts), now = new Date();
+    const sameDay = (a, b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+    if (sameDay(d, now)) return 'Today';
+    const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+    if (sameDay(d, yesterday)) return 'Yesterday';
+    const daysAgo = Math.floor((now - d) / 86400000);
+    if (daysAgo < 7) return 'This week';
+    if (daysAgo < 30) return 'This month';
+    return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  }
+
+  function groupedRows(items, rowFn, tsKey) {
+    let html = '', currentGroup = '';
+    items.forEach(item => {
+      const g = dateGroup(item[tsKey]);
+      if (g !== currentGroup) { html += `<div class="diag-group-label">${g}</div>`; currentGroup = g; }
+      html += rowFn(item);
+    });
+    return html;
+  }
+
+  function cloudDiagRow(d) {
+    const isCurrent = S.currentDiagramId === d.id;
+    return `<div class="diag-row${isCurrent ? ' current-diag' : ''}" data-id="${esc(d.id)}">
+      <div class="diag-thumb">${ICON_FLOW}</div>
+      <div class="diag-info">
+        <div class="diag-title-row">
+          <span class="diag-name" title="${esc(d.title || 'Untitled Architecture')}">${esc(d.title || 'Untitled Architecture')}</span>
+          ${isCurrent ? '<span class="diag-state current">Open</span>' : ''}
+          <span class="diag-state ${d.is_public ? 'public' : ''}">${d.is_public ? '🌐 Public' : 'Private'}</span>
+        </div>
+        <div class="diag-meta-row">
+          <span class="diag-ts">${fmtDiagramTime(d.updated_at || d.created_at)}</span>
+          <span class="diag-meta">${d.node_count || 0} nodes · ${d.edge_count || 0} edges</span>
+        </div>
+      </div>
+      <div class="diag-actions">
+        <button class="diag-open-btn" data-action="open" data-id="${esc(d.id)}">Open</button>
+        <button class="diag-icon-btn" data-action="rename" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}" title="Rename">${ICON_RENAME}</button>
+        <button class="diag-icon-btn" data-action="duplicate" data-id="${esc(d.id)}" title="Duplicate">${ICON_COPY}</button>
+        <div class="diag-more-wrap">
+          <button class="diag-icon-btn" data-action="more" title="More">${ICON_MORE}</button>
+          <div class="diag-more-menu">
+            <button class="diag-more-item" data-action="versions" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">${ICON_VERSIONS} Version history</button>
+            <button class="diag-more-item" data-action="${d.is_public ? 'unpublish' : 'publish'}" data-id="${esc(d.id)}">${ICON_PUBLISH} ${d.is_public ? 'Unpublish' : 'Publish public link'}</button>
+            ${d.public_slug ? `<button class="diag-more-item" data-action="copy-public" data-slug="${esc(d.public_slug)}">${ICON_LINK} Copy public link</button>` : ''}
+            <button class="diag-more-item" data-action="download" data-id="${esc(d.id)}">${ICON_DOWNLOAD} Download JSON</button>
+            <div class="diag-more-divider"></div>
+            <button class="diag-more-item danger" data-action="delete" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">${ICON_TRASH} Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── Cloud list ────────────────────────────────────────────────────────
   if (cloud) {
-    panel.innerHTML = '<div class="diagram-empty">Loading cloud flows...</div>';
+    panel.innerHTML = diagEmptyState('Loading your flows…');
     try {
       const q = (search?.value || '').trim();
       const data = await cloudDiagramRequest(`/api/diagrams?limit=50${q ? `&query=${encodeURIComponent(q)}` : ''}`);
       const diagrams = data.diagrams || [];
       if (!diagrams.length) {
-        panel.innerHTML = `<div class="diagram-empty">${q ? 'No flows match your search.' : 'No cloud flows yet. Save the current canvas to create one.'}</div>`;
+        panel.innerHTML = q
+          ? diagEmptyState('No results', `Nothing matched "<b>${esc(q)}</b>".`)
+          : diagEmptyState('No cloud flows yet', 'Hit <b>Save to Cloud</b> to create your first flow.');
         return;
       }
-      panel.innerHTML = diagrams.map(d => `
-        <div class="diag-row" data-id="${esc(d.id)}">
-          <div class="diag-icon">▣</div>
-          <div class="diag-info">
-            <div class="diag-name">${esc(d.title || 'Untitled Architecture')} <span class="diag-state ${d.is_public ? 'public' : ''}">${d.is_public ? 'Public' : 'Private'}</span></div>
-            <div class="diag-ts">Updated ${fmtDiagramTime(d.updated_at || d.created_at)}</div>
-            <div class="diag-meta">${d.node_count || 0} nodes · ${d.edge_count || 0} edges</div>
-          </div>
-          <button class="diag-btn" data-action="open" data-id="${esc(d.id)}">Open</button>
-          <button class="diag-btn" data-action="rename" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">Rename</button>
-          <button class="diag-btn" data-action="duplicate" data-id="${esc(d.id)}">Duplicate</button>
-          <button class="diag-btn" data-action="versions" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">Versions</button>
-          <button class="diag-btn" data-action="${d.is_public ? 'unpublish' : 'publish'}" data-id="${esc(d.id)}">${d.is_public ? 'Unpublish' : 'Publish'}</button>
-          ${d.public_slug ? `<button class="diag-btn" data-action="copy-public" data-slug="${esc(d.public_slug)}">Copy Link</button>` : ''}
-          <button class="diag-btn" data-action="download" data-id="${esc(d.id)}">JSON</button>
-          <button class="diag-btn del" data-action="delete" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}" title="Delete">×</button>
-        </div>`).join('');
+      panel.innerHTML = groupedRows(
+        diagrams,
+        cloudDiagRow,
+        d => new Date(d.updated_at || d.created_at).getTime()
+      );
       return;
     } catch (err) {
-      panel.innerHTML = `<div class="diagram-empty">Cloud flow library unavailable: ${esc(err.message)}<br>Browser saves are still available below.</div>`;
+      panel.innerHTML = diagEmptyState('Cloud unavailable', esc(err.message));
     }
   }
 
+  // ── Browser list ──────────────────────────────────────────────────────
   let html = '';
   if (auto && auto.ts) {
-    html += `<div class="diag-row auto-row" data-autosave="1">
-      <div class="diag-icon">◷</div>
-      <div class="diag-info"><div class="diag-name">Auto-save</div><div class="diag-ts">${fmtDiagramTime(auto.ts)}</div><div class="diag-meta">${diagramCountLabel(auto.payload)}</div></div>
-      <button class="diag-btn" data-action="load-auto">Load</button>
+    html += `<div class="diag-group-label">Auto-save</div>
+    <div class="diag-row auto-row" data-autosave="1">
+      <div class="diag-thumb auto">${ICON_CLOCK}</div>
+      <div class="diag-info">
+        <div class="diag-title-row"><span class="diag-name">Auto-save recovery</span></div>
+        <div class="diag-meta-row"><span class="diag-ts">${fmtDiagramTime(auto.ts)}</span><span class="diag-meta">${diagramCountLabel(auto.payload)}</span></div>
+      </div>
+      <div class="diag-actions"><button class="diag-open-btn" data-action="load-auto">Restore</button></div>
     </div>`;
   }
   if (!list.length && !auto) {
-    html = '<div class="diagram-empty">No browser saves yet.<br>Build something and click Save.</div>';
-  }
-  list.forEach(d => {
-    html += `<div class="diag-row" data-id="${esc(d.id)}">
-      <div class="diag-icon">▣</div>
-      <div class="diag-info"><div class="diag-name">${esc(d.name)}</div><div class="diag-ts">${fmtDiagramTime(d.ts)}</div><div class="diag-meta">${diagramCountLabel(d.payload)}</div></div>
-      <button class="diag-btn" data-action="load-local" data-id="${esc(d.id)}">Open</button>
-      <button class="diag-btn" data-action="download-local" data-id="${esc(d.id)}">JSON</button>
-      <button class="diag-btn del" data-action="delete-local" data-id="${esc(d.id)}" title="Delete">×</button>
+    html = diagEmptyState('No browser saves yet', 'Hit <b>Save to Browser</b> to keep your current flow.');
+  } else {
+    const localRow = d => `<div class="diag-row" data-id="${esc(d.id)}">
+      <div class="diag-thumb">${ICON_FLOW}</div>
+      <div class="diag-info">
+        <div class="diag-title-row"><span class="diag-name" title="${esc(d.name)}">${esc(d.name)}</span></div>
+        <div class="diag-meta-row"><span class="diag-ts">${fmtDiagramTime(d.ts)}</span><span class="diag-meta">${diagramCountLabel(d.payload)}</span></div>
+      </div>
+      <div class="diag-actions">
+        <button class="diag-open-btn" data-action="load-local" data-id="${esc(d.id)}">Open</button>
+        <button class="diag-icon-btn" data-action="rename-local" data-id="${esc(d.id)}" data-title="${esc(d.name)}" title="Rename">${ICON_RENAME}</button>
+        <div class="diag-more-wrap">
+          <button class="diag-icon-btn" data-action="more" title="More">${ICON_MORE}</button>
+          <div class="diag-more-menu">
+            <button class="diag-more-item" data-action="rename-local" data-id="${esc(d.id)}" data-title="${esc(d.name)}">${ICON_RENAME} Rename</button>
+            <button class="diag-more-item" data-action="download-local" data-id="${esc(d.id)}">${ICON_DOWNLOAD} Download JSON</button>
+            <div class="diag-more-divider"></div>
+            <button class="diag-more-item danger" data-action="delete-local" data-id="${esc(d.id)}">${ICON_TRASH} Delete</button>
+          </div>
+        </div>
+      </div>
     </div>`;
-  });
+    html += groupedRows(list, localRow, 'ts');
+  }
   panel.innerHTML = html;
+}
+
+// Helper for groupedRows when tsKey is a function
+function groupedRows(items, rowFn, tsKey) {
+  let html = '', currentGroup = '';
+  const now = new Date();
+  items.forEach(item => {
+    const ts = typeof tsKey === 'function' ? tsKey(item) : item[tsKey];
+    const d = new Date(ts);
+    let g;
+    const sameDay = (a, b) => a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+    if (sameDay(d, now)) g = 'Today';
+    else {
+      const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+      if (sameDay(d, yesterday)) g = 'Yesterday';
+      else {
+        const daysAgo = Math.floor((now - d) / 86400000);
+        if (daysAgo < 7) g = 'This week';
+        else if (daysAgo < 30) g = 'This month';
+        else g = d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      }
+    }
+    if (g !== currentGroup) { html += `<div class="diag-group-label">${g}</div>`; currentGroup = g; }
+    html += rowFn(item);
+  });
+  return html;
 }
 
 function wireDefaultImportHandler() {
@@ -5473,11 +5663,22 @@ document.getElementById('diagram-search').oninput = () => {
   clearTimeout(_diagramSearchTimer);
   _diagramSearchTimer = setTimeout(updateDiagramsPanel, 180);
 };
+document.addEventListener('click', () => {
+  document.querySelectorAll('.diag-more-menu.open').forEach(m => m.classList.remove('open'));
+});
 document.getElementById('my-diagrams-list').onclick = e => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
   const id = btn.dataset.id;
   const action = btn.dataset.action;
+  if (action === 'more') {
+    e.stopPropagation();
+    const menu = btn.closest('.diag-more-wrap')?.querySelector('.diag-more-menu');
+    if (!menu) return;
+    document.querySelectorAll('.diag-more-menu.open').forEach(m => { if (m !== menu) m.classList.remove('open'); });
+    menu.classList.toggle('open');
+    return;
+  }
   if (action === 'open') loadCloudDiagram(id);
   if (action === 'rename') renameCloudDiagram(id, btn.dataset.title);
   if (action === 'duplicate') duplicateCloudDiagram(id);
@@ -5493,6 +5694,7 @@ document.getElementById('my-diagrams-list').onclick = e => {
     const d = lsGetSaved().find(x => x.id === id);
     if (d) downloadBlob(new Blob([JSON.stringify(d.payload, null, 2)], { type: 'application/json' }), `${(d.name || 'architecture').replace(/[^\w.-]+/g, '-').toLowerCase()}.json`);
   }
+  if (action === 'rename-local') renameSavedDiagram(id, btn.dataset.title);
   if (action === 'delete-local' && confirm('Delete?')) deleteSavedDiagram(id);
 };
 

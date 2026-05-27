@@ -6,13 +6,63 @@
 **Primary server:** `node server.mjs`  
 **Default URL:** `http://localhost:3456`  
 **Production:** https://archi-flow.onrender.com  
-**Important:** Server serves from `dist/` — always run `cp src/app.js dist/src/app.min.js` (and css/html) after source edits.
+**Important:** Server serves from `dist/` — always run `npm run build` after source edits. This minifies CSS/JS and rewrites index.html to point at `app.min.css` / `app.min.js`. Do NOT just `cp` files — the build step is required for the server to pick up changes correctly.
 
 ---
 
 ## Latest Update
 
-**Latest local iteration:** Public View-Only Sharing + Review Foundation
+**Latest local iteration:** UX Polish — Menu, Edges, Auto-Save, Sim Fixes
+
+Commit: `12378a6` on `release/serverside`
+
+### ☰ Menu — moved to left, submenu hover fixed
+- The `···` icon-only button is now a **☰ Menu** button on the far-left of the toolbar (before the logo).
+- Submenus (Import/Export, View, Simulation) now open to the **right**.
+- Added a CSS `::before` hover bridge on `.more-submenu` that fills the 4px gap between the parent item and the submenu panel — mouse can now move diagonally to a submenu item without it collapsing.
+- `makeMoreGroup()` / `organizeMoreMenu()` in `src/app.js` unchanged — still auto-organizes buttons into groups at runtime.
+
+### Port snap indicator (connection drag)
+- Replaced single `port-snap` class with two context-aware classes:
+  - `.port-snap-valid` → **green glow** — hovering a port that would create a valid connection
+  - `.port-snap-warn` → **amber glow** — hovering a port that would be an unusual/invalid architecture pattern
+- Logic in `p.onmouseenter`: calls `validateConnection(srcDef, tgtDef)` to decide which class to add.
+
+### Warning edges no longer animate
+- Edges with `_warn: true` (unusual architecture connections) skip the `edge-anim` class entirely — no moving blue dots on invalid connections during simulation.
+- Line in `renderEdges`: `const animClass = edge._warn ? '' : (edge.dashed ? 'edge-dash' : (S.simOn && edge.animated ? 'edge-anim' : ''));`
+
+### e/s readout restored in statusbar
+- `flowReadout` was pointing to a fake `{ textContent: '' }` stub — now points to a real `<span id="flow-readout">` element in the statusbar.
+- Shows `100 e/s` (green badge) only while simulation is running; hidden when stopped.
+
+### Auto-save status badge
+- `#title-saved-badge` replaced with a multi-state badge next to the diagram title:
+  - `save-badge-unsaved` → `● Unsaved` (amber) — shown immediately on any change
+  - `save-badge-saving` → `Saving…` (muted) — while localStorage write is in-flight
+  - `save-badge-saved` → `✓ Saved` (green) — after localStorage save completes, stays for 4s then fades
+  - `save-badge-saving-cloud` → `☁ Saving…` (blue) — cloud PUT in-flight
+  - `save-badge-saved-cloud` → `☁ Saved` (blue) — after Supabase save completes
+- `setSaveBadge(state)` function drives all transitions; exposed as `window._setSaveBadge`.
+
+### Cloud auto-save (Supabase)
+- `autoSave()` now schedules a **second timer** (`_cloudAutoSaveTimer`, 10s debounce) in addition to the 1.5s localStorage save.
+- The cloud save only fires when: user is signed in (`hasCloudLibrary()` returns true) AND `S.currentDiagramId` is set (a cloud flow is open).
+- On failure: falls back to showing `✓ Saved` (local) and logs a console warning — never blocks the user.
+- Manual saves via My Flows also set the `saved-cloud` badge state.
+
+### Edge visibility improvements
+- Idle edges: opacity `0.3` → `0.8`, color brightened from `rgba(100,130,165)` to `rgba(160,185,220)`
+- Stroke width: `1.6px` → `2.2px`
+- Hover stroke width: `2.4px` → `3px`
+- SVG arrowhead markers: size `6` → `7`, idle color `#4a5568` (nearly invisible on dark) → `#8ba8cc` (light blue-gray), stroke `1.4` → `1.6`
+- Light mode idle edge: `rgba(100,116,139, 0.42)` → `rgba(71,85,105, 0.6)` for better contrast
+
+---
+
+## Previous Update
+
+**Previous local iteration:** Public View-Only Sharing + Review Foundation
 
 Implemented the first roadmap pass on top of the Supabase-backed My Flows library.
 
