@@ -2067,7 +2067,6 @@ function toggleMinimap(force) {
   if (!mm) return;
   mm.classList.toggle('minimap-collapsed', !_minimapOpen);
   if (btn) btn.title = _minimapOpen ? 'Collapse overview' : 'Expand overview';
-  if (btn) btn.textContent = _minimapOpen ? '−' : '+';
 }
 window.toggleMinimap = toggleMinimap;
 // Apply initial state
