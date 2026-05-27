@@ -5551,251 +5551,289 @@ function shareToLinkedIn(shareUrl) {
 async function shareArchitecture() {
   const snapshotUrl = updateShareHash();
   const cloud = await hasCloudLibrary();
+  const diagramTitle = getDiagramTitle() || 'Untitled Architecture';
 
-  // Check if diagram is already published
+  // Check current publish state
   let existingPublicUrl = null;
+  let isPublished = false;
+  let diagMeta = null;
   if (cloud && S.currentDiagramId) {
     try {
       const diagrams = await cloudDiagramRequest('/api/diagrams', { method: 'GET' }).catch(() => null);
-      const cur = Array.isArray(diagrams) ? diagrams.find(d => d.id === S.currentDiagramId) : null;
-      if (cur?.is_public && cur?.public_slug) existingPublicUrl = publicFlowUrl(cur.public_slug);
+      diagMeta = Array.isArray(diagrams) ? diagrams.find(d => d.id === S.currentDiagramId) : null;
+      if (diagMeta?.is_public && diagMeta?.public_slug) {
+        existingPublicUrl = publicFlowUrl(diagMeta.public_slug);
+        isPublished = true;
+      }
     } catch {}
   }
 
-  const diagramTitle = getDiagramTitle() || 'Untitled Architecture';
   const overlay = document.createElement('div');
   overlay.className = 'share-overlay';
+  // Build audience options
+  // "public" = live /view/ link (cloud), "snapshot" = frozen short link, "private" = no sharing
+  const audienceOpts = [
+    {
+      id: 'public',
+      icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+      label: 'Anyone with the link',
+      desc: 'Anyone on the internet can view — no sign-in required',
+      pill: '🌍 Public',
+      pillClass: 'sh-pill-live',
+    },
+    {
+      id: 'snapshot',
+      icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/><path d="M3 9h18"/></svg>`,
+      label: 'Snapshot — this version only',
+      desc: 'A permanent link frozen to exactly how it looks right now',
+      pill: '📸 Frozen',
+      pillClass: 'sh-pill-snap',
+    },
+    {
+      id: 'private',
+      icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+      label: 'Only me',
+      desc: 'No one else can access this diagram',
+      pill: '🔒 Private',
+      pillClass: 'sh-pill-private',
+    },
+  ];
+
+  // Start on 'public' if already published, else 'public' as default intent
+  let selectedAudience = 'public';
+  let liveUrl = existingPublicUrl || null;
+  let snapUrl = null;
+  const shareUrl = () => selectedAudience === 'public' ? (liveUrl || snapshotUrl)
+                       : selectedAudience === 'snapshot' ? (snapUrl || snapshotUrl)
+                       : null;
+
   overlay.innerHTML = `
     <div class="share-box">
-
-      <!-- Header -->
       <div class="sh-header">
         <div class="sh-header-left">
-          <div class="sh-title">Share "${esc(diagramTitle)}"</div>
-          <div class="sh-subtitle">Choose what you want to share</div>
+          <div class="sh-title">Share diagram</div>
+          <div class="sh-subtitle">${esc(diagramTitle)}</div>
         </div>
         <button id="sh-close" class="sh-close-btn">✕</button>
       </div>
 
-      <!-- URL type tabs -->
-      <div class="sh-type-tabs">
-        <div class="sh-tab active" data-tab="live">
-          <div class="sh-tab-icon">🔗</div>
-          <div class="sh-tab-name">Live Link</div>
-          <div class="sh-tab-hint">Always latest version</div>
-        </div>
-        <div class="sh-tab" data-tab="snap">
-          <div class="sh-tab-icon">📸</div>
-          <div class="sh-tab-name">Snapshot</div>
-          <div class="sh-tab-hint">Frozen at this moment</div>
+      <!-- Audience selector -->
+      <div class="sh-audience-section">
+        <div class="sh-audience-label">Who can access this?</div>
+        <div class="sh-audience-list" id="sh-audience-list">
+          ${audienceOpts.map(o => `
+            <label class="sh-audience-opt ${o.id === selectedAudience ? 'selected' : ''}" data-id="${o.id}">
+              <input type="radio" name="sh-audience" value="${o.id}" ${o.id === selectedAudience ? 'checked' : ''} style="display:none"/>
+              <div class="sh-aud-icon">${o.icon}</div>
+              <div class="sh-aud-body">
+                <div class="sh-aud-label">${o.label}</div>
+                <div class="sh-aud-desc">${o.desc}</div>
+              </div>
+              <div class="sh-aud-check">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+            </label>`).join('')}
         </div>
       </div>
 
-      <!-- Tab panels -->
-      <div class="sh-panels">
-
-        <!-- LIVE panel -->
-        <div class="sh-panel active" id="sh-panel-live">
-          <div class="sh-explain">
-            <div class="sh-explain-icon">🔗</div>
-            <div class="sh-explain-body">
-              <div class="sh-explain-title">Live Link — Always up to date</div>
-              <div class="sh-explain-desc">Anyone who opens this link will <strong>always see your latest saved version</strong>. When you update and save, the link automatically reflects your changes — no resharing needed.</div>
-              <span class="sh-explain-pill sh-pill-live">● Updates automatically</span>
-            </div>
-          </div>
-          <div id="sh-live-area">
-            ${cloud
-              ? `<div id="sh-live-loading" class="sh-loading"><div class="sh-spinner"></div> Checking…</div>
-                 <div id="sh-live-url-row" class="sh-url-row" style="display:none">
-                   <input id="sh-live-url" class="sh-url-input" readonly placeholder="https://…"/>
-                   <button id="sh-live-copy" class="sh-copy-btn">Copy</button>
-                 </div>
-                 <div id="sh-live-publish-cta" class="sh-publish-cta" style="display:none">
-                   <div class="sh-publish-cta-text">This diagram isn't public yet. Publish it to generate a live link anyone can open — even without an account.</div>
-                   <button id="sh-live-publish" class="sh-publish-btn">
-                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07"/></svg>
-                     Publish & get live link
-                   </button>
-                 </div>`
-              : `<div class="sh-signin-nudge">
-                   <div class="sh-signin-nudge-icon">☁</div>
-                   <div class="sh-signin-nudge-body">
-                     <div class="sh-signin-nudge-text">Sign in with Google to get a <strong>live link</strong> that always shows your latest version. Your diagram saves to your personal cloud library.</div>
-                     <button id="sh-do-signin" class="sh-signin-btn">Sign in with Google</button>
-                   </div>
-                 </div>`}
-          </div>
-        </div>
-
-        <!-- SNAPSHOT panel -->
-        <div class="sh-panel" id="sh-panel-snap">
-          <div class="sh-explain">
-            <div class="sh-explain-icon">📸</div>
-            <div class="sh-explain-body">
-              <div class="sh-explain-title">Snapshot — Frozen in time</div>
-              <div class="sh-explain-desc">This link captures your diagram <strong>exactly as it looks right now</strong>. Future edits won't affect it — perfect for sharing a specific version for review or approval.</div>
-              <span class="sh-explain-pill sh-pill-snap">⬡ Never changes</span>
-            </div>
-          </div>
-          ${sbReady()
-            ? `<div id="sh-snap-loading" class="sh-loading"><div class="sh-spinner"></div> Generating permanent link…</div>
-               <div id="sh-snap-url-row" class="sh-url-row" style="display:none">
-                 <input id="sh-snap-url" class="sh-url-input" readonly placeholder="https://…"/>
-                 <button id="sh-snap-copy" class="sh-copy-btn">Copy</button>
-               </div>`
-            : `<div class="sh-url-row">
-                 <input id="sh-fallback-url" class="sh-url-input" readonly value="${snapshotUrl}"/>
-                 <button id="sh-copy-fallback" class="sh-copy-btn">Copy</button>
-               </div>
-               <div style="font-size:10px;color:var(--muted);margin-top:2px">⚠ Short links unavailable — this URL encodes the full diagram</div>`}
-        </div>
-
-      </div><!-- /.sh-panels -->
+      <!-- Dynamic link area -->
+      <div id="sh-link-area" class="sh-link-area"></div>
 
       <hr class="sh-divider"/>
 
-      <!-- Social row — always share the active tab's URL -->
-      <div class="sh-social-row">
+      <!-- Revoke row (shown when published) -->
+      <div id="sh-revoke-row" class="sh-revoke-row" style="display:${isPublished ? 'flex' : 'none'}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>Link is currently <strong>public</strong></span>
+        <button id="sh-revoke-btn" class="sh-revoke-btn">Revoke access</button>
+      </div>
+
+      <!-- Social row -->
+      <div class="sh-social-row" id="sh-social-row">
         <button id="sh-linkedin" class="sh-social-btn sh-linkedin-btn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-          Share on LinkedIn
+          LinkedIn
         </button>
         <button id="sh-native" class="sh-social-btn" style="display:${navigator.share ? 'flex' : 'none'}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           Share via…
         </button>
       </div>
-
     </div>`;
-  document.body.appendChild(overlay);
 
+  document.body.appendChild(overlay);
   const close = () => { if (overlay.parentNode) document.body.removeChild(overlay); };
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
   document.getElementById('sh-close').onclick = close;
 
-  // Track best URL per tab
-  let liveUrl = null;
-  let snapUrl = null;
-  let activeTab = 'live';
+  const linkArea   = document.getElementById('sh-link-area');
+  const revokeRow  = document.getElementById('sh-revoke-row');
+  const socialRow  = document.getElementById('sh-social-row');
 
-  const getBestUrl = () => activeTab === 'live' ? (liveUrl || snapUrl || snapshotUrl) : (snapUrl || snapshotUrl);
-
-  // ── Tab switching ───────────────────────────────────────────────────────────
-  overlay.querySelectorAll('.sh-tab').forEach(tab => {
-    tab.onclick = () => {
-      overlay.querySelectorAll('.sh-tab').forEach(t => t.classList.remove('active'));
-      overlay.querySelectorAll('.sh-panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      activeTab = tab.dataset.tab;
-      document.getElementById(`sh-panel-${activeTab}`)?.classList.add('active');
-    };
-  });
-
-  // ── Live tab ────────────────────────────────────────────────────────────────
-  if (cloud) {
-    const liveLoading  = document.getElementById('sh-live-loading');
-    const liveUrlRow   = document.getElementById('sh-live-url-row');
-    const liveCta      = document.getElementById('sh-live-publish-cta');
-    const liveUrlInp   = document.getElementById('sh-live-url');
-    const liveCopyBtn  = document.getElementById('sh-live-copy');
-    const publishBtn   = document.getElementById('sh-live-publish');
-
-    const showLiveUrl = (url) => {
-      liveUrl = url;
-      liveLoading.style.display = 'none';
-      liveCta.style.display     = 'none';
-      liveUrlRow.style.display  = 'flex';
-      liveUrlInp.value = url;
-      liveCopyBtn.onclick = async () => {
-        try { await navigator.clipboard.writeText(url); } catch { prompt('Copy live link', url); }
-        pushToast('Live link copied!', 'info');
-        track('share_live_copied', {});
-      };
-    };
-
-    if (existingPublicUrl) {
-      showLiveUrl(existingPublicUrl);
-    } else {
-      liveLoading.style.display = 'none';
-      liveCta.style.display     = 'flex';
-      publishBtn.onclick = async () => {
-        publishBtn.disabled = true;
-        publishBtn.innerHTML = '<div class="sh-spinner" style="border-top-color:#34d058"></div> Publishing…';
-        try {
-          if (!S.currentDiagramId) {
-            const created = await cloudDiagramRequest('/api/diagrams', {
-              method: 'POST', body: JSON.stringify({ title: diagramTitle, payload: architecturePayload() }),
-            });
-            setCurrentDiagram(created);
-          }
-          const published = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(S.currentDiagramId)}/publish`, { method: 'POST' });
-          showLiveUrl(publicFlowUrl(published.public_slug));
-          pushToast('Live link published! 🎉', 'info');
-        } catch (err) {
-          publishBtn.disabled = false;
-          publishBtn.innerHTML = 'Publish &amp; get live link';
-          pushToast(`Publish failed: ${err.message}`, 'warn');
-        }
-      };
+  // ── Render the link area based on selectedAudience ─────────────────────────
+  const renderLinkArea = () => {
+    if (selectedAudience === 'private') {
+      linkArea.innerHTML = `<div class="sh-private-msg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        This diagram is private. Only you can see it.
+      </div>`;
+      socialRow.style.display = 'none';
+      return;
     }
-  } else {
-    document.getElementById('sh-do-signin')?.addEventListener('click', () => { close(); startGoogleSignIn(); });
-  }
+    socialRow.style.display = '';
 
-  // ── Snapshot tab ────────────────────────────────────────────────────────────
-  if (sbReady()) {
-    const snapLoading = document.getElementById('sh-snap-loading');
-    const snapUrlRow  = document.getElementById('sh-snap-url-row');
-    const snapUrlInp  = document.getElementById('sh-snap-url');
-    const snapCopyBtn = document.getElementById('sh-snap-copy');
-    // Generate in background — doesn't block render
-    saveShortLink(architecturePayload()).then(url => {
-      snapUrl = url;
-      snapLoading.style.display = 'none';
-      snapUrlRow.style.display  = 'flex';
-      snapUrlInp.value = url;
-      snapCopyBtn.onclick = async () => {
-        try { await navigator.clipboard.writeText(url); } catch { prompt('Copy snapshot link', url); }
+    if (selectedAudience === 'public') {
+      if (!cloud) {
+        linkArea.innerHTML = `<div class="sh-signin-nudge">
+          <div class="sh-signin-nudge-icon">☁</div>
+          <div class="sh-signin-nudge-body">
+            <div class="sh-signin-nudge-text">Sign in with Google to get a <strong>live public link</strong> that always shows your latest version.</div>
+            <button id="sh-do-signin" class="sh-signin-btn">Sign in with Google</button>
+          </div>
+        </div>`;
+        document.getElementById('sh-do-signin').onclick = () => { close(); startGoogleSignIn(); };
+        return;
+      }
+      if (liveUrl) {
+        linkArea.innerHTML = `
+          <div class="sh-link-info">
+            <span class="sh-explain-pill sh-pill-live">● Live — always your latest version</span>
+            <span class="sh-link-info-sub">Updates automatically whenever you save</span>
+          </div>
+          <div class="sh-url-row">
+            <input id="sh-live-url" class="sh-url-input" readonly value="${esc(liveUrl)}"/>
+            <button id="sh-live-copy" class="sh-copy-btn">Copy</button>
+          </div>`;
+        document.getElementById('sh-live-copy').onclick = async () => {
+          try { await navigator.clipboard.writeText(liveUrl); } catch { prompt('Copy link', liveUrl); }
+          pushToast('Live link copied!', 'info');
+          track('share_live_copied', {});
+        };
+      } else {
+        linkArea.innerHTML = `<div class="sh-publish-cta">
+          <div class="sh-publish-cta-text">Not published yet. Publishing creates a live link that always shows your latest saved version — anyone can open it without signing in.</div>
+          <button id="sh-do-publish" class="sh-publish-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07"/></svg>
+            Publish &amp; get live link
+          </button>
+        </div>`;
+        document.getElementById('sh-do-publish').onclick = async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          btn.innerHTML = `<div class="sh-spinner" style="border-top-color:#34d058"></div> Publishing…`;
+          try {
+            if (!S.currentDiagramId) {
+              const created = await cloudDiagramRequest('/api/diagrams', {
+                method: 'POST', body: JSON.stringify({ title: diagramTitle, payload: architecturePayload() }),
+              });
+              setCurrentDiagram(created);
+            }
+            const pub = await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(S.currentDiagramId)}/publish`, { method: 'POST' });
+            liveUrl = publicFlowUrl(pub.public_slug);
+            isPublished = true;
+            revokeRow.style.display = 'flex';
+            renderLinkArea();
+            pushToast('Live link published! 🎉', 'info');
+          } catch (err) {
+            btn.disabled = false;
+            btn.innerHTML = 'Publish &amp; get live link';
+            pushToast(`Publish failed: ${err.message}`, 'warn');
+          }
+        };
+      }
+      return;
+    }
+
+    // Snapshot
+    if (snapUrl) {
+      linkArea.innerHTML = `
+        <div class="sh-link-info">
+          <span class="sh-explain-pill sh-pill-snap">📸 Frozen — this exact version</span>
+          <span class="sh-link-info-sub">Future edits won't affect this link</span>
+        </div>
+        <div class="sh-url-row">
+          <input id="sh-snap-url-inp" class="sh-url-input" readonly value="${esc(snapUrl)}"/>
+          <button id="sh-snap-copy" class="sh-copy-btn">Copy</button>
+        </div>`;
+      document.getElementById('sh-snap-copy').onclick = async () => {
+        try { await navigator.clipboard.writeText(snapUrl); } catch { prompt('Copy link', snapUrl); }
         pushToast('Snapshot link copied!', 'info');
         track('short_link_copied', {});
       };
-    }).catch(() => {
-      if (snapLoading) snapLoading.innerHTML = '<span style="color:var(--red);font-size:11px">⚠ Could not generate short link</span>';
-    });
-  } else {
-    document.getElementById('sh-copy-fallback')?.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(snapshotUrl); pushToast('Link copied!', 'info'); }
-      catch { prompt('Copy link', snapshotUrl); }
-      snapUrl = snapshotUrl;
-      track('share_link_copied', {});
-    });
-    snapUrl = snapshotUrl;
-  }
+    } else {
+      linkArea.innerHTML = `<div class="sh-loading"><div class="sh-spinner"></div> Generating snapshot link…</div>`;
+      const generateSnap = sbReady()
+        ? saveShortLink(architecturePayload()).then(u => u)
+        : Promise.resolve(snapshotUrl);
+      generateSnap.then(url => {
+        snapUrl = url;
+        if (selectedAudience === 'snapshot') renderLinkArea();
+      }).catch(() => {
+        snapUrl = snapshotUrl;
+        if (selectedAudience === 'snapshot') renderLinkArea();
+      });
+    }
+  };
 
-  // ── LinkedIn ────────────────────────────────────────────────────────────────
+  // ── Audience selection ──────────────────────────────────────────────────────
+  overlay.querySelectorAll('.sh-audience-opt').forEach(opt => {
+    opt.onclick = () => {
+      selectedAudience = opt.dataset.id;
+      overlay.querySelectorAll('.sh-audience-opt').forEach(o => o.classList.toggle('selected', o.dataset.id === selectedAudience));
+      renderLinkArea();
+    };
+  });
+
+  // ── Revoke access ───────────────────────────────────────────────────────────
+  document.getElementById('sh-revoke-btn')?.addEventListener('click', async () => {
+    if (!S.currentDiagramId) return;
+    if (!confirm('Revoke public access? Anyone with the live link will no longer be able to open this diagram.')) return;
+    const revokeBtn = document.getElementById('sh-revoke-btn');
+    revokeBtn.disabled = true;
+    revokeBtn.textContent = 'Revoking…';
+    try {
+      await cloudDiagramRequest(`/api/diagrams/${encodeURIComponent(S.currentDiagramId)}/unpublish`, { method: 'POST' });
+      liveUrl = null;
+      isPublished = false;
+      selectedAudience = 'private';
+      revokeRow.style.display = 'none';
+      overlay.querySelectorAll('.sh-audience-opt').forEach(o => o.classList.toggle('selected', o.dataset.id === 'private'));
+      renderLinkArea();
+      pushToast('Access revoked — diagram is now private.', 'info');
+    } catch (err) {
+      revokeBtn.disabled = false;
+      revokeBtn.textContent = 'Revoke access';
+      pushToast(`Could not revoke: ${err.message}`, 'warn');
+    }
+  });
+
+  // ── Social sharing ──────────────────────────────────────────────────────────
   document.getElementById('sh-linkedin').onclick = () => {
-    const url = getBestUrl();
+    const url = shareUrl();
+    if (!url) { pushToast('Make it public first to share on LinkedIn.', 'warn'); return; }
     track('share_linkedin_clicked', { node_count: Object.keys(S.nodes).length });
     shareToLinkedIn(url);
     close();
   };
-
-  // ── Native share ────────────────────────────────────────────────────────────
   if (navigator.share) {
     document.getElementById('sh-native').onclick = async () => {
-      const url = getBestUrl();
-      try {
-        await navigator.share({ title: diagramTitle + ' — Archi-Flow', url });
-        pushToast('Shared!', 'info');
-      } catch {
-        await navigator.clipboard.writeText(url).catch(() => {});
-        pushToast('Link copied!', 'info');
-      }
+      const url = shareUrl();
+      if (!url) { pushToast('Make it public first to share.', 'warn'); return; }
+      try { await navigator.share({ title: diagramTitle + ' — Archi-Flow', url }); }
+      catch { await navigator.clipboard.writeText(url).catch(() => {}); pushToast('Link copied!', 'info'); }
       track('share_native', { node_count: Object.keys(S.nodes).length });
       close();
     };
   }
+
+  // Kick off snapshot generation in background immediately
+  if (sbReady() && !snapUrl) {
+    saveShortLink(architecturePayload()).then(u => { snapUrl = u; }).catch(() => { snapUrl = snapshotUrl; });
+  } else if (!snapUrl) {
+    snapUrl = snapshotUrl;
+  }
+
+  renderLinkArea();
 }
 
 function loadFromHash() {
