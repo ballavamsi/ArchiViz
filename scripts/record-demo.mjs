@@ -42,7 +42,7 @@ const VIDEO_TMP = path.join(OUT_DIR, '_video_tmp');
 await mkdir(OUT_DIR,   { recursive: true });
 await mkdir(VIDEO_TMP, { recursive: true });
 
-const VP = { width: 1280, height: 720 };
+const VP = { width: 1920, height: 1080 };
 
 // ── SRT builder ───────────────────────────────────────────────────────────────
 const cues = [];
@@ -117,7 +117,7 @@ async function generateTTSAndMux(trimmedCues, videoPath, outputPath, tmpDir) {
   console.log('   Muxing audio into video…');
   execSync(
     `ffmpeg -y -i "${videoPath}" -i "${mixedWav}" ` +
-    `-c:v copy -c:a aac -b:a 128k -shortest "${outputPath}"`,
+    `-c:v copy -c:a aac -b:a 192k -shortest "${outputPath}"`,
     { stdio: 'inherit' }
   );
 
@@ -642,8 +642,12 @@ try {
   // Step 1: encode video-only MP4
   const mp4Silent = path.join(OUT_DIR, 'archi-flow-demo-silent.mp4');
   execSync(
-    `ffmpeg -y -i "${outWebm}" -vf "scale=1280:720:flags=lanczos" ` +
-    `-c:v libx264 -crf 18 -preset fast -pix_fmt yuv420p -movflags +faststart "${mp4Silent}"`,
+    // No scaling — encode at native 1920×1080 from the original webm (single generation)
+    // CRF 14 = near-lossless quality; slow preset maximises compression efficiency
+    `ffmpeg -y -i "${outWebm}" ` +
+    `-c:v libx264 -crf 14 -preset slow -pix_fmt yuv420p ` +
+    `-vf "unsharp=5:5:0.8:3:3:0.4" ` +
+    `-movflags +faststart "${mp4Silent}"`,
     { stdio: 'ignore' }
   );
   console.log('✅ Silent MP4 encoded');

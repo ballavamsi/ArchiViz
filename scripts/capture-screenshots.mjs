@@ -15,7 +15,7 @@ const BASE_URL = process.env.APP_URL || 'http://localhost:3456';
 const OUT_DIR  = fileURLToPath(new URL('../social-screenshots/', import.meta.url));
 await mkdir(OUT_DIR, { recursive: true });
 
-const VP = { width: 1280, height: 720 };
+const VP = { width: 1920, height: 1080 };
 
 // ── Dark-mode shots ───────────────────────────────────────────────────────────
 const DARK_SHOTS = [
