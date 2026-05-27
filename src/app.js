@@ -4789,7 +4789,6 @@ function lsSetSaved(list) {
 }
 
 async function _cloudAutoSaveNow() {
-  if (!S.currentDiagramId) return;
   const hasCloud = await hasCloudLibrary().catch(() => false);
   if (!hasCloud) return;
   if (!Object.keys(S.nodes).length) return;
@@ -4797,11 +4796,22 @@ async function _cloudAutoSaveNow() {
   try {
     const title = getDiagramTitle();
     const payload = architecturePayload();
-    const updated = await cloudDiagramRequest(`/api/diagrams/${S.currentDiagramId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ title, payload }),
-    });
-    setCurrentDiagram(updated);
+    if (S.currentDiagramId) {
+      // Update existing cloud diagram
+      const updated = await cloudDiagramRequest(`/api/diagrams/${S.currentDiagramId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title, payload }),
+      });
+      setCurrentDiagram(updated);
+    } else {
+      // Logged in but no cloud diagram yet — auto-create one
+      const created = await cloudDiagramRequest('/api/diagrams', {
+        method: 'POST',
+        body: JSON.stringify({ title, payload }),
+      });
+      setCurrentDiagram(created);
+      await updateDiagramsPanel();
+    }
     setSaveBadge('saved-cloud');
   } catch (err) {
     // Cloud save failed — fall back to showing local saved state
@@ -4823,9 +4833,9 @@ function autoSave() {
     updateDiagramsPanel();
     setSaveBadge('saved');
   }, 1500);
-  // 2. If signed in with an open cloud flow, also sync to Supabase (10s debounce)
+  // 2. If signed in, also sync to Supabase (5s debounce — auto-creates diagram if needed)
   clearTimeout(_cloudAutoSaveTimer);
-  _cloudAutoSaveTimer = setTimeout(_cloudAutoSaveNow, 10000);
+  _cloudAutoSaveTimer = setTimeout(_cloudAutoSaveNow, 5000);
 }
 
 function loadAutoSavedDiagram() {
