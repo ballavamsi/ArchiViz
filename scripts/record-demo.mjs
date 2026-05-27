@@ -60,10 +60,11 @@ function msToSrt(ms) {
   const cs = String(ms % 1_000).padStart(3, '0');
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${cs}`;
 }
-function writeSrt(fp) {
+// speed: 1 = raw timing, 2 = halve timestamps to match 2× MP4
+function writeSrt(fp, speed = 2) {
   const ws = createWriteStream(fp);
   cues.forEach((c, i) => {
-    ws.write(`${i + 1}\n${msToSrt(c.start)} --> ${msToSrt(c.end)}\n${c.text}\n\n`);
+    ws.write(`${i + 1}\n${msToSrt(Math.round(c.start / speed))} --> ${msToSrt(Math.round(c.end / speed))}\n${c.text}\n\n`);
   });
   ws.end();
 }
