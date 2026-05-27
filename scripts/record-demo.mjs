@@ -60,18 +60,68 @@ function msToSrt(ms) {
   const cs = String(ms % 1_000).padStart(3, '0');
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${cs}`;
 }
-function writeSrt(fp) {
-  // Prevent overlap: clamp each cue's end to (next cue's start - 80ms gap)
-  const trimmed = cues.map((c, i) => {
+// Clamp each cue's end to next cue's start minus a small gap (no overlap)
+function trimCues() {
+  return cues.map((c, i) => {
     const nextStart = cues[i + 1]?.start;
     const end = nextStart != null ? Math.min(c.end, nextStart - 80) : c.end;
-    return { ...c, end: Math.max(c.start + 200, end) }; // always show at least 200ms
+    return { ...c, end: Math.max(c.start + 200, end) };
   });
+}
+
+function writeSrt(fp, trimmedCues) {
   const ws = createWriteStream(fp);
-  trimmed.forEach((c, i) => {
+  trimmedCues.forEach((c, i) => {
     ws.write(`${i + 1}\n${msToSrt(c.start)} --> ${msToSrt(c.end)}\n${c.text}\n\n`);
   });
   ws.end();
+}
+
+// Generate TTS audio via macOS `say`, place each cue at its exact timestamp,
+// then mux into the MP4 so voice + video + subtitles are all in sync.
+async function generateTTSAndMux(trimmedCues, videoPath, outputPath, tmpDir) {
+  try { execSync('which say', { stdio: 'ignore' }); }
+  catch { console.log('ℹ️  `say` not found — skipping TTS'); return; }
+
+  console.log('\n🎙  Generating TTS audio…');
+  const ttsDir = path.join(tmpDir, 'tts');
+  await mkdir(ttsDir, { recursive: true });
+
+  const wavFiles = [];
+  for (let i = 0; i < trimmedCues.length; i++) {
+    const c    = trimmedCues[i];
+    const aiff = path.join(ttsDir, `cue_${i}.aiff`);
+    const wav  = path.join(ttsDir, `cue_${i}.wav`);
+    // Escape quotes and special chars for shell
+    const txt  = c.text.replace(/"/g, '\\"').replace(/'/g, "\\'");
+    execSync(`say -v Samantha -r 160 -o "${aiff}" "${txt}"`, { stdio: 'ignore' });
+    execSync(`ffmpeg -y -i "${aiff}" -ar 44100 -ac 2 "${wav}"`, { stdio: 'ignore' });
+    wavFiles.push({ wav, startMs: c.start });
+    process.stdout.write(`   [${i + 1}/${trimmedCues.length}] ✓\r`);
+  }
+  console.log(`\n   ✅ ${wavFiles.length} cues generated`);
+
+  // Place each wav at its exact timestamp using adelay, then amix all together
+  const inputs    = wavFiles.map(f => `-i "${f.wav}"`).join(' ');
+  const delays    = wavFiles.map((f, i) => `[${i}]adelay=${f.startMs}|${f.startMs}[a${i}]`).join(';');
+  const mixInputs = wavFiles.map((_, i) => `[a${i}]`).join('');
+  const filter    = `${delays};${mixInputs}amix=inputs=${wavFiles.length}:normalize=0:dropout_transition=0[aout]`;
+  const mixedWav  = path.join(ttsDir, 'mixed.wav');
+
+  console.log('   Mixing audio tracks…');
+  execSync(
+    `ffmpeg -y ${inputs} -filter_complex "${filter}" -map "[aout]" -ar 44100 "${mixedWav}"`,
+    { stdio: 'ignore' }
+  );
+
+  console.log('   Muxing audio into video…');
+  execSync(
+    `ffmpeg -y -i "${videoPath}" -i "${mixedWav}" ` +
+    `-c:v copy -c:a aac -b:a 128k -shortest "${outputPath}"`,
+    { stdio: 'inherit' }
+  );
+
+  console.log('✅ Video with TTS audio saved:', outputPath);
 }
 
 // ── Playwright setup ──────────────────────────────────────────────────────────
@@ -570,8 +620,11 @@ await ctx.close();
 await wait(2000);
 await browser.close();
 
+// Trim cues once — shared by SRT writer and TTS generator
+const trimmedCues = trimCues();
+
 const srtPath = path.join(OUT_DIR, 'archi-flow-demo.srt');
-writeSrt(srtPath);
+writeSrt(srtPath, trimmedCues);
 console.log('\n✅ SRT saved:', srtPath);
 
 const { readdir } = await import('node:fs/promises');
@@ -585,15 +638,26 @@ console.log('✅ WebM saved:', outWebm);
 
 try {
   execSync('which ffmpeg', { stdio: 'ignore' });
-  const mp4 = path.join(OUT_DIR, 'archi-flow-demo.mp4');
+
+  // Step 1: encode video-only MP4
+  const mp4Silent = path.join(OUT_DIR, 'archi-flow-demo-silent.mp4');
   execSync(
     `ffmpeg -y -i "${outWebm}" -vf "scale=1280:720:flags=lanczos" ` +
-    `-c:v libx264 -crf 18 -preset fast -pix_fmt yuv420p -movflags +faststart "${mp4}"`,
-    { stdio: 'inherit' }
+    `-c:v libx264 -crf 18 -preset fast -pix_fmt yuv420p -movflags +faststart "${mp4Silent}"`,
+    { stdio: 'ignore' }
   );
-  console.log('✅ MP4 saved:', mp4);
-} catch {
+  console.log('✅ Silent MP4 encoded');
+
+  // Step 2: generate TTS audio and mux into final MP4
+  const mp4Final = path.join(OUT_DIR, 'archi-flow-demo.mp4');
+  await generateTTSAndMux(trimmedCues, mp4Silent, mp4Final, VIDEO_TMP);
+
+  // Clean up silent intermediary
+  await rm(mp4Silent, { force: true });
+
+} catch (e) {
   console.log('ℹ️  ffmpeg not found — use the .webm directly');
+  console.error(e.message);
 }
 
 await rm(VIDEO_TMP, { recursive: true, force: true });
