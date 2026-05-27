@@ -711,6 +711,8 @@ function renderNode(id) {
     };
     el.addEventListener('pointerdown', e => {
       if (!isMobile() || e.pointerType !== 'touch' || e.target.classList.contains('port')) return;
+      if (!(window._mobileMoveMode && window._mobileMoveSrc === id)) return;
+      e.preventDefault();
       e.stopPropagation();
       mobilePointerDrag = { x: e.clientX, y: e.clientY, ox: n.x, oy: n.y, dragged: false };
       try { el.setPointerCapture(e.pointerId); } catch {}
@@ -731,10 +733,13 @@ function renderNode(id) {
         e.preventDefault();
         e.stopPropagation();
         autoSave();
+        window._setMobileMoveMode?.(false);
       }
     });
     el.addEventListener('touchstart', e => {
       if (!isMobile() || e.touches.length !== 1 || e.target.classList.contains('port')) return;
+      if (!(window._mobileMoveMode && window._mobileMoveSrc === id)) return;
+      e.preventDefault();
       e.stopPropagation();
       const t = e.touches[0];
       mobileTapStart = { x: t.clientX, y: t.clientY, t: Date.now(), ox: n.x, oy: n.y, dragged: false };
@@ -758,6 +763,7 @@ function renderNode(id) {
       e.stopPropagation();
       if (wasDragged) {
         autoSave();
+        window._setMobileMoveMode?.(false);
         return;
       }
       if (moved > 12 || !quick) return;
@@ -773,6 +779,7 @@ function renderNode(id) {
       window._mobileShowProps?.(id);
     }, { passive: false });
     el.addEventListener('mousedown', e => {
+      if (isMobile()) return;
       if (e.target.classList.contains('port')) return;
       e.stopPropagation();
       if (isReadOnlyMode()) {
@@ -7217,8 +7224,12 @@ setTimeout(startTour, 1200);
     document.getElementById('btn-add-mobile')?.classList.remove('open');
     window._mobileConnectMode = false;
     window._mobileConnectSrc  = null;
+    window._mobileMoveMode = false;
+    window._mobileMoveSrc = null;
     const hint = document.getElementById('mobile-connect-hint');
     if (hint) hint.style.display = 'none';
+    const moveHint = document.getElementById('mobile-move-hint');
+    if (moveHint) moveHint.style.display = 'none';
   }
 
   // ── Canvas viewport center (in canvas coords) ──────────────────────────────
@@ -7319,7 +7330,8 @@ setTimeout(startTour, 1200);
         if (nodeEl) {
           const id = nodeEl.id.replace('node-', '');
           select(id);
-          _nodeContextMenu(id, t.clientX + 4, t.clientY + 4);
+          if (isMobile()) showMobileNodeActions(id, t.clientX + 4, t.clientY + 4);
+          else _nodeContextMenu(id, t.clientX + 4, t.clientY + 4);
         }
       }, 500);
       // Double-tap on canvas background → open palette
@@ -7508,10 +7520,42 @@ setTimeout(startTour, 1200);
     if (active) closeMobileSheet('mobile-props-sheet');
   }
 
+  function setMoveMode(active, srcId = null) {
+    window._mobileMoveMode = active;
+    window._mobileMoveSrc = active ? srcId : null;
+    const hint = document.getElementById('mobile-move-hint');
+    if (hint) hint.style.display = active ? 'block' : 'none';
+    if (active) closeMobileSheet('mobile-props-sheet');
+  }
+  window._setMobileMoveMode = setMoveMode;
+
+  function showMobileNodeActions(id, x, y) {
+    const menu = document.getElementById('ctx-menu');
+    if (!menu) return;
+    menu.innerHTML = `
+      <div class="ctx-item" data-action="properties">Properties</div>
+      <div class="ctx-item" data-action="move">Move</div>`;
+    menu.style.display = 'block';
+    menu.style.left = Math.min(x, window.innerWidth - 170) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - 104) + 'px';
+    menu.onclick = e => {
+      const action = e.target.closest('.ctx-item')?.dataset.action;
+      menu.style.display = 'none';
+      if (action === 'properties') updateMobilePropsSheet(id);
+      if (action === 'move') setMoveMode(true, id);
+    };
+  }
+
   const mobConnectBtn = document.getElementById('mob-props-connect-btn');
   if (mobConnectBtn) mobConnectBtn.addEventListener('click', () => {
     const selId = document.getElementById('mobile-props-sheet')?.dataset?.nodeId;
     if (selId) setConnectMode(true, selId);
+  });
+
+  const mobMoveBtn = document.getElementById('mob-props-move-btn');
+  if (mobMoveBtn) mobMoveBtn.addEventListener('click', () => {
+    const selId = document.getElementById('mobile-props-sheet')?.dataset?.nodeId;
+    if (selId) setMoveMode(true, selId);
   });
 
   // ══ MOBILE SIM SHEET ══════════════════════════════════════════════════════

@@ -3966,6 +3966,22 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   box-shadow: 0 4px 12px rgba(79,156,249,0.4);
   pointer-events: none;
 }
+#mobile-move-hint {
+  display: none;
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 440;
+  background: rgba(79,156,249,0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(79,156,249,0.4);
+  pointer-events: none;
+}
 
 /* ════════════════════════════════════════════════════════════════════════
    MOBILE BREAKPOINT ≤ 640px
@@ -4510,7 +4526,8 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   font-weight: 700;
   cursor: pointer;
 }
-#mob-props-connect-btn {
+#mob-props-connect-btn,
+#mob-props-move-btn {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -4527,7 +4544,9 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
 }
-#mob-props-connect-btn:active { background: rgba(79,156,249,0.18); }
+#mob-props-connect-btn:active,
+#mob-props-move-btn:active { background: rgba(79,156,249,0.18); }
+#mob-props-move-btn { margin-top: 12px; }
 #mob-props-foot {
   padding: 10px 16px 20px;
   border-top: 1px solid var(--border);
