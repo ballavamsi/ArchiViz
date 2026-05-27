@@ -3515,7 +3515,9 @@ function normalizeImportedArchitecture(payload) {
       tgt: edge.tgt || edge.target,
       animated: edge.animated !== false,
       dashed: !!edge.dashed || !!edge.style?.strokeDasharray,
-      replication: !!edge.replication
+      replication: !!edge.replication,
+      // Preserve explicit traffic split % — null means auto/equal
+      trafficPct: edge.trafficPct != null ? Number(edge.trafficPct) : null
     }))
     .filter(edge => nextNodes[edge.src] && nextNodes[edge.tgt])
     .map(edge => {
@@ -4496,6 +4498,39 @@ function exportPdfReport(mode = S.reportMode || (S.readOnly ? 'public' : 'techni
           </tr>
         </thead>
         <tbody>${assumptionRows}</tbody>
+      </table>
+    </div>
+
+    <div class="section" style="padding-top:0">
+      <div class="sec-title"><span class="sec-icon" style="background:#eef6ff">🔗</span>Connections & Traffic Split</div>
+      <table>
+        <thead>
+          <tr>
+            <th>From</th>
+            <th>To</th>
+            <th style="min-width:90px">Split Mode</th>
+            <th style="min-width:80px">Split %</th>
+            <th>Live Flow</th>
+          </tr>
+        </thead>
+        <tbody>${payload.edges.filter(e => !e.dashed && !e._warn).map(edge => {
+          const srcNode = payload.nodes.find ? payload.nodes.find(n => n.id === edge.src) : Object.values(payload.nodes).find(n => n.id === edge.src);
+          const tgtNode = payload.nodes.find ? payload.nodes.find(n => n.id === edge.tgt) : Object.values(payload.nodes).find(n => n.id === edge.tgt);
+          const srcLabel = srcNode?.props?.label || edge.src;
+          const tgtLabel = tgtNode?.props?.label || edge.tgt;
+          const splitDetails = outgoingSplitDetails(edge.src);
+          const thisSplit = splitDetails.find(s => s.edge.id === edge.id);
+          const splitPct = thisSplit ? thisSplit.pct.toFixed(1) + '%' : '—';
+          const splitMode = edge.trafficPct != null ? 'Explicit' : (splitDetails.length > 0 ? (thisSplit?.mode === 'equal' ? 'Equal split' : 'Auto remainder') : '—');
+          const liveFlow = S.eFlow[edge.id] ? formatFlow(S.eFlow[edge.id]) : '—';
+          return `<tr>
+            <td style="font-weight:600">${esc(srcLabel)}</td>
+            <td style="font-weight:600">${esc(tgtLabel)}</td>
+            <td><span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${edge.trafficPct != null ? '#e8f0fe' : '#f0fdf4'};color:${edge.trafficPct != null ? '#1a56db' : '#166534'};font-weight:700">${esc(splitMode)}</span></td>
+            <td style="font-variant-numeric:tabular-nums;font-weight:700">${esc(splitPct)}</td>
+            <td style="font-variant-numeric:tabular-nums">${esc(liveFlow)}</td>
+          </tr>`;
+        }).join('')}</tbody>
       </table>
     </div>
 
