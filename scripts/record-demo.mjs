@@ -61,8 +61,14 @@ function msToSrt(ms) {
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${cs}`;
 }
 function writeSrt(fp) {
+  // Prevent overlap: clamp each cue's end to (next cue's start - 80ms gap)
+  const trimmed = cues.map((c, i) => {
+    const nextStart = cues[i + 1]?.start;
+    const end = nextStart != null ? Math.min(c.end, nextStart - 80) : c.end;
+    return { ...c, end: Math.max(c.start + 200, end) }; // always show at least 200ms
+  });
   const ws = createWriteStream(fp);
-  cues.forEach((c, i) => {
+  trimmed.forEach((c, i) => {
     ws.write(`${i + 1}\n${msToSrt(c.start)} --> ${msToSrt(c.end)}\n${c.text}\n\n`);
   });
   ws.end();
