@@ -68,6 +68,7 @@ let S = {
     } catch { return 'system'; }
   })(),
   sidebarOpen: (() => { try { return localStorage.getItem('archviz.sidebar') !== 'closed'; } catch { return true; } })(),
+  cockpitCompact: (() => { try { return localStorage.getItem('archviz.cockpit') !== 'expanded'; } catch { return true; } })(),
   gridSize: 40,
   title: 'Untitled Architecture',
   currentDiagramId: null,
@@ -1471,6 +1472,13 @@ function _costBreakdownHtml() {
     </div>`;
 }
 
+function toggleCockpitCompact(force) {
+  S.cockpitCompact = typeof force === 'boolean' ? force : !S.cockpitCompact;
+  try { localStorage.setItem('archviz.cockpit', S.cockpitCompact ? 'compact' : 'expanded'); } catch {}
+  updateEmptyPanel();
+}
+window.toggleCockpitCompact = toggleCockpitCompact;
+
 function updateEmptyPanel() {
   const hud = document.getElementById('canvas-hud');
   if (S.sel || S.selEdge) { hud.style.display = 'none'; return; }
@@ -1492,6 +1500,21 @@ function updateEmptyPanel() {
     ? (S.simOn ? 'Click any node to inspect its current load and adjust capacity.' : 'Click any node to tune its properties. Run the simulation to see live traffic.')
     : 'Load an example or drag components from the sidebar to start designing.';
   const ringLabel = S.simOn && loads.length ? Math.round(maxLoad) + '%' : nodeCount ? '—' : 'SIM';
+  if (S.cockpitCompact) {
+    hud.classList.add('compact');
+    hud.innerHTML = `
+      <button class="hud-expand" title="Expand cockpit" aria-label="Expand architecture cockpit" onclick="toggleCockpitCompact(false)">
+        <span class="hud-mini-ring" style="--ring-color:${ringColor};--health:${ringPct}%">${esc(ringLabel)}</span>
+        <span class="hud-mini-body">
+          <strong>${esc(title)}</strong>
+          <span>${nodeCount} nodes · ${edgeCount} edges · ${esc(compactNum(totalRps))}/s</span>
+        </span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+      </button>`;
+    requestAnimationFrame(positionSugTray);
+    return;
+  }
+  hud.classList.remove('compact');
   hud.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
       <div class="health-ring" style="--health:${ringPct}%;--ring-color:${ringColor}">
@@ -1509,6 +1532,10 @@ function updateEmptyPanel() {
       <div class="metric" style="${critical > 0 ? 'border-color:rgba(248,81,73,0.4);background:rgba(248,81,73,0.08)' : warning > 0 ? 'border-color:rgba(245,183,49,0.4);background:rgba(245,183,49,0.08)' : ''}"><strong style="color:${critical > 0 ? '#f85149' : warning > 0 ? '#f5b731' : 'var(--text)'}">${critical || warning || 0}</strong><span>${critical > 0 ? 'Critical' : warning > 0 ? 'Warning' : 'Issues'}</span></div>
     </div>
     ${_costBreakdownHtml()}`;
+  hud.insertAdjacentHTML('afterbegin', `
+    <button class="hud-collapse" title="Minimize cockpit" aria-label="Minimize architecture cockpit" onclick="toggleCockpitCompact(true)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M5 12h14"/></svg>
+    </button>`);
   requestAnimationFrame(positionSugTray);
 }
 
@@ -3989,6 +4016,13 @@ async function startGoogleSignIn() {
   });
 }
 
+async function updateAuthMenu() {
+  const btn = document.getElementById('btn-signin-google');
+  if (!btn) return;
+  const signedIn = !!(sbReady() && await currentSessionToken());
+  btn.style.display = sbReady() && !signedIn ? '' : 'none';
+}
+
 function setCurrentDiagram(meta = {}) {
   S.currentDiagramId = meta.id || null;
   S.currentDiagramTitle = meta.title || getDiagramTitle();
@@ -4241,6 +4275,43 @@ function wireDefaultImportHandler() {
   };
 }
 
+function makeMoreGroup(label, ids, items) {
+  const menu = document.getElementById('more-menu');
+  const group = document.createElement('div');
+  group.className = 'more-group';
+  group.innerHTML = `
+    <button class="tbtn more-item more-parent" type="button">
+      <span>${label}</span>
+      <svg class="more-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+    <div class="more-submenu"></div>`;
+  const submenu = group.querySelector('.more-submenu');
+  ids.map(id => items[id]).filter(Boolean).forEach(btn => submenu.appendChild(btn));
+  menu.appendChild(group);
+}
+
+function organizeMoreMenu() {
+  const menu = document.getElementById('more-menu');
+  if (!menu || menu.dataset.organized === '1') return;
+  menu.dataset.organized = '1';
+  const ids = ['btn-signin-google','btn-my-diagrams','btn-import','btn-export','btn-export-pdf','btn-export-svg','btn-export-png','btn-present','btn-theme','btn-shortcuts','btn-restart-tour','btn-suggestions','btn-reserved','btn-service-mesh','btn-clear'];
+  const items = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+  menu.replaceChildren();
+  const signIn = items['btn-signin-google'];
+  const diagrams = items['btn-my-diagrams'];
+  if (signIn) menu.appendChild(signIn);
+  if (diagrams) menu.appendChild(diagrams);
+  makeMoreGroup('Import / Export', ['btn-import', 'btn-export', 'btn-export-pdf', 'btn-export-svg', 'btn-export-png'], items);
+  makeMoreGroup('View', ['btn-present', 'btn-theme', 'btn-shortcuts', 'btn-restart-tour'], items);
+  makeMoreGroup('Simulation', ['btn-suggestions', 'btn-reserved', 'btn-service-mesh'], items);
+  const clear = items['btn-clear'];
+  if (clear) menu.appendChild(clear);
+  const about = document.createElement('div');
+  about.className = 'more-about';
+  about.innerHTML = '<strong>Archi-Flow</strong><span>Architecture diagrams with live traffic simulation.</span><a href="https://ballavamsi.com" target="_blank" rel="noopener">ballavamsi.com</a>';
+  menu.appendChild(about);
+}
+
 function shareToLinkedIn() {
   const url = updateShareHash();
   const title = encodeURIComponent(getDiagramTitle() + ' — Architecture Diagram (Archi-Flow)');
@@ -4365,6 +4436,7 @@ document.getElementById('btn-save-diagram-as').onclick = () => saveCurrentDiagra
 document.getElementById('btn-import-diagram-json').onclick = importDiagramJsonToLibrary;
 document.getElementById('btn-migrate-local').onclick = migrateLocalSavesToCloud;
 document.getElementById('btn-diagrams-signin').onclick = startGoogleSignIn;
+document.getElementById('btn-signin-google').onclick = startGoogleSignIn;
 document.getElementById('diagram-search').oninput = () => {
   clearTimeout(_diagramSearchTimer);
   _diagramSearchTimer = setTimeout(updateDiagramsPanel, 180);
@@ -4556,7 +4628,9 @@ document.getElementById('btn-more').onclick = e => {
   e.stopPropagation();
   moreMenu.style.display = moreMenu.style.display === 'none' ? 'flex' : 'none';
   if (moreMenu.style.display === 'flex') moreMenu.style.flexDirection = 'column';
+  updateAuthMenu();
 };
+moreMenu.addEventListener('click', e => e.stopPropagation());
 document.addEventListener('click', () => { moreMenu.style.display = 'none'; });
 
 // Speed selector
@@ -4595,6 +4669,7 @@ speedSel.onchange = () => {
   updateSidebarToggle();
   updateZoomLabel();
   updateCanvasGrid();
+  organizeMoreMenu();
   syncSlider(Number(uInp.value || 100));
   updateEmptyPanel();
   positionSugTray();
@@ -4620,11 +4695,12 @@ speedSel.onchange = () => {
   if (session) {
     // Already logged in — set up user profile immediately
     _onUserLoggedIn(session.user);
+    updateAuthMenu();
     return;
   }
 
   // Guest mode — user previously skipped login
-  if (localStorage.getItem('archviz.guest') === '1') return;
+  if (localStorage.getItem('archviz.guest') === '1') { updateAuthMenu(); return; }
 
   const gate = document.createElement('div');
   gate.id = 'auth-gate';
@@ -4667,6 +4743,7 @@ speedSel.onchange = () => {
       if (el) el.remove();
       _onUserLoggedIn(sess.user, event === 'SIGNED_IN');
     }
+    updateAuthMenu();
   });
 })();
 
@@ -4692,6 +4769,7 @@ function _onUserLoggedIn(user, isNewLogin = false) {
   if (isNewLogin) {
     setTimeout(() => _showWelcomePopup(firstName), 600);
   }
+  updateAuthMenu();
   if (document.getElementById('my-diagrams-modal')?.classList.contains('open')) updateDiagramsPanel();
 }
 

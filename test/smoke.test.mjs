@@ -165,6 +165,7 @@ test('cloud diagram library has private API and UI hooks', () => {
   assert.match(appJs, /Authorization.*Bearer/s, 'frontend should send Supabase bearer token');
   assert.match(appJs, /migrateLocalSavesToCloud/, 'frontend should move browser saves to cloud');
   assert.match(appJs, /currentDiagramId/, 'frontend should track the currently open cloud file');
+  assert.match(html + appJs, /btn-signin-google/, 'guest users should have a Google sign-in recovery action');
 
   assert.match(server, /\/api\/diagrams/, 'server should expose private diagram routes');
   assert.match(server, /verifySupabaseUser/, 'server should validate Supabase users');
@@ -174,4 +175,16 @@ test('cloud diagram library has private API and UI hooks', () => {
   assert.match(sql, /create table if not exists public\.user_diagrams/, 'Supabase schema should create user_diagrams');
   assert.match(sql, /enable row level security/, 'Supabase schema should enable RLS');
   assert.match(sql, /auth\.uid\(\) = user_id/g, 'RLS policies should scope rows to the owner');
+});
+
+test('more menu and cockpit stay compact', () => {
+  const appJs = readFileSync(rootFile('src/app.js'), 'utf8');
+  const css = readFileSync(rootFile('src/app.css'), 'utf8');
+
+  assert.match(appJs, /function organizeMoreMenu\(/, 'More menu should be organized into submenus');
+  assert.match(appJs, /Import \/ Export/, 'More menu should group import/export actions');
+  assert.match(appJs, /function toggleCockpitCompact\(/, 'Architecture cockpit should be collapsible');
+  assert.match(appJs, /archviz\.cockpit/, 'Cockpit compact state should persist');
+  assert.match(css, /#canvas-hud\.compact/, 'Compact cockpit should have dedicated styling');
+  assert.match(css, /\.more-submenu/, 'More menu should support hover submenus');
 });
