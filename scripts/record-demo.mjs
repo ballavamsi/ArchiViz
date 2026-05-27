@@ -440,7 +440,11 @@ if (hudBox) {
 addCue('Now ramp to 10,000 users — watch the bottlenecks appear', 4000);
 await page.evaluate(() => {
   const sl = document.getElementById('users-slider');
-  if (sl) { sl.value = 10000; sl.dispatchEvent(new Event('input')); }
+  if (sl) {
+    // Slider is log-scale: pos = log10(users) * 100  →  10k users = pos 400
+    sl.value = Math.round(Math.log10(10000) * 100); // = 400
+    sl.dispatchEvent(new Event('input'));
+  }
 });
 await wait(2800);
 
