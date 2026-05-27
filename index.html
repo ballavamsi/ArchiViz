@@ -633,6 +633,79 @@
 
 <div id="drag-ghost"></div>
 
+<!-- MOBILE: FAB add button -->
+<button id="btn-add-mobile" title="Add component" aria-label="Add component">+</button>
+
+<!-- MOBILE: Run Sim FAB -->
+<button id="btn-sim-mobile" title="Run Simulation">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+  Run Sim
+</button>
+
+<!-- MOBILE: Sheet backdrop -->
+<div id="mobile-sheet-backdrop"></div>
+
+<!-- MOBILE: Palette bottom sheet -->
+<div id="mobile-palette-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div id="mobile-pal-search-wrap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="mobile-pal-search" type="text" placeholder="Search components…" autocomplete="off"/>
+    </div>
+    <button id="mobile-sheet-close" aria-label="Close">✕</button>
+  </div>
+  <div id="mobile-pal-cats"></div>
+  <div id="mobile-pal-grid"></div>
+</div>
+
+<!-- MOBILE: Simulation sheet -->
+<div id="mobile-sim-sheet">
+  <div class="sheet-handle"></div>
+  <div class="mob-sim-inner">
+    <label>Users: <strong id="mob-users-val">100</strong></label>
+    <input id="mob-users-slider" type="range" min="0" max="1000" step="1" value="100"/>
+    <div class="mob-sim-row">
+      <select id="mob-speed-sel">
+        <option value="slow">🐢 Slow</option>
+        <option value="normal" selected>⚡ Normal</option>
+        <option value="fast">🚀 Fast</option>
+      </select>
+      <button class="mob-sim-run" id="mob-btn-run-sim">Run Sim</button>
+    </div>
+    <div id="mob-flow-readout" style="font-size:12px;color:var(--muted);text-align:center"></div>
+  </div>
+</div>
+
+<!-- MOBILE: Node properties sheet -->
+<div id="mobile-props-sheet">
+  <div class="sheet-handle"></div>
+  <div id="mob-props-head">
+    <div id="mob-props-icon"></div>
+    <div>
+      <div id="mob-props-title"></div>
+      <div id="mob-props-desc"></div>
+    </div>
+    <button id="mob-props-close" aria-label="Close">✕</button>
+  </div>
+  <div id="mob-props-body">
+    <div id="mob-props-fields"></div>
+    <button id="mob-props-connect-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M15 8l4 4-4 4"/></svg>
+      Connect to another node
+    </button>
+  </div>
+  <div id="mob-props-foot">
+    <button id="mob-btn-del-node">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      Delete Node
+    </button>
+  </div>
+</div>
+
+<!-- MOBILE: Connect mode hint -->
+<div id="mobile-connect-hint">Tap a node to connect →</div>
+
 <!-- Context menu -->
 <div id="ctx-menu" style="display:none;position:fixed;z-index:9999;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:4px;min-width:150px;box-shadow:0 8px 32px rgba(0,0,0,0.5)"></div>
 
@@ -641,6 +714,12 @@
 <!-- My Flows Modal -->
 <div id="my-diagrams-modal">
   <div class="diagrams-box">
+
+    <!-- MOBILE: close bar (hidden on desktop, shown on mobile via CSS) -->
+    <div id="mob-diagrams-close-bar">
+      <span>My Flows</span>
+      <button id="mob-diagrams-close-btn" aria-label="Close My Flows">✕</button>
+    </div>
 
     <!-- ── Left panel: save + status ──────────────────────────────── -->
     <div class="diagrams-left">

@@ -1738,6 +1738,15 @@ function renderEdges() {
 if (!S.selSet) S.selSet = new Set();
 
 function select(id, addToSet) {
+  // Mobile connect mode: first tap selects source, second tap creates edge
+  if (window._mobileConnectMode && window._mobileConnectSrc && id !== window._mobileConnectSrc) {
+    addEdge(window._mobileConnectSrc, id, { userInitiated: true });
+    window._mobileConnectMode = false;
+    window._mobileConnectSrc  = null;
+    const hint = document.getElementById('mobile-connect-hint');
+    if (hint) hint.style.display = 'none';
+    renderAll(); return;
+  }
   if (addToSet) {
     // Shift+click: toggle in the multi-select set
     if (S.selSet.has(id)) { S.selSet.delete(id); }
@@ -1874,6 +1883,8 @@ function initSections() {
 }
 
 function showProps(id) {
+  // Mobile: delegate to bottom sheet
+  if (window.innerWidth <= 640) { _mobileShowProps(id); return; }
   const panel = document.getElementById('props-panel');
   const empty = document.getElementById('props-empty');
   const cont  = document.getElementById('props-content');
@@ -6965,5 +6976,376 @@ function startTour() {
   renderStep(0);
 }
 
+// Stub replaced by initMobile — called from showProps when innerWidth ≤ 640
+window._mobileShowProps = function() {};
+
 // Launch tour after a short delay so the app finishes rendering
 setTimeout(startTour, 1200);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MOBILE / TOUCH SUPPORT
+// ══════════════════════════════════════════════════════════════════════════════
+(function initMobile() {
+  const isMobile = () => window.innerWidth <= 640;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function openMobileSheet(sheetId) {
+    const sheet = document.getElementById(sheetId);
+    const bd    = document.getElementById('mobile-sheet-backdrop');
+    if (!sheet || !bd) return;
+    sheet.classList.add('open');
+    bd.classList.add('open');
+    bd.style.display = 'block';
+    // clicking backdrop closes the topmost sheet
+    bd.onclick = () => closeAllMobileSheets();
+  }
+
+  function closeMobileSheet(sheetId) {
+    const sheet = document.getElementById(sheetId);
+    if (sheet) sheet.classList.remove('open');
+    // hide backdrop only if no sheets are open
+    const anyOpen = ['mobile-palette-sheet','mobile-sim-sheet','mobile-props-sheet']
+      .some(id => document.getElementById(id)?.classList.contains('open'));
+    if (!anyOpen) {
+      const bd = document.getElementById('mobile-sheet-backdrop');
+      if (bd) { bd.classList.remove('open'); setTimeout(() => { bd.style.display='none'; bd.onclick=null; }, 230); }
+    }
+  }
+
+  function closeAllMobileSheets() {
+    ['mobile-palette-sheet','mobile-sim-sheet','mobile-props-sheet'].forEach(id => {
+      document.getElementById(id)?.classList.remove('open');
+    });
+    const bd = document.getElementById('mobile-sheet-backdrop');
+    if (bd) { bd.classList.remove('open'); setTimeout(() => { bd.style.display='none'; bd.onclick=null; }, 230); }
+    document.getElementById('btn-add-mobile')?.classList.remove('open');
+    window._mobileConnectMode = false;
+    window._mobileConnectSrc  = null;
+    const hint = document.getElementById('mobile-connect-hint');
+    if (hint) hint.style.display = 'none';
+  }
+
+  // ── Canvas viewport center (in canvas coords) ──────────────────────────────
+  function canvasCenter() {
+    const r = cWrap.getBoundingClientRect();
+    return {
+      x: (r.width  / 2 - S.panX) / S.zoom,
+      y: (r.height / 2 - S.panY) / S.zoom,
+    };
+  }
+
+  // ══ MOBILE PALETTE SHEET ══════════════════════════════════════════════════
+  let _mobPalCat = 'All';
+  let _mobPalQuery = '';
+
+  function buildMobilePalette() {
+    if (!isMobile()) return;
+    // Category buttons
+    const cats = ['All', ...new Set(COMPONENT_DEFS.map(d => d.category).filter(Boolean))];
+    const catsEl = document.getElementById('mobile-pal-cats');
+    if (catsEl) {
+      catsEl.innerHTML = cats.map(c =>
+        `<button class="mob-cat-btn${c === _mobPalCat ? ' active' : ''}" data-cat="${c}">${c}</button>`
+      ).join('');
+      catsEl.querySelectorAll('.mob-cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          _mobPalCat = btn.dataset.cat;
+          buildMobilePalette();
+        });
+      });
+    }
+    // Grid of components
+    const q = _mobPalQuery.toLowerCase();
+    const items = COMPONENT_DEFS.filter(d => {
+      if (_mobPalCat !== 'All' && d.category !== _mobPalCat) return false;
+      if (q && !d.name.toLowerCase().includes(q) && !(d.category||'').toLowerCase().includes(q)) return false;
+      return true;
+    });
+    const grid = document.getElementById('mobile-pal-grid');
+    if (!grid) return;
+    grid.innerHTML = items.map(d =>
+      `<div class="mob-pal-item" data-defid="${d.id}">
+        <div class="mob-icon" style="background:${d.color}22">${d.icon}</div>
+        <span>${d.name}</span>
+      </div>`
+    ).join('');
+    grid.querySelectorAll('.mob-pal-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const { x, y } = canvasCenter();
+        const newId = addNode(el.dataset.defid, x - 80, y - 44);
+        closeAllMobileSheets();
+        // Show props sheet for the newly added node
+        if (newId) setTimeout(() => window._mobileShowProps(newId), 60);
+      });
+    });
+  }
+
+  // FAB open/close palette sheet
+  const fabAdd = document.getElementById('btn-add-mobile');
+  if (fabAdd) {
+    fabAdd.addEventListener('click', () => {
+      const sheet = document.getElementById('mobile-palette-sheet');
+      const isOpen = sheet?.classList.contains('open');
+      if (isOpen) { closeAllMobileSheets(); }
+      else { closeAllMobileSheets(); buildMobilePalette(); openMobileSheet('mobile-palette-sheet'); fabAdd.classList.add('open'); }
+    });
+  }
+
+  // Search in mobile palette
+  const mobSearch = document.getElementById('mobile-pal-search');
+  if (mobSearch) {
+    mobSearch.addEventListener('input', () => { _mobPalQuery = mobSearch.value; buildMobilePalette(); });
+  }
+
+  // Close button
+  const sheetClose = document.getElementById('mobile-sheet-close');
+  if (sheetClose) sheetClose.addEventListener('click', closeAllMobileSheets);
+
+  // ══ CANVAS TOUCH GESTURES ══════════════════════════════════════════════════
+  let _touch = { touches: null, dist: 0, midX: 0, midY: 0, panStart: null, longPressTimer: null, lastTap: 0 };
+
+  function touchDist(t1, t2) {
+    return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+  }
+  function touchMid(t1, t2) {
+    return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+  }
+
+  cWrap.addEventListener('touchstart', e => {
+    clearTimeout(_touch.longPressTimer);
+    const touches = e.touches;
+    if (touches.length === 1) {
+      const t = touches[0];
+      // Long-press detection (500ms) on nodes
+      _touch.longPressTimer = setTimeout(() => {
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const nodeEl = el?.closest('[id^="node-"]');
+        if (nodeEl) {
+          const id = nodeEl.id.replace('node-', '');
+          select(id);
+          _nodeContextMenu(id, t.clientX + 4, t.clientY + 4);
+        }
+      }, 500);
+      // Double-tap on canvas background → open palette
+      const now = Date.now();
+      const onBg = e.target === cWrap || e.target === cSvg || e.target.id === 'canvas-nodes';
+      if (onBg && now - _touch.lastTap < 300) {
+        clearTimeout(_touch.longPressTimer);
+        if (isMobile()) { buildMobilePalette(); openMobileSheet('mobile-palette-sheet'); fabAdd?.classList.add('open'); }
+      }
+      _touch.lastTap = now;
+      // Single finger pan (on canvas background)
+      if (onBg) {
+        _touch.panStart = { sx: t.clientX, sy: t.clientY, ox: S.panX, oy: S.panY };
+      }
+    } else if (touches.length === 2) {
+      clearTimeout(_touch.longPressTimer);
+      _touch.panStart = null;
+      G.pan = null;
+      _touch.dist = touchDist(touches[0], touches[1]);
+      const mid = touchMid(touches[0], touches[1]);
+      const rect = cWrap.getBoundingClientRect();
+      _touch.midX = mid.x - rect.left;
+      _touch.midY = mid.y - rect.top;
+      _touch.touches = { ox: S.panX, oy: S.panY, oz: S.zoom, mx: _touch.midX, my: _touch.midY };
+    }
+  }, { passive: true });
+
+  cWrap.addEventListener('touchmove', e => {
+    clearTimeout(_touch.longPressTimer);
+    const touches = e.touches;
+    if (touches.length === 2 && _touch.touches) {
+      e.preventDefault();
+      const newDist = touchDist(touches[0], touches[1]);
+      const mid = touchMid(touches[0], touches[1]);
+      const rect = cWrap.getBoundingClientRect();
+      const mx = mid.x - rect.left, my = mid.y - rect.top;
+      const scale = newDist / _touch.dist;
+      const nz = Math.max(0.25, Math.min(2.5, _touch.touches.oz * scale));
+      // Zoom toward pinch midpoint
+      S.panX = mx - (_touch.touches.mx - _touch.touches.ox) * (nz / _touch.touches.oz) - (_touch.touches.mx * (nz / _touch.touches.oz) - _touch.touches.mx);
+      S.panY = my - (_touch.touches.my - _touch.touches.oy) * (nz / _touch.touches.oz) - (_touch.touches.my * (nz / _touch.touches.oz) - _touch.touches.my);
+      // Two-finger pan delta
+      const dmx = mx - _touch.touches.mx, dmy = my - _touch.touches.my;
+      S.panX += dmx; S.panY += dmy;
+      S.zoom = nz;
+      renderAll(); updateZoomLabel(); updateCanvasGrid();
+    } else if (touches.length === 1 && _touch.panStart) {
+      e.preventDefault();
+      const t = touches[0];
+      S.panX = _touch.panStart.ox + (t.clientX - _touch.panStart.sx);
+      S.panY = _touch.panStart.oy + (t.clientY - _touch.panStart.sy);
+      renderAll(); updateZoomLabel(); updateCanvasGrid();
+    }
+  }, { passive: false });
+
+  cWrap.addEventListener('touchend', e => {
+    clearTimeout(_touch.longPressTimer);
+    _touch.panStart = null;
+    _touch.touches = null;
+    if (e.touches.length < 2) { _touch.dist = 0; }
+  }, { passive: true });
+
+  // ══ MOBILE PROPS SHEET ════════════════════════════════════════════════════
+  // Wire the global stub so showProps() can call us
+  window._mobileShowProps = updateMobilePropsSheet;
+
+  function updateMobilePropsSheet(id) {
+    const sheet = document.getElementById('mobile-props-sheet');
+    if (!sheet) return;
+    if (!id || !S.nodes[id]) { closeMobileSheet('mobile-props-sheet'); return; }
+    const n   = S.nodes[id];
+    const def = COMPONENT_DEFS.find(d => d.id === n.defId);
+    if (!def) return;
+
+    document.getElementById('mob-props-icon').style.background = def.color + '22';
+    document.getElementById('mob-props-icon').innerHTML = def.icon;
+    document.getElementById('mob-props-title').textContent = def.name;
+    document.getElementById('mob-props-desc').textContent  = def.description || '';
+
+    // Render key props as simple inputs
+    const fields = document.getElementById('mob-props-fields');
+    if (fields && def.props) {
+      fields.innerHTML = def.props.slice(0, 6).map(p => {
+        const val = n.props?.[p.key] ?? p.default ?? '';
+        if (p.type === 'select' && p.options) {
+          return `<div class="mob-field-row">
+            <label class="mob-field-label">${p.label}</label>
+            <select class="mob-field-input" data-key="${p.key}">
+              ${p.options.map(o => `<option value="${o.value}" ${val===o.value?'selected':''}>${o.label}</option>`).join('')}
+            </select>
+          </div>`;
+        }
+        return `<div class="mob-field-row">
+          <label class="mob-field-label">${p.label}</label>
+          <input class="mob-field-input" type="text" data-key="${p.key}" value="${val}"/>
+        </div>`;
+      }).join('');
+      fields.querySelectorAll('.mob-field-input').forEach(inp => {
+        inp.addEventListener('change', () => {
+          if (!S.nodes[id]) return;
+          snapshot();
+          S.nodes[id].props[inp.dataset.key] = inp.value;
+          autoSave(); renderNode(id); updateCost();
+          // Also sync desktop panel if visible
+          const desktopInp = document.querySelector(`#props-fields [data-key="${inp.dataset.key}"]`);
+          if (desktopInp) desktopInp.value = inp.value;
+        });
+      });
+    }
+
+    sheet.dataset.nodeId = id;
+    openMobileSheet('mobile-props-sheet');
+  }
+
+  // Close props sheet
+  const mobPropsClose = document.getElementById('mob-props-close');
+  if (mobPropsClose) mobPropsClose.addEventListener('click', () => {
+    closeMobileSheet('mobile-props-sheet');
+    deselect();
+  });
+
+  // Delete from mobile sheet
+  const mobDel = document.getElementById('mob-btn-del-node');
+  if (mobDel) mobDel.addEventListener('click', () => {
+    const nid = document.getElementById('mobile-props-sheet')?.dataset?.nodeId;
+    if (nid) { deleteNode(nid); closeMobileSheet('mobile-props-sheet'); }
+  });
+
+  // ── Connect mode from props sheet ──────────────────────────────────────────
+  function setConnectMode(active, srcId) {
+    window._mobileConnectMode = active;
+    window._mobileConnectSrc  = active ? srcId : null;
+    const hint = document.getElementById('mobile-connect-hint');
+    if (hint) hint.style.display = active ? 'block' : 'none';
+    if (active) closeMobileSheet('mobile-props-sheet');
+  }
+
+  const mobConnectBtn = document.getElementById('mob-props-connect-btn');
+  if (mobConnectBtn) mobConnectBtn.addEventListener('click', () => {
+    const selId = document.getElementById('mobile-props-sheet')?.dataset?.nodeId;
+    if (selId) setConnectMode(true, selId);
+  });
+
+  // ══ MOBILE SIM SHEET ══════════════════════════════════════════════════════
+  const btnSimMobile = document.getElementById('btn-sim-mobile');
+  if (btnSimMobile) {
+    btnSimMobile.addEventListener('click', () => {
+      const sheet = document.getElementById('mobile-sim-sheet');
+      const isOpen = sheet?.classList.contains('open');
+      if (isOpen) { closeMobileSheet('mobile-sim-sheet'); }
+      else { closeAllMobileSheets(); openMobileSheet('mobile-sim-sheet'); }
+    });
+  }
+
+  // Sync mobile sim controls with desktop
+  const mobSlider = document.getElementById('mob-users-slider');
+  const mobVal    = document.getElementById('mob-users-val');
+  const desktopSlider = document.getElementById('users-slider');
+  const desktopInput  = document.getElementById('users-input');
+
+  if (mobSlider && desktopSlider) {
+    mobSlider.addEventListener('input', () => {
+      const v = mobSlider.value;
+      if (mobVal) mobVal.textContent = v;
+      desktopSlider.value = v;
+      desktopInput.value  = v;
+      desktopSlider.dispatchEvent(new Event('input'));
+    });
+  }
+
+  const mobSpeedSel = document.getElementById('mob-speed-sel');
+  const desktopSpeed = document.getElementById('sim-speed-sel');
+  if (mobSpeedSel && desktopSpeed) {
+    mobSpeedSel.addEventListener('change', () => { desktopSpeed.value = mobSpeedSel.value; });
+  }
+
+  const mobRunBtn = document.getElementById('mob-btn-run-sim');
+  const desktopRunBtn = document.getElementById('btn-sim');
+  if (mobRunBtn && desktopRunBtn) {
+    mobRunBtn.addEventListener('click', () => {
+      desktopRunBtn.click();
+      closeMobileSheet('mobile-sim-sheet');
+    });
+  }
+
+  // Sync running state onto mobile FAB
+  const _origBtnSimClick = desktopRunBtn?.onclick;
+  if (desktopRunBtn) {
+    const observer = new MutationObserver(() => {
+      const isRunning = desktopRunBtn.classList.contains('running') || document.getElementById('sim-dot')?.classList.contains('active');
+      btnSimMobile?.classList.toggle('running', !!isRunning);
+      if (mobRunBtn) mobRunBtn.classList.toggle('running', !!isRunning);
+      const fr = document.getElementById('flow-readout')?.textContent || '';
+      const mobFr = document.getElementById('mob-flow-readout');
+      if (mobFr) mobFr.textContent = fr;
+    });
+    observer.observe(desktopRunBtn, { attributes: true, attributeFilter: ['class'] });
+    const simDot = document.getElementById('sim-dot');
+    if (simDot) observer.observe(simDot, { attributes: true });
+  }
+
+  // Swipe down to close sheets
+  ['mobile-palette-sheet','mobile-sim-sheet','mobile-props-sheet'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let sy = 0, startY = 0;
+    el.addEventListener('touchstart', e => {
+      startY = e.touches[0].clientY;
+      sy = 0;
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      sy = e.touches[0].clientY - startY;
+    }, { passive: true });
+    el.addEventListener('touchend', () => {
+      if (sy > 60) { closeAllMobileSheets(); }
+      sy = 0;
+    });
+  });
+
+  // Mobile close button for My Flows modal
+  document.getElementById('mob-diagrams-close-btn')?.addEventListener('click', () => {
+    document.getElementById('my-diagrams-modal')?.classList.remove('open');
+  });
+
+})(); // end initMobile
