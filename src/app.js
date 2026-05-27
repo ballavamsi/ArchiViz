@@ -692,20 +692,75 @@ function renderNode(id) {
     el.className = 'a-node';
     cNodes.appendChild(el);
     let mobileTapStart = null;
+    let mobilePointerDrag = null;
+    const moveMobileNode = (state, clientX, clientY) => {
+      const dx = clientX - state.x;
+      const dy = clientY - state.y;
+      const moved = Math.hypot(dx, dy);
+      if (moved < 8 && !state.dragged) return false;
+      if (!state.dragged) {
+        snapshot();
+        document.getElementById('mobile-props-sheet')?.classList.remove('open');
+        state.dragged = true;
+      }
+      n.x = snapVal(state.ox + dx / S.zoom);
+      n.y = snapVal(state.oy + dy / S.zoom);
+      renderAll();
+      updateStats();
+      return true;
+    };
+    el.addEventListener('pointerdown', e => {
+      if (!isMobile() || e.pointerType !== 'touch' || e.target.classList.contains('port')) return;
+      e.stopPropagation();
+      mobilePointerDrag = { x: e.clientX, y: e.clientY, ox: n.x, oy: n.y, dragged: false };
+      try { el.setPointerCapture(e.pointerId); } catch {}
+    });
+    el.addEventListener('pointermove', e => {
+      if (!isMobile() || !mobilePointerDrag || e.pointerType !== 'touch') return;
+      if (moveMobileNode(mobilePointerDrag, e.clientX, e.clientY)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+    el.addEventListener('pointerup', e => {
+      if (!isMobile() || !mobilePointerDrag || e.pointerType !== 'touch') return;
+      const wasDragged = mobilePointerDrag.dragged;
+      mobilePointerDrag = null;
+      try { el.releasePointerCapture(e.pointerId); } catch {}
+      if (wasDragged) {
+        e.preventDefault();
+        e.stopPropagation();
+        autoSave();
+      }
+    });
     el.addEventListener('touchstart', e => {
       if (!isMobile() || e.touches.length !== 1 || e.target.classList.contains('port')) return;
+      e.stopPropagation();
       const t = e.touches[0];
-      mobileTapStart = { x: t.clientX, y: t.clientY, t: Date.now() };
-    }, { passive: true });
+      mobileTapStart = { x: t.clientX, y: t.clientY, t: Date.now(), ox: n.x, oy: n.y, dragged: false };
+    }, { passive: false });
+    el.addEventListener('touchmove', e => {
+      if (!isMobile() || !mobileTapStart || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (moveMobileNode(mobileTapStart, t.clientX, t.clientY)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, { passive: false });
     el.addEventListener('touchend', e => {
       if (!isMobile() || !mobileTapStart) return;
       const t = e.changedTouches?.[0];
       const moved = t ? Math.hypot(t.clientX - mobileTapStart.x, t.clientY - mobileTapStart.y) : 99;
       const quick = Date.now() - mobileTapStart.t < 450;
+      const wasDragged = mobileTapStart.dragged;
       mobileTapStart = null;
-      if (moved > 12 || !quick) return;
       e.preventDefault();
       e.stopPropagation();
+      if (wasDragged) {
+        autoSave();
+        return;
+      }
+      if (moved > 12 || !quick) return;
       if (window._mobileConnectMode && window._mobileConnectSrc && id !== window._mobileConnectSrc) {
         addEdge(window._mobileConnectSrc, id, { userInitiated: true });
         window._mobileConnectMode = false;
@@ -5389,6 +5444,16 @@ function makeMoreGroup(label, ids, items) {
     <div class="more-submenu"></div>`;
   const submenu = group.querySelector('.more-submenu');
   ids.map(id => items[id]).filter(Boolean).forEach(btn => submenu.appendChild(btn));
+  const parent = group.querySelector('.more-parent');
+  parent.addEventListener('click', e => {
+    if (window.innerWidth > 640) return;
+    e.preventDefault();
+    e.stopPropagation();
+    menu.querySelectorAll('.more-group.mobile-open').forEach(openGroup => {
+      if (openGroup !== group) openGroup.classList.remove('mobile-open');
+    });
+    group.classList.toggle('mobile-open');
+  });
   menu.appendChild(group);
 }
 
@@ -7334,35 +7399,86 @@ setTimeout(startTour, 1200);
     document.getElementById('mob-props-title').textContent = def.name;
     document.getElementById('mob-props-desc').textContent  = def.description || '';
 
-    // Render key props as simple inputs
+    // Render the same component property schema used by the desktop panel.
     const fields = document.getElementById('mob-props-fields');
-    if (fields && def.props) {
-      fields.innerHTML = def.props.slice(0, 6).map(p => {
+    if (fields) {
+      const renderProp = p => {
         const val = n.props?.[p.key] ?? p.default ?? '';
+        if (p.type === 'boolean') {
+          return `<label class="mob-toggle-row">
+            <span>${esc(p.label)}</span>
+            <input class="mob-field-input" type="checkbox" data-key="${esc(p.key)}" ${val ? 'checked' : ''}/>
+          </label>`;
+        }
         if (p.type === 'select' && p.options) {
           return `<div class="mob-field-row">
-            <label class="mob-field-label">${p.label}</label>
-            <select class="mob-field-input" data-key="${p.key}">
-              ${p.options.map(o => `<option value="${o.value}" ${val===o.value?'selected':''}>${o.label}</option>`).join('')}
+            <label class="mob-field-label">${esc(p.label)}</label>
+            <select class="mob-field-input" data-key="${esc(p.key)}">
+              ${p.options.map(o => `<option value="${esc(o)}" ${String(val)===String(o)?'selected':''}>${esc(o)}</option>`).join('')}
             </select>
           </div>`;
         }
+        if (p.type === 'textarea') {
+          return `<div class="mob-field-row">
+            <label class="mob-field-label">${esc(p.label)}</label>
+            <textarea class="mob-field-input" data-key="${esc(p.key)}">${esc(val)}</textarea>
+          </div>`;
+        }
         return `<div class="mob-field-row">
-          <label class="mob-field-label">${p.label}</label>
-          <input class="mob-field-input" type="text" data-key="${p.key}" value="${val}"/>
+          <label class="mob-field-label">${esc(p.label)}</label>
+          <input class="mob-field-input" type="${p.type === 'number' ? 'number' : 'text'}" data-key="${esc(p.key)}" value="${esc(val)}" ${p.min !== undefined ? `min="${esc(p.min)}"` : ''} ${p.max !== undefined ? `max="${esc(p.max)}"` : ''} ${p.step !== undefined ? `step="${esc(p.step)}"` : ''}/>
         </div>`;
-      }).join('');
+      };
+      const sim = S.simLoad[id];
+      const simHtml = sim ? `<div class="mob-settings-section">
+        <div class="mob-section-title">Live Stats</div>
+        <div class="mob-stat-grid">
+          <div><b>${esc(formatFlow(sim.incoming || 0))}</b><span>Incoming</span></div>
+          <div><b>${Math.round(sim.loadPct || 0)}%</b><span>Load</span></div>
+          <div><b>${sim.latencyMs ?? '—'}ms</b><span>Latency</span></div>
+          <div><b>${esc(sim.sla || '—')}</b><span>SLA</span></div>
+        </div>
+      </div>` : '';
+      fields.innerHTML = `
+        <div class="mob-settings-section">
+          <div class="mob-section-title">Component Settings</div>
+          ${(def.properties || []).map(renderProp).join('') || '<div class="diagram-empty">No editable settings for this component.</div>'}
+        </div>
+        ${def.scaleProps ? `<div class="mob-settings-section">
+          <div class="mob-section-title">Scaling</div>
+          ${def.scaleProps.map(renderProp).join('')}
+        </div>` : ''}
+        ${simHtml}
+        <button id="mob-props-why-btn" class="mob-secondary-action">Why this status / cost?</button>`;
       fields.querySelectorAll('.mob-field-input').forEach(inp => {
         inp.addEventListener('change', () => {
           if (!S.nodes[id]) return;
+          const def2 = COMPONENT_DEFS.find(d => d.id === n.defId);
+          const prop = [...(def2?.properties || []), ...(def2?.scaleProps || [])].find(x => x.key === inp.dataset.key);
           snapshot();
-          S.nodes[id].props[inp.dataset.key] = inp.value;
-          autoSave(); renderNode(id); updateCost();
-          // Also sync desktop panel if visible
-          const desktopInp = document.querySelector(`#props-fields [data-key="${inp.dataset.key}"]`);
-          if (desktopInp) desktopInp.value = inp.value;
+          let value;
+          if (prop?.type === 'boolean') value = inp.checked;
+          else if (prop?.type === 'number') value = parseFloat(inp.value) || 0;
+          else value = inp.value;
+          S.nodes[id].props[inp.dataset.key] = value;
+          if (inp.dataset.key === 'readReplicas') syncDbReplicas(id, Math.round(value));
+          if (prop && HW_KEYS.has(prop.key)) {
+            const newCap = autoCapacityFromHW(def2.id, S.nodes[id].props);
+            if (newCap !== null) S.nodes[id].props.capacity = newCap;
+            const newCost = autoCostFromHW(def2.id, S.nodes[id].props);
+            if (newCost !== null) S.nodes[id].props.cost = newCost;
+          }
+          autoSave();
+          renderNode(id);
+          renderEdges();
+          updateStats();
+          updateCost();
+          if (S.simOn) runTick();
+          buildSuggestions();
+          updateMobilePropsSheet(id);
         });
       });
+      fields.querySelector('#mob-props-why-btn')?.addEventListener('click', () => showExplainabilityPanel(id));
     }
 
     sheet.dataset.nodeId = id;

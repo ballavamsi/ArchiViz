@@ -4055,7 +4055,7 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   }
 
   /* Zoom controls: larger touch targets */
-  #canvas-controls { bottom: 60px; }
+  #canvas-controls { bottom: 126px; right: 16px; gap: 8px; z-index: 419; }
   .cc-btn { width: 36px; height: 36px; font-size: 16px; }
 
   /* Minimap: top-right on mobile */
@@ -4086,11 +4086,27 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
 
   /* More menu: wider on mobile */
   #more-menu {
-    min-width: 220px;
-    max-height: 70vh;
+    min-width: min(320px, calc(100vw - 24px));
+    max-height: calc(100vh - 92px);
     overflow-y: auto;
+    right: 8px;
   }
   #more-menu .tbtn { min-height: 44px; font-size: 13px; padding: 0 14px; }
+  #more-menu .more-group { width: 100%; }
+  #more-menu .more-parent .more-chevron { transform: rotate(90deg); transition: transform 0.14s; }
+  #more-menu .more-group.mobile-open .more-parent .more-chevron { transform: rotate(-90deg); }
+  #more-menu .more-submenu {
+    position: static;
+    min-width: 0;
+    width: 100%;
+    margin: 4px 0 6px;
+    padding: 4px;
+    box-shadow: none;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface2) 78%, transparent);
+  }
+  #more-menu .more-submenu::before { display: none; }
+  #more-menu .more-group.mobile-open > .more-submenu { display: flex; flex-direction: column; }
 
   /* ── Modals: full screen ─────────────────────────────────────────────── */
   /* Keep display:none by default — only override layout when .open is set */
@@ -4242,6 +4258,29 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   .empty-step-label { flex:1; min-width:0; text-align:left; font-size:12px; line-height:1.35; }
   .empty-cta-row { flex-direction: column; align-items: center; }
   .empty-cta-btn { width: 100%; max-width: 300px; min-height:42px; justify-content: center; }
+
+  #cookie-banner {
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+    z-index: 410;
+    width: min(340px, calc(100vw - 24px));
+  }
+  #cookie-banner .cb-inner {
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: 12px;
+  }
+  #cookie-banner .cb-text {
+    min-width: 0;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  #cookie-banner .cb-actions {
+    width: 100%;
+  }
+  #cookie-banner .cb-btn {
+    flex: 1;
+    min-height: 36px;
+  }
 }
 
 /* ── Mobile Run Sim FAB ──────────────────────────────────────────────────────── */
@@ -4382,6 +4421,22 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   padding: 12px 16px 8px;
 }
 #mob-props-fields { display: flex; flex-direction: column; gap: 10px; }
+.mob-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface2) 72%, transparent);
+}
+.mob-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
 .mob-field-row {
   display: flex;
   flex-direction: column;
@@ -4398,9 +4453,62 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   width: 100%;
   box-sizing: border-box;
 }
+.mob-field-input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.mob-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+}
+.mob-field-input:is(textarea) {
+  min-height: 86px;
+  resize: vertical;
+}
 .mob-field-input:focus {
   outline: none;
   border-color: var(--accent);
+}
+.mob-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.mob-stat-grid div {
+  padding: 9px;
+  border-radius: 9px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+}
+.mob-stat-grid b {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+}
+.mob-stat-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 2px;
+}
+.mob-secondary-action {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 9px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 #mob-props-connect-btn {
   display: flex;
