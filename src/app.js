@@ -1475,9 +1475,20 @@ function _costBreakdownHtml() {
 function toggleCockpitCompact(force) {
   S.cockpitCompact = typeof force === 'boolean' ? force : !S.cockpitCompact;
   try { localStorage.setItem('archviz.cockpit', S.cockpitCompact ? 'compact' : 'expanded'); } catch {}
+  updateCockpitButton();
   updateEmptyPanel();
 }
 window.toggleCockpitCompact = toggleCockpitCompact;
+
+function updateCockpitButton() {
+  const btn = document.getElementById('btn-cockpit-view');
+  if (!btn) return;
+  btn.classList.toggle('active', !S.cockpitCompact);
+  const label = S.cockpitCompact ? 'Cockpit: Compact' : 'Cockpit: Full';
+  const svg = btn.querySelector('svg')?.outerHTML || '';
+  btn.innerHTML = `${svg}${label}`;
+  btn.title = S.cockpitCompact ? 'Switch to full architecture cockpit' : 'Switch to compact architecture cockpit';
+}
 
 function updateEmptyPanel() {
   const hud = document.getElementById('canvas-hud');
@@ -4294,7 +4305,7 @@ function organizeMoreMenu() {
   const menu = document.getElementById('more-menu');
   if (!menu || menu.dataset.organized === '1') return;
   menu.dataset.organized = '1';
-  const ids = ['btn-signin-google','btn-my-diagrams','btn-import','btn-export','btn-export-pdf','btn-export-svg','btn-export-png','btn-present','btn-theme','btn-shortcuts','btn-restart-tour','btn-suggestions','btn-reserved','btn-service-mesh','btn-clear'];
+  const ids = ['btn-signin-google','btn-my-diagrams','btn-import','btn-export','btn-export-pdf','btn-export-svg','btn-export-png','btn-present','btn-theme','btn-cockpit-view','btn-shortcuts','btn-restart-tour','btn-suggestions','btn-reserved','btn-service-mesh','btn-clear'];
   const items = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
   menu.replaceChildren();
   const signIn = items['btn-signin-google'];
@@ -4302,7 +4313,7 @@ function organizeMoreMenu() {
   if (signIn) menu.appendChild(signIn);
   if (diagrams) menu.appendChild(diagrams);
   makeMoreGroup('Import / Export', ['btn-import', 'btn-export', 'btn-export-pdf', 'btn-export-svg', 'btn-export-png'], items);
-  makeMoreGroup('View', ['btn-present', 'btn-theme', 'btn-shortcuts', 'btn-restart-tour'], items);
+  makeMoreGroup('View', ['btn-present', 'btn-theme', 'btn-cockpit-view', 'btn-shortcuts', 'btn-restart-tour'], items);
   makeMoreGroup('Simulation', ['btn-suggestions', 'btn-reserved', 'btn-service-mesh'], items);
   const clear = items['btn-clear'];
   if (clear) menu.appendChild(clear);
@@ -4621,6 +4632,8 @@ const _cycleTheme = () => { setTheme(S.theme === 'system' ? 'light' : S.theme ==
 document.getElementById('btn-theme').onclick = _cycleTheme;
 const _btnThemeToolbar = document.getElementById('btn-theme-toolbar');
 if (_btnThemeToolbar) _btnThemeToolbar.onclick = _cycleTheme;
+document.getElementById('btn-cockpit-view').onclick = () => toggleCockpitCompact();
+updateCockpitButton();
 
 // More menu toggle
 const moreMenu = document.getElementById('more-menu');

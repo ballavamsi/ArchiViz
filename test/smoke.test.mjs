@@ -184,6 +184,8 @@ test('more menu and cockpit stay compact', () => {
   assert.match(appJs, /function organizeMoreMenu\(/, 'More menu should be organized into submenus');
   assert.match(appJs, /Import \/ Export/, 'More menu should group import/export actions');
   assert.match(appJs, /function toggleCockpitCompact\(/, 'Architecture cockpit should be collapsible');
+  assert.match(appJs, /btn-cockpit-view/, 'View menu should expose an explicit cockpit view switch');
+  assert.match(appJs, /Cockpit: Compact/, 'Cockpit switch should label compact mode');
   assert.match(appJs, /archviz\.cockpit/, 'Cockpit compact state should persist');
   assert.match(css, /#canvas-hud\.compact/, 'Compact cockpit should have dedicated styling');
   assert.match(css, /\.more-submenu/, 'More menu should support hover submenus');

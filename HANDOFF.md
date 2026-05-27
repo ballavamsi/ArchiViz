@@ -18,6 +18,7 @@ Follow-up UI polish after the Cloud Diagram Library:
 - Guest users now get a `Sign in with Google` action in the More menu when Supabase auth is configured, even if they previously chose guest mode.
 - More menu is runtime-organized into hover submenus: `Import / Export`, `View`, and `Simulation`, with top-level `My Diagrams`, optional sign-in, `Clear Canvas`, and a compact About block.
 - Architecture cockpit now defaults to compact mode and can expand/collapse. State persists in `localStorage` as `archviz.cockpit`.
+- More → View includes an explicit `Cockpit: Compact / Full` switch for toggling between the collapsed and current full cockpit view.
 - Regression tests now assert the guest sign-in recovery action, grouped More menu, and compact cockpit hooks.
 
 Verification:
