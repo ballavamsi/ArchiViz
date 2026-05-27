@@ -691,6 +691,32 @@ function renderNode(id) {
     el.id = 'node-' + id;
     el.className = 'a-node';
     cNodes.appendChild(el);
+    let mobileTapStart = null;
+    el.addEventListener('touchstart', e => {
+      if (!isMobile() || e.touches.length !== 1 || e.target.classList.contains('port')) return;
+      const t = e.touches[0];
+      mobileTapStart = { x: t.clientX, y: t.clientY, t: Date.now() };
+    }, { passive: true });
+    el.addEventListener('touchend', e => {
+      if (!isMobile() || !mobileTapStart) return;
+      const t = e.changedTouches?.[0];
+      const moved = t ? Math.hypot(t.clientX - mobileTapStart.x, t.clientY - mobileTapStart.y) : 99;
+      const quick = Date.now() - mobileTapStart.t < 450;
+      mobileTapStart = null;
+      if (moved > 12 || !quick) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (window._mobileConnectMode && window._mobileConnectSrc && id !== window._mobileConnectSrc) {
+        addEdge(window._mobileConnectSrc, id, { userInitiated: true });
+        window._mobileConnectMode = false;
+        window._mobileConnectSrc = null;
+        const hint = document.getElementById('mobile-connect-hint');
+        if (hint) hint.style.display = 'none';
+        return;
+      }
+      select(id);
+      window._mobileShowProps?.(id);
+    }, { passive: false });
     el.addEventListener('mousedown', e => {
       if (e.target.classList.contains('port')) return;
       e.stopPropagation();
@@ -6856,6 +6882,49 @@ const TOUR_STEPS = [
   },
 ];
 
+const TOUR_STEPS_MOBILE = [
+  {
+    target: '#btn-add-mobile',
+    title: 'Add Components',
+    icon: '+',
+    body: 'Tap <strong>+</strong> to open the mobile component drawer. Pick a component and Archi-Flow places it in the center of the canvas.',
+    position: 'top',
+    highlight: true,
+  },
+  {
+    target: '#canvas-wrap',
+    title: 'Move Around the Canvas',
+    icon: '↔',
+    body: 'Drag on empty canvas space to pan. Pinch with two fingers to zoom. Tap a node to open its mobile properties sheet.',
+    position: 'center',
+    highlight: false,
+  },
+  {
+    target: '#btn-sim-mobile',
+    title: 'Run Simulation',
+    icon: '▶',
+    body: 'Tap <strong>Run Sim</strong> to start traffic. The mobile sheet lets you change users and speed without needing the desktop status bar.',
+    position: 'top',
+    highlight: true,
+  },
+  {
+    target: '#btn-more',
+    title: 'More Actions',
+    icon: '⋮',
+    body: 'Use the menu for My Flows, import/export, sharing, theme, keyboard shortcuts, and report options.',
+    position: 'bottom',
+    highlight: true,
+  },
+  {
+    target: '#title-wrap',
+    title: 'Save State',
+    icon: '✓',
+    body: 'The title area shows save state. Guest work stays in this browser; sign in to save flows to your cloud library.',
+    position: 'bottom',
+    highlight: true,
+  },
+];
+
 function startTour() {
   if (localStorage.getItem(TOUR_KEY) === '1') return;
   let step = 0;
@@ -6863,6 +6932,26 @@ function startTour() {
   const overlay = document.createElement('div');
   overlay.id = 'tour-overlay';
   document.body.appendChild(overlay);
+
+  // responsive helper
+  const isMobile = () => window.innerWidth <= 640;
+  let _mobileMode = isMobile();
+
+  // handle resize so the tour updates when viewport changes
+  function _onTourResize() {
+    const newMode = isMobile();
+    if (newMode !== _mobileMode) {
+      _mobileMode = newMode;
+      // re-render current step so card/spotlight adapts
+      try { renderStep(step); } catch (e) { /* noop */ }
+    } else {
+      // re-position current card if dimensions changed
+      try { renderStep(step); } catch (e) { /* noop */ }
+    }
+  }
+  window.addEventListener('resize', _onTourResize);
+
+  const steps = () => isMobile() ? TOUR_STEPS_MOBILE : TOUR_STEPS;
 
   function getTargetRect(selector) {
     const el = document.querySelector(selector);
@@ -6872,8 +6961,13 @@ function startTour() {
 
   function renderStep(idx) {
     overlay.innerHTML = '';
-    const s = TOUR_STEPS[idx];
+    const activeSteps = steps();
+    step = Math.max(0, Math.min(idx, activeSteps.length - 1));
+    const s = activeSteps[step];
+
     const rect = getTargetRect(s.target);
+
+    const mobile = isMobile();
 
     // Spotlight cutout
     if (rect && s.highlight) {
@@ -6881,6 +6975,35 @@ function startTour() {
       const spot = document.createElement('div');
       spot.className = 'tour-spotlight';
       spot.style.cssText = `left:${rect.left - pad}px;top:${rect.top - pad}px;width:${rect.width + pad*2}px;height:${rect.height + pad*2}px`;
+      // On mobile make spotlight tappable and forward taps to the underlying target
+      if (mobile) {
+        spot.style.pointerEvents = 'auto';
+        spot.style.cursor = 'pointer';
+        const forwardTap = (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          // compute center point of target rect
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const el = document.elementFromPoint(cx, cy);
+          if (el) {
+            try {
+              // Try to trigger a click/tap on the element
+              el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: cx, clientY: cy }));
+              el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, clientX: cx, clientY: cy }));
+              el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: cx, clientY: cy }));
+            } catch (e) { /* noop */ }
+          }
+          // advance the tour after a small delay so any native handlers run
+          setTimeout(() => {
+            const activeSteps = steps();
+            if (step === activeSteps.length - 1) endTour();
+            else renderStep(step + 1);
+          }, 160);
+        };
+        spot.addEventListener('click', forwardTap);
+        spot.addEventListener('touchstart', forwardTap, { passive: false });
+      }
       overlay.appendChild(spot);
     }
 
@@ -6889,13 +7012,13 @@ function startTour() {
     card.className = 'tour-card';
 
     // Progress dots
-    const dots = TOUR_STEPS.map((_, i) =>
-      `<span class="tour-dot${i === idx ? ' active' : ''}"></span>`
+    const dots = activeSteps.map((_, i) =>
+      `<span class="tour-dot${i === step ? ' active' : ''}"></span>`
     ).join('');
 
     card.innerHTML = `
       <div class="tour-header">
-        <div class="tour-step-label">Step ${idx + 1} of ${TOUR_STEPS.length}</div>
+        <div class="tour-step-label">Step ${step + 1} of ${activeSteps.length}</div>
         <button class="tour-skip-btn" id="tour-skip">Skip tour</button>
       </div>
       <div class="tour-title">${s.icon ? `<span class="tour-icon">${s.icon}</span>` : ''}${s.title}</div>
@@ -6903,30 +7026,36 @@ function startTour() {
       <div class="tour-footer">
         <div class="tour-dots">${dots}</div>
         <div class="tour-nav">
-          ${idx > 0 ? `<button class="tour-btn secondary" id="tour-back">← Back</button>` : ''}
+          ${step > 0 ? `<button class="tour-btn secondary" id="tour-back">Back</button>` : ''}
           <button class="tour-btn primary" id="tour-next">
-            ${idx === TOUR_STEPS.length - 1 ? '🚀 Get started!' : 'Next →'}
+            ${step === activeSteps.length - 1 ? 'Get started' : 'Next'}
           </button>
         </div>
       </div>
     `;
 
-    // Position card
-    if (rect && s.position !== 'center') {
-      positionCard(card, rect, s.position);
-    } else {
+    // Position card — on mobile always center and use a responsive width
+    if (mobile) {
       card.classList.add('tour-center');
+      const w = Math.min(window.innerWidth - 40, 360);
+      card.style.width = w + 'px';
+    } else {
+      if (rect && s.position !== 'center') {
+        positionCard(card, rect, s.position);
+      } else {
+        card.classList.add('tour-center');
+      }
     }
 
     overlay.appendChild(card);
 
     document.getElementById('tour-skip').onclick = endTour;
     document.getElementById('tour-next').onclick = () => {
-      if (idx === TOUR_STEPS.length - 1) endTour();
-      else renderStep(idx + 1);
+      if (step === activeSteps.length - 1) endTour();
+      else renderStep(step + 1);
     };
     const backBtn = document.getElementById('tour-back');
-    if (backBtn) backBtn.onclick = () => renderStep(idx - 1);
+    if (backBtn) backBtn.onclick = () => renderStep(step - 1);
   }
 
   function positionCard(card, rect, pos) {
@@ -6971,6 +7100,8 @@ function startTour() {
     localStorage.setItem(TOUR_KEY, '1');
     overlay.classList.add('tour-fade-out');
     setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 350);
+    // cleanup resize listener
+    try { window.removeEventListener('resize', _onTourResize); } catch (e) { /* noop */ }
   }
 
   renderStep(0);
