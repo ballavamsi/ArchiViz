@@ -1367,7 +1367,8 @@ function _initNotifPanel() {
 }
 _initNotifPanel();
 window.pushToast = pushToast;
-window.openExamplesModal = openExamplesModal;
+window.openExamplesModal  = openExamplesModal;
+window.closeExamplesModal = closeExamplesModal;
 window.loadExample = loadExample;
 window.fitView = fitView;
 window.getExamplesCount = () => EXAMPLES.length; // for automation scripts

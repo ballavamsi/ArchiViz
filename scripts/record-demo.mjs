@@ -269,6 +269,15 @@ await wait(2000);
 
 // ─── Scene 3: Clear & build manually ─────────────────────────────────────────
 addCue('Or build from scratch — clear the canvas and design your own', 3500);
+
+// Close examples modal if still open before touching the canvas
+await page.evaluate(() => {
+  window.closeExamplesModal?.();
+  const modal = document.getElementById('examples-modal');
+  if (modal) { modal.classList.remove('open'); modal.style.display = 'none'; }
+});
+await wait(400);
+
 await page.evaluate(() => window.clearCanvas?.(true));
 await wait(600);
 await page.evaluate(() => window.fitView?.());
