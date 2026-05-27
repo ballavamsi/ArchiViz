@@ -1823,6 +1823,14 @@ function _renderEdgePanel(edge) {
     </div>`;
   const pctInp = document.getElementById('edge-traffic-pct');
   if (pctInp) {
+    // Stop canvas from stealing clicks/mousedown on the input
+    pctInp.addEventListener('mousedown', e => e.stopPropagation());
+    pctInp.addEventListener('click',     e => e.stopPropagation());
+    pctInp.addEventListener('focus',     e => e.stopPropagation());
+    // Stop Backspace/Delete inside the input from deleting the selected edge
+    pctInp.addEventListener('keydown', e => {
+      if (e.key === 'Delete' || e.key === 'Backspace') e.stopPropagation();
+    });
     pctInp.oninput = () => {
       const raw = pctInp.value.trim();
       edge.trafficPct = raw === '' ? null : Math.max(0, Math.min(100, parseFloat(raw) || 0));
@@ -2294,6 +2302,10 @@ function buildFields(containerId, props, n, nodeId) {
       buildSuggestions();
       autoSave();
     };
+    // Prevent canvas from stealing focus/clicks and stop Backspace deleting nodes
+    inp.addEventListener('mousedown', e => e.stopPropagation());
+    inp.addEventListener('click',     e => e.stopPropagation());
+    inp.addEventListener('keydown',   e => { if (e.key === 'Delete' || e.key === 'Backspace') e.stopPropagation(); });
     row.appendChild(inp); el.appendChild(row);
   });
 }
