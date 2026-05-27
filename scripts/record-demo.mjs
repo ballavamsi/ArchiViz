@@ -87,21 +87,52 @@ async function generateTTSAndMux(trimmedCues, videoPath, outputPath, tmpDir) {
   const ttsDir = path.join(tmpDir, 'tts');
   await mkdir(ttsDir, { recursive: true });
 
+  // Helper: get WAV duration in seconds via ffprobe
+  function wavDuration(fp) {
+    try {
+      const out = execSync(
+        `ffprobe -v error -show_entries format=duration -of csv=p=0 "${fp}"`,
+        { encoding: 'utf8' }
+      );
+      return parseFloat(out.trim()) || 0;
+    } catch { return 0; }
+  }
+
   const wavFiles = [];
   for (let i = 0; i < trimmedCues.length; i++) {
-    const c    = trimmedCues[i];
-    const aiff = path.join(ttsDir, `cue_${i}.aiff`);
-    const wav  = path.join(ttsDir, `cue_${i}.wav`);
-    // Escape quotes and special chars for shell
-    const txt  = c.text.replace(/"/g, '\\"').replace(/'/g, "\\'");
-    execSync(`say -v Samantha -r 160 -o "${aiff}" "${txt}"`, { stdio: 'ignore' });
-    execSync(`ffmpeg -y -i "${aiff}" -ar 44100 -ac 2 "${wav}"`, { stdio: 'ignore' });
-    wavFiles.push({ wav, startMs: c.start });
-    process.stdout.write(`   [${i + 1}/${trimmedCues.length}] ✓\r`);
-  }
-  console.log(`\n   ✅ ${wavFiles.length} cues generated`);
+    const c       = trimmedCues[i];
+    const aiff    = path.join(ttsDir, `cue_${i}.aiff`);
+    const wavRaw  = path.join(ttsDir, `cue_${i}_raw.wav`);
+    const wav     = path.join(ttsDir, `cue_${i}.wav`);
 
-  // Place each wav at its exact timestamp using adelay, then amix all together
+    // Generate speech
+    const txt = c.text.replace(/"/g, '\\"').replace(/'/g, "\\'");
+    execSync(`say -v Samantha -r 160 -o "${aiff}" "${txt}"`, { stdio: 'ignore' });
+    execSync(`ffmpeg -y -i "${aiff}" -ar 44100 -ac 2 "${wavRaw}"`, { stdio: 'ignore' });
+
+    // Slot = from this cue's start to next cue's start (or end), minus 200ms gap
+    const nextStart = trimmedCues[i + 1]?.start ?? (c.end + 500);
+    const slotSec   = Math.max(0.2, (nextStart - c.start - 200) / 1000);
+    const spokenSec = wavDuration(wavRaw);
+
+    if (spokenSec > slotSec) {
+      // Audio is longer than slot — trim with a 120ms fade-out to avoid hard cut
+      execSync(
+        `ffmpeg -y -i "${wavRaw}" -af "atrim=duration=${slotSec},afade=t=out:st=${Math.max(0, slotSec - 0.12)}:d=0.12" "${wav}"`,
+        { stdio: 'ignore' }
+      );
+      console.log(`   [${i + 1}] trimmed ${spokenSec.toFixed(2)}s → ${slotSec.toFixed(2)}s`);
+    } else {
+      // Fits in slot — just copy
+      execSync(`ffmpeg -y -i "${wavRaw}" "${wav}"`, { stdio: 'ignore' });
+      process.stdout.write(`   [${i + 1}/${trimmedCues.length}] ✓\r`);
+    }
+
+    wavFiles.push({ wav, startMs: c.start });
+  }
+  console.log(`\n   ✅ ${wavFiles.length} cues ready`);
+
+  // Place each trimmed wav at its timestamp with adelay, then mix
   const inputs    = wavFiles.map(f => `-i "${f.wav}"`).join(' ');
   const delays    = wavFiles.map((f, i) => `[${i}]adelay=${f.startMs}|${f.startMs}[a${i}]`).join(';');
   const mixInputs = wavFiles.map((_, i) => `[a${i}]`).join('');
