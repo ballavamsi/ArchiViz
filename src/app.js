@@ -939,27 +939,153 @@ function deleteEdge(id) {
   renderEdges(); updateStats();
 }
 
-function pushToast(message, type = 'info') {
-  addNotification(message, type);
+// ── Toast + Notification system ──────────────────────────────────────
+//
+//  pushToast(msg, type)  — slide-in toast (top-left → right), auto-dismisses
+//                          after 7s, also logs to the bell panel.
+//  addNotification()     — logs to bell panel only (no toast pop-up).
+//
+//  Flood protection: if more than MAX_VISIBLE toasts are already showing,
+//  extra ones are queued and shown as the queue drains.
+//
+const TOAST_DURATION   = 7000;   // ms before auto-dismiss
+const TOAST_MAX_VISIBLE = 3;     // max toasts on screen at once
+const TOAST_QUEUE      = [];     // pending toasts when screen is full
+let   _toastActive     = 0;      // currently visible toasts
+let   _toastFloodCount = 0;      // toasts fired in the last 2s window
+let   _toastFloodTimer = null;
+let   _notifCount      = 0;
+
+function _toastIcon(type) {
+  if (type === 'warn')  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  if (type === 'error' || type === 'crit') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+  if (type === 'success') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
 }
 
-// ── Notification panel ────────────────────────────────────────────────
-let _notifCount = 0;
+function _showToastEl(message, type) {
+  const stack = document.getElementById('toast-stack');
+  if (!stack) return;
+
+  const cls = type === 'error' ? 'crit' : type;
+  const el = document.createElement('div');
+  el.className = `toast ${cls}`;
+  el.setAttribute('role', 'alert');
+  el.innerHTML = `
+    <span class="toast-type-icon">${_toastIcon(type)}</span>
+    <span class="toast-msg">${esc(message)}</span>
+    <button class="toast-close" title="Dismiss" aria-label="Dismiss">×</button>
+    <div class="toast-progress"></div>`;
+
+  // dismiss helpers
+  let dismissed = false;
+  let autoTimer = null;
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
+    clearTimeout(autoTimer);
+    el.classList.add('toast-out');
+    setTimeout(() => {
+      el.remove();
+      _toastActive = Math.max(0, _toastActive - 1);
+      _drainToastQueue();
+    }, 320);
+  }
+
+  el.querySelector('.toast-close').onclick = dismiss;
+  el.addEventListener('mouseenter', () => {
+    // pause the progress bar on hover
+    el.querySelector('.toast-progress').style.animationPlayState = 'paused';
+    clearTimeout(autoTimer);
+  });
+  el.addEventListener('mouseleave', () => {
+    el.querySelector('.toast-progress').style.animationPlayState = 'running';
+    autoTimer = setTimeout(dismiss, 2000); // 2s after mouse leaves
+  });
+
+  stack.prepend(el);
+  _toastActive++;
+
+  // trigger enter animation on next frame
+  requestAnimationFrame(() => el.classList.add('toast-in'));
+
+  // auto-dismiss after TOAST_DURATION
+  autoTimer = setTimeout(dismiss, TOAST_DURATION);
+}
+
+function _drainToastQueue() {
+  if (TOAST_QUEUE.length === 0) return;
+  if (_toastActive >= TOAST_MAX_VISIBLE) return;
+  const next = TOAST_QUEUE.shift();
+  // if several queued items have the same message, collapse them
+  const dupes = TOAST_QUEUE.filter(t => t.message === next.message);
+  dupes.forEach(d => { TOAST_QUEUE.splice(TOAST_QUEUE.indexOf(d), 1); });
+  const msg = dupes.length > 0 ? `${next.message} (×${dupes.length + 1})` : next.message;
+  _showToastEl(msg, next.type);
+}
+
+function pushToast(message, type = 'info') {
+  // flood guard: count toasts in last 2s; if flooding, batch them
+  _toastFloodCount++;
+  clearTimeout(_toastFloodTimer);
+  _toastFloodTimer = setTimeout(() => { _toastFloodCount = 0; }, 2000);
+
+  if (_toastFloodCount > 8) {
+    // Too many toasts — just log to bell, no more pop-ups this burst
+    addNotification(message, type);
+    if (_toastFloodCount === 9) {
+      // Show a single "many alerts" summary toast
+      _showToastEl('Multiple alerts — see notification bell for details', 'warn');
+      addNotification('Multiple alerts triggered in quick succession.', 'warn');
+    }
+    return;
+  }
+
+  // always log to bell panel
+  addNotification(message, type);
+
+  if (_toastActive >= TOAST_MAX_VISIBLE) {
+    TOAST_QUEUE.push({ message, type });
+  } else {
+    _showToastEl(message, type);
+  }
+}
+
+// ── Notification bell panel ───────────────────────────────────────────
+const NOTIF_MAX_STORED = 200; // keep at most this many in the panel
 
 function addNotification(message, type = 'info', title = null) {
-  const list = document.getElementById('notif-list');
+  const list  = document.getElementById('notif-list');
   const empty = document.getElementById('notif-empty');
   if (!list) return;
   if (empty) empty.style.display = 'none';
 
-  const icon = type === 'warn' ? '⚠️' : type === 'crit' || type === 'error' ? '🔴' : 'ℹ️';
+  const icon = type === 'warn' ? '⚠️' : (type === 'crit' || type === 'error') ? '🔴' : (type === 'success' ? '✅' : 'ℹ️');
   const cls  = type === 'error' ? 'crit' : type;
 
-  const card = document.createElement('div');
-  card.className = `notif-card ${cls}`;
+  // Deduplicate: if the topmost card has identical message, increment counter
+  const topCard = list.querySelector('.notif-card');
+  if (topCard && topCard.dataset.msg === message) {
+    const counter = topCard.querySelector('.notif-dup-count');
+    const n = parseInt(counter?.textContent?.replace('×','') || '1', 10) + 1;
+    if (counter) { counter.textContent = `×${n}`; }
+    else {
+      const timeEl = topCard.querySelector('.notif-card-time');
+      const dup = document.createElement('span');
+      dup.className = 'notif-dup-count';
+      dup.textContent = `×2`;
+      timeEl?.before(dup);
+    }
+    _updateNotifBadge();
+    return;
+  }
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const card = document.createElement('div');
+  card.className = `notif-card ${cls}`;
+  card.dataset.msg = message;
 
   card.innerHTML = `
     <div class="notif-card-icon">${icon}</div>
@@ -972,12 +1098,17 @@ function addNotification(message, type = 'info', title = null) {
 
   card.querySelector('.notif-card-close').onclick = () => {
     card.style.opacity = '0';
-    card.style.transform = 'translateX(12px)';
+    card.style.transform = 'translateX(14px)';
     card.style.transition = 'opacity 0.2s, transform 0.2s';
     setTimeout(() => { card.remove(); _updateNotifBadge(); }, 200);
   };
 
   list.prepend(card);
+
+  // cap stored count
+  const all = list.querySelectorAll('.notif-card');
+  if (all.length > NOTIF_MAX_STORED) all[all.length - 1].remove();
+
   _notifCount++;
   _updateNotifBadge();
 }
@@ -995,12 +1126,18 @@ function _updateNotifBadge() {
   } else {
     badge.style.display = '';
     badge.textContent = count > 99 ? '99+' : String(count);
+    // pulse the bell briefly
+    const btn = document.getElementById('btn-notif');
+    btn?.classList.remove('notif-bell-pulse');
+    requestAnimationFrame(() => btn?.classList.add('notif-bell-pulse'));
   }
 }
 
 function _openNotifPanel() {
   document.getElementById('notif-panel')?.classList.add('open');
   document.getElementById('notif-backdrop')?.classList.add('visible');
+  // mark all as read — remove the pulse
+  document.getElementById('btn-notif')?.classList.remove('notif-bell-pulse');
 }
 
 function _closeNotifPanel() {
@@ -1024,6 +1161,7 @@ function _initNotifPanel() {
   });
 }
 _initNotifPanel();
+window.pushToast = pushToast; // expose for debugging / external callers
 
 // ══ PORT POSITIONS ════════════════════════════════════════════════════════════
 function portXY(nodeId, side) {

@@ -1323,37 +1323,109 @@ body[data-theme="light"] #statusbar {
 }
 
 /* ── TOASTS ── */
+/* ── Toast stack — slides in from top-left ── */
 #toast-stack {
   position: fixed;
-  bottom: 52px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 52px;           /* just below toolbar */
+  left: 16px;
   display: flex;
-  flex-direction: column-reverse;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
   z-index: 10000;
   pointer-events: none;
-  align-items: center;
+  width: 340px;
 }
 .toast {
-  background: rgba(15,22,32,0.96);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  background: rgba(13,19,28,0.97);
   border: 1px solid var(--border2);
   border-radius: 10px;
-  padding: 9px 16px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 10px 36px 10px 12px;
+  font-size: 12.5px;
+  font-weight: 450;
   color: var(--text2);
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.04);
-  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(16px);
   pointer-events: all;
-  animation: toast-in 0.22s ease;
-  white-space: nowrap;
-  max-width: 400px;
+  overflow: hidden;
+  /* start off-screen to the left */
+  transform: translateX(-120%);
+  opacity: 0;
+  transition: transform 0.32s cubic-bezier(0.22,1,0.36,1), opacity 0.28s ease;
+  will-change: transform, opacity;
 }
-.toast.info  { border-left: 3px solid var(--accent); }
-.toast.warn  { border-left: 3px solid var(--yellow); }
-.toast.error { border-left: 3px solid var(--red); }
-@keyframes toast-in { from { opacity:0; transform:translateY(8px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+.toast.toast-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+.toast.toast-out {
+  transform: translateX(calc(100% + 32px));
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.6,0,1,0.6), opacity 0.25s ease;
+}
+/* colour accent strip on left */
+.toast.info    { border-left: 3px solid var(--accent, #4f9cf9); }
+.toast.warn    { border-left: 3px solid var(--yellow, #f0a732); }
+.toast.crit,
+.toast.error   { border-left: 3px solid var(--red, #f85149); }
+.toast.success { border-left: 3px solid #34d058; }
+/* icon */
+.toast-type-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  opacity: 0.85;
+}
+.toast.info    .toast-type-icon { color: var(--accent, #4f9cf9); }
+.toast.warn    .toast-type-icon { color: var(--yellow, #f0a732); }
+.toast.crit    .toast-type-icon,
+.toast.error   .toast-type-icon { color: var(--red, #f85149); }
+.toast.success .toast-type-icon { color: #34d058; }
+/* message text */
+.toast-msg {
+  flex: 1;
+  line-height: 1.45;
+  word-break: break-word;
+}
+/* dismiss button */
+.toast-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.toast-close:hover { opacity: 1; background: rgba(255,255,255,0.07); }
+/* auto-dismiss progress bar */
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  opacity: 0.25;
+  transform-origin: left;
+  animation: toast-progress 7s linear forwards;
+}
+@keyframes toast-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+/* light mode overrides */
+body[data-theme="light"] .toast {
+  background: rgba(255,255,255,0.97);
+  color: var(--fg);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+body[data-theme="light"] .toast-close { color: var(--muted); }
 
 /* ── MORE MENU ── */
 #more-menu {
@@ -1698,6 +1770,19 @@ body.read-only-mode #canvas-wrap { inset:44px 0 0 0; }
   color: var(--muted, #6e7f96);
   margin-top: 4px;
 }
+/* duplicate count badge next to timestamp */
+.notif-dup-count {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(100,130,165,0.18);
+  color: var(--text2);
+  border-radius: 4px;
+  padding: 0 5px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.notif-card.success { border-left: 3px solid #34d058; }
 
 /* Section label inside notif panel */
 .notif-section-label {
@@ -1707,6 +1792,21 @@ body.read-only-mode #canvas-wrap { inset:44px 0 0 0; }
   text-transform: uppercase;
   letter-spacing: 0.07em;
   padding: 4px 2px 2px;
+}
+
+/* Bell pulse when a new notification arrives */
+@keyframes notif-bell-ring {
+  0%   { transform: rotate(0deg); }
+  15%  { transform: rotate(18deg); }
+  30%  { transform: rotate(-15deg); }
+  45%  { transform: rotate(10deg); }
+  60%  { transform: rotate(-8deg); }
+  75%  { transform: rotate(4deg); }
+  90%  { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
+}
+#btn-notif.notif-bell-pulse svg {
+  animation: notif-bell-ring 0.55s ease both;
 }
 
 /* Backdrop (closes panel on click outside) */
