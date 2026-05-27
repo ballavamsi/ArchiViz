@@ -3,126 +3,166 @@
 Welcome to Archi-Flow — design cloud architectures with live simulation
 
 2
-00:00:02,580 --> 00:00:06,580
-Step 1 — Drag components from the palette onto the canvas
+00:00:03,615 --> 00:00:07,615
+Start fast — browse 13+ pre-built architectures in Load Examples
 
 3
-00:00:03,452 --> 00:00:05,952
-Drag "Users" — represents your user base
+00:00:07,131 --> 00:00:10,631
+Filter by category — Web Apps, Data, AI, Multi-Region and more
 
 4
-00:00:06,865 --> 00:00:09,365
-Add a Load Balancer to distribute traffic evenly
+00:00:10,161 --> 00:00:13,161
+Click any example to instantly load it onto your canvas
 
 5
-00:00:09,440 --> 00:00:11,940
-Drop two App Servers for horizontal scaling
+00:00:12,167 --> 00:00:15,667
+Loaded: SaaS Web App — 8-node production architecture, ready to simulate
 
 6
-00:00:14,604 --> 00:00:17,104
-Add a Database for persistent storage
+00:00:14,168 --> 00:00:17,668
+Or build from scratch — clear the canvas and design your own
 
 7
-00:00:17,276 --> 00:00:19,776
-And a Cache layer to reduce Database load
+00:00:15,279 --> 00:00:19,279
+Drag components from the palette — every major cloud service is here
 
 8
-00:00:21,660 --> 00:00:25,660
-Step 2 — Connect components by dragging from port dots
+00:00:15,893 --> 00:00:18,393
+Drag "Users" — represents your user base
 
 9
-00:00:22,462 --> 00:00:25,962
-Hover a node to reveal its blue port dots, then drag to connect
+00:00:18,776 --> 00:00:21,276
+Add a Load Balancer to distribute traffic evenly
 
 10
-00:00:24,760 --> 00:00:27,760
-Load Balancer splits traffic equally to both App Servers
+00:00:21,800 --> 00:00:24,300
+Two App Servers for horizontal scaling
 
 11
-00:00:29,455 --> 00:00:32,455
-App Servers read from Cache first, then fall back to Database
+00:00:28,153 --> 00:00:30,653
+A Database and Cache to complete the tier
 
 12
-00:00:37,408 --> 00:00:40,408
-Architecture wired — 6 components, 6 connections
+00:00:35,265 --> 00:00:39,265
+Connect components by dragging from port dots — rules are enforced automatically
 
 13
-00:00:38,910 --> 00:00:42,910
-Step 3 — Hit Run Sim to push live traffic through the design
+00:00:38,592 --> 00:00:41,092
+Load Balancer distributes traffic to both App Servers
 
 14
-00:00:42,920 --> 00:00:46,920
-Green nodes — system is healthy with 100 users at low latency
+00:00:44,011 --> 00:00:46,511
+App Servers hit Cache first, then fall back to the Database
 
 15
-00:00:44,722 --> 00:00:48,722
-Click any node to inspect live stats: load %, latency, P95, SLA
+00:00:54,585 --> 00:00:57,585
+Architecture wired — 6 components, 6 connections
 
 16
-00:00:47,433 --> 00:00:50,933
-Live metrics update in real-time as traffic flows through the node
+00:00:56,086 --> 00:01:00,086
+Hit Run Sim — live traffic flows through your design instantly
 
 17
-00:00:50,075 --> 00:00:54,075
-Click an edge to inspect traffic flow and set custom split percentages
+00:01:00,438 --> 00:01:04,438
+All green — healthy system at 100 users, latency well within SLA
 
 18
-00:00:52,931 --> 00:00:56,931
-Set custom traffic split percentages per edge — or let Archi-Flow auto-balance
+00:01:02,238 --> 00:01:06,238
+Click any node to inspect live stats: load %, latency, P95, and SLA status
 
 19
-00:00:55,748 --> 00:00:59,248
-The Overview minimap helps you navigate large architectures
+00:01:04,554 --> 00:01:08,054
+Metrics update tick-by-tick as traffic flows through the node
 
 20
-00:00:57,604 --> 00:01:00,604
-Collapse it with one click to reclaim canvas space
+00:01:06,971 --> 00:01:10,971
+Click an edge to see live throughput and set custom traffic split percentages
 
 21
-00:01:00,041 --> 00:01:02,541
-Expand it again whenever you need it
+00:01:08,570 --> 00:01:12,570
+Set explicit split ratios or let Archi-Flow auto-balance across all downstream edges
 
 22
-00:01:02,799 --> 00:01:06,799
-The Architecture Cockpit shows real-time cost, health, and node counts
+00:01:11,188 --> 00:01:14,688
+The Overview minimap shows your full architecture at a glance
 
 23
-00:01:04,457 --> 00:01:07,957
-Minimize it to a compact ring indicator — maximizing your canvas space
+00:01:12,225 --> 00:01:15,225
+Collapse it with one click to reclaim canvas space
 
 24
-00:01:05,982 --> 00:01:08,982
-Expand back to full cockpit for the complete breakdown
+00:01:14,350 --> 00:01:16,850
+Expand it again whenever you need it
 
 25
-00:01:07,217 --> 00:01:11,217
-Now ramp to 10,000 users — watch the bottlenecks appear
+00:01:16,208 --> 00:01:20,208
+The Architecture Cockpit shows real-time cost, health score, and node counts
 
 26
-00:01:10,027 --> 00:01:14,027
-App Servers turn red — overloaded! The bottleneck is clear
+00:01:17,304 --> 00:01:20,304
+Minimize to a compact ring indicator for more canvas space
 
 27
-00:01:11,528 --> 00:01:15,028
-The Suggestions panel auto-detects problems and proposes fixes
+00:01:18,809 --> 00:01:21,809
+Expand back to the full cockpit to see the complete breakdown
 
 28
-00:01:12,227 --> 00:01:16,227
-One-click fixes: increase capacity, add replicas, or enable auto-scaling
+00:01:20,027 --> 00:01:24,027
+Toggle Reserved Instance pricing — saves ~35% on all compute costs
 
 29
-00:01:14,228 --> 00:01:18,228
-Enable auto-scaling on App Server 1 — watch replicas spin up automatically
+00:01:22,348 --> 00:01:25,848
+Cost drops instantly — Reserved pricing applied across all compute nodes
 
 30
-00:01:19,192 --> 00:01:23,192
-Replicas spin up — load distributes, nodes return to healthy green
+00:01:25,975 --> 00:01:29,975
+Switch between Dark and Light themes — pick the look that suits you
 
 31
-00:01:21,707 --> 00:01:25,207
-Export a PDF report, share a live link, or save to the cloud
+00:01:27,376 --> 00:01:30,876
+Light theme — clean and bright for presentations and daytime work
 
 32
-00:01:25,682 --> 00:01:30,682
+00:01:31,286 --> 00:01:33,786
+Back to Dark theme — designed for deep focus sessions
+
+33
+00:01:32,488 --> 00:01:36,488
+Now stress-test it — ramp to 10,000 users and watch the system respond
+
+34
+00:01:35,293 --> 00:01:39,293
+App Servers turn red — overloaded! The bottleneck is crystal clear
+
+35
+00:01:36,794 --> 00:01:40,294
+Suggestions panel auto-detects the problem and proposes targeted fixes
+
+36
+00:01:37,212 --> 00:01:41,212
+One-click fixes: increase capacity, add replicas, or enable auto-scaling
+
+37
+00:01:39,213 --> 00:01:43,213
+Enable auto-scaling on App Server 1 — replicas spin up automatically
+
+38
+00:01:43,869 --> 00:01:47,869
+Replicas spin up — load distributes, system returns to healthy green
+
+39
+00:01:46,492 --> 00:01:50,492
+Share your architecture — generate a permanent link anyone can view live
+
+40
+00:01:49,770 --> 00:01:53,270
+Copy the link — viewers get a live read-only preview of your architecture
+
+41
+00:01:52,786 --> 00:01:56,286
+Export a PDF report, present in full-screen, or save to the cloud
+
+42
+00:01:56,389 --> 00:02:01,389
 Archi-Flow — design, simulate, and present cloud architectures in minutes
 

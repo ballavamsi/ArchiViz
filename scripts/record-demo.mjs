@@ -2,18 +2,23 @@
  * record-demo.mjs — Archi-Flow comprehensive walkthrough
  *
  * Scene breakdown:
- *   1. Empty canvas — welcome + palette intro
- *   2. Drag 6 components onto canvas (Users, LB, 2× App Server, DB, Cache)
- *   3. Connect all nodes (6 edges)
- *   4. Run Sim — healthy green state at 100 users
- *   5. Click node — live stats panel (load %, latency, P95, SLA)
- *   6. Click edge — traffic % panel
- *   7. Collapse / expand overview minimap
- *   8. Toggle HUD cockpit compact ↔ full
- *   9. Ramp to 10,000 users — nodes turn red
- *  10. Suggestions panel fires — one-click fixes
- *  11. Enable auto-scaling on App Server 1 — replicas spin up, back to green
- *  12. Outro — Menu (export PDF / share / save)
+ *   1.  Welcome — empty canvas, palette intro
+ *   2.  Load Example — open modal, pick "SaaS Web App"
+ *   3.  Clear canvas — transition to manual build
+ *   4.  Drag 6 components (Users → LB → App1 + App2 → DB → Cache)
+ *   5.  Wire 6 connections
+ *   6.  Run Sim — healthy green at 100 users
+ *   7.  Click node — live stats (load %, latency, P95, SLA)
+ *   8.  Click edge — traffic % panel
+ *   9.  Collapse / expand overview minimap
+ *  10.  Toggle HUD cockpit compact ↔ full
+ *  11.  Reserved Instance pricing — toggle on, show −35% cost
+ *  12.  Change theme — dark → light → back to dark
+ *  13.  Ramp to 10,000 users — nodes turn red
+ *  14.  Suggestions panel fires — one-click fixes listed
+ *  15.  Enable auto-scaling → replicas spin up → back to green
+ *  16.  Live Share — open share panel, show short link
+ *  17.  Outro — Menu (export PDF / present)
  *
  * Usage:
  *   node scripts/record-demo.mjs
@@ -74,23 +79,20 @@ const page = await ctx.newPage();
 page.on('console', () => {});
 page.on('pageerror', () => {});
 
-// Inject a white dot cursor so it shows in the recording
+// White dot cursor overlay
 await page.addInitScript(() => {
   window.addEventListener('DOMContentLoaded', () => {
-    const dot = Object.assign(document.createElement('div'), {});
+    const dot = document.createElement('div');
     dot.style.cssText = [
-      'position:fixed', 'z-index:99999', 'pointer-events:none',
-      'width:16px', 'height:16px', 'border-radius:50%',
+      'position:fixed','z-index:99999','pointer-events:none',
+      'width:16px','height:16px','border-radius:50%',
       'background:rgba(255,255,255,0.92)',
       'box-shadow:0 0 0 3px rgba(79,156,249,0.8),0 2px 10px rgba(0,0,0,0.55)',
-      'transform:translate(-50%,-50%)', 'left:-40px', 'top:-40px',
+      'transform:translate(-50%,-50%)','left:-40px','top:-40px',
       'transition:transform 0.07s ease',
     ].join(';');
     document.body.appendChild(dot);
-    document.addEventListener('mousemove', e => {
-      dot.style.left = e.clientX + 'px';
-      dot.style.top  = e.clientY + 'px';
-    });
+    document.addEventListener('mousemove', e => { dot.style.left = e.clientX+'px'; dot.style.top = e.clientY+'px'; });
     document.addEventListener('mousedown', () => dot.style.transform = 'translate(-50%,-50%) scale(0.7)');
     document.addEventListener('mouseup',   () => dot.style.transform = 'translate(-50%,-50%) scale(1)');
   });
@@ -108,16 +110,14 @@ async function bbox(selector) {
 
 async function click(selector) {
   const b = await bbox(selector);
-  const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+  const cx = b.x + b.width/2, cy = b.y + b.height/2;
   await moveTo(cx, cy);
   await wait(120);
   await page.mouse.click(cx, cy);
   await wait(250);
 }
 
-// Drag palette item → canvas viewport position (tx, ty)
-// Cursor animates the drag visually; window.dropNodeAt is the ONLY node placer
-// (no real mousedown/up — that would double-place via the app's drag handler)
+// Visual-only drag from palette → canvas; window.dropNodeAt is the sole node placer
 async function dragFromPalette(defId, searchTerm, tx, ty) {
   await page.fill('#pal-search', searchTerm);
   await wait(300);
@@ -125,26 +125,17 @@ async function dragFromPalette(defId, searchTerm, tx, ty) {
   const item = page.locator(`.pal-item[data-def-id="${defId}"]`).first();
   await item.waitFor({ state: 'visible', timeout: 5000 });
   const src = await item.boundingBox();
-  const sx  = src.x + src.width / 2;
-  const sy  = src.y + src.height / 2;
+  const sx = src.x + src.width/2, sy = src.y + src.height/2;
 
-  // Hover on palette item (no click / mousedown)
   await moveTo(sx, sy, 20);
   await wait(250);
 
-  // Animate cursor from palette → drop point (purely visual — no drag events)
-  const steps = 32;
-  for (let i = 1; i <= steps; i++) {
-    await page.mouse.move(
-      sx + (tx - sx) * (i / steps),
-      sy + (ty - sy) * (i / steps),
-      { steps: 1 }
-    );
+  for (let i = 1; i <= 32; i++) {
+    await page.mouse.move(sx + (tx - sx)*(i/32), sy + (ty - sy)*(i/32), { steps: 1 });
     await wait(18);
   }
   await wait(150);
 
-  // Place the node via JS helper (single source of truth)
   const canvasBox = await page.locator('#canvas-wrap').boundingBox();
   const tf = await page.evaluate(() => window.getCanvasTransform());
   const cx = (tx - canvasBox.x - tf.panX) / tf.zoom - 80;
@@ -160,29 +151,26 @@ async function dragFromPalette(defId, searchTerm, tx, ty) {
   return id;
 }
 
-// Animate cursor drag + wire edge via JS helper
-// Cursor moves visually from source port → target; connectByLabel is the sole wirer
+// Visual cursor arc + connectByLabel as sole wirer
 async function connectNodes(srcLabel, tgtLabel) {
   const pos = await page.evaluate(({ s, t }) => {
     const find = lbl => [...document.querySelectorAll('.a-node')]
       .find(el => el.querySelector('.node-label')?.textContent?.trim() === lbl);
     const se = find(s), te = find(t);
     if (!se || !te) return null;
-    const sr = se.getBoundingClientRect();
-    const tr = te.getBoundingClientRect();
-    return { sx: sr.right - 6, sy: sr.top + sr.height/2, tx: tr.left + 6, ty: tr.top + tr.height/2 };
+    const sr = se.getBoundingClientRect(), tr = te.getBoundingClientRect();
+    return { sx: sr.right-6, sy: sr.top+sr.height/2, tx: tr.left+6, ty: tr.top+tr.height/2 };
   }, { s: srcLabel, t: tgtLabel });
 
   if (pos) {
-    // Visual-only cursor animation — no mousedown/up to avoid double-wiring
-    await moveTo(pos.sx - 20, pos.sy, 14);
+    await moveTo(pos.sx-20, pos.sy, 14);
     await wait(180);
     await moveTo(pos.sx, pos.sy, 10);
     await wait(200);
     for (let i = 1; i <= 28; i++) {
       await page.mouse.move(
-        pos.sx + (pos.tx - pos.sx) * (i / 28),
-        pos.sy + (pos.ty - pos.sy) * (i / 28),
+        pos.sx + (pos.tx-pos.sx)*(i/28),
+        pos.sy + (pos.ty-pos.sy)*(i/28),
         { steps: 1 }
       );
       await wait(16);
@@ -190,20 +178,18 @@ async function connectNodes(srcLabel, tgtLabel) {
     await wait(200);
   }
 
-  // Wire via JS helper (single source of truth)
   await page.evaluate(({ s, t }) => window.connectByLabel(s, t), { s: srcLabel, t: tgtLabel });
   await page.evaluate(() => window.forceRenderEdges());
   await wait(250);
 }
 
-// Click a canvas node by label
 async function clickNode(label) {
   const pos = await page.evaluate(lbl => {
     const el = [...document.querySelectorAll('.a-node')]
       .find(e => e.querySelector('.node-label')?.textContent?.trim() === lbl);
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    return { x: r.left + r.width/2, y: r.top + r.height/2 };
+    return { x: r.left+r.width/2, y: r.top+r.height/2 };
   }, label);
   if (!pos) { console.warn('node not found:', label); return; }
   await moveTo(pos.x, pos.y, 22);
@@ -212,41 +198,9 @@ async function clickNode(label) {
   await wait(700);
 }
 
-// Click an edge by source→target label
-async function clickEdge(srcLabel, tgtLabel) {
-  await page.evaluate(({ s, t }) => {
-    const nodes = window.getNodes?.() || {};
-    const srcId = Object.values(nodes).find(n => n.label === s || n.id === s)?.id;
-    const tgtId = Object.values(nodes).find(n => n.label === t || n.id === t)?.id;
-    // find SVG edge path and click midpoint
-    const edgePaths = document.querySelectorAll('.a-edge path.edge-hit');
-    for (const p of edgePaths) {
-      const edgeEl = p.closest('.a-edge');
-      if (!edgeEl) continue;
-      const id = edgeEl.dataset.edgeId;
-      if (!id) continue;
-      // Try clicking the midpoint of the path
-      const len = p.getTotalLength();
-      const mid = p.getPointAtLength(len / 2);
-      const rect = document.getElementById('canvas-svg')?.getBoundingClientRect() || { x: 0, y: 0 };
-      const evt = new MouseEvent('click', {
-        bubbles: true, cancelable: true,
-        clientX: mid.x + rect.x,
-        clientY: mid.y + rect.y,
-      });
-      p.dispatchEvent(evt);
-      break;
-    }
-  }, { s: srcLabel, t: tgtLabel });
-  await wait(600);
-}
-
-// Hover over minimap area with cursor animation
-async function hoverMinimap() {
-  const mm = await page.locator('#minimap').boundingBox().catch(() => null);
-  if (!mm) return;
-  await moveTo(mm.x + mm.width / 2, mm.y + mm.height / 2, 20);
-  await wait(500);
+async function deselect(canvasBox) {
+  await page.mouse.click(canvasBox.x + 80, canvasBox.y + 40);
+  await wait(400);
 }
 
 // ── SCRIPT START ──────────────────────────────────────────────────────────────
@@ -262,8 +216,9 @@ await page.evaluate(() => {
   document.querySelector('#cookie-banner button:last-child')?.click();
   localStorage.setItem('archviz.tour.done', '1');
   document.getElementById('tour-overlay')?.remove();
-  // Make sure minimap starts expanded
   window.toggleMinimap?.(true);
+  // Start in dark mode
+  if (typeof setTheme === 'function') setTheme('dark');
 });
 
 await page.waitForFunction(
@@ -274,9 +229,55 @@ await page.waitForFunction(
 ).catch(() => wait(4000));
 await wait(600);
 
-// ─── Scene 2: Palette drag ────────────────────────────────────────────────────
-addCue('Step 1 — Drag components from the palette onto the canvas', 4000);
+// ─── Scene 2: Load Example ────────────────────────────────────────────────────
+addCue('Start fast — browse 13+ pre-built architectures in Load Examples', 4000);
+await click('#btn-more');
+await wait(600);
+await click('#btn-examples');
+await wait(1000);
+
+// Hover over a few cards to show the modal
+const modalVisible = await page.locator('#examples-modal.open').isVisible().catch(() => false);
+if (modalVisible) {
+  addCue('Filter by category — Web Apps, Data, AI, Multi-Region and more', 3500);
+  // Move cursor across cards
+  const cards = await page.locator('.ex-card').all();
+  for (let i = 0; i < Math.min(3, cards.length); i++) {
+    const cb = await cards[i].boundingBox();
+    if (cb) await moveTo(cb.x + cb.width/2, cb.y + cb.height/2, 18);
+    await wait(400);
+  }
+
+  addCue('Click any example to instantly load it onto your canvas', 3000);
+  // Load "saas-web-app" example
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll('.ex-card')]
+      .find(c => c.dataset.id === 'saas-web-app')
+      ?.querySelector('.ex-load-btn');
+    btn?.click();
+  });
+  await wait(1200);
+} else {
+  // Fallback: load directly
+  await page.evaluate(() => window.loadExample('saas-web-app'));
+  await wait(1200);
+}
+
+await page.evaluate(() => window.fitView?.());
 await wait(800);
+addCue('Loaded: SaaS Web App — 8-node production architecture, ready to simulate', 3500);
+await wait(2000);
+
+// ─── Scene 3: Clear & build manually ─────────────────────────────────────────
+addCue('Or build from scratch — clear the canvas and design your own', 3500);
+await page.evaluate(() => window.clearCanvas?.(true));
+await wait(600);
+await page.evaluate(() => window.fitView?.());
+await wait(500);
+
+// ─── Scene 4: Drag components ─────────────────────────────────────────────────
+addCue('Drag components from the palette — every major cloud service is here', 4000);
+await wait(600);
 
 const canvasBox = await page.locator('#canvas-wrap').boundingBox();
 const C = {
@@ -289,26 +290,24 @@ const C = {
 };
 
 addCue('Drag "Users" — represents your user base', 2500);
-const idUsers = await dragFromPalette('users', 'users', C.users.x, C.users.y);
-await wait(350);
+const idUsers = await dragFromPalette('users',        'users',    C.users.x, C.users.y);
+await wait(300);
 
 addCue('Add a Load Balancer to distribute traffic evenly', 2500);
-const idLB    = await dragFromPalette('loadbalancer', 'load bal', C.lb.x, C.lb.y);
-await wait(350);
+const idLB    = await dragFromPalette('loadbalancer', 'load bal', C.lb.x,    C.lb.y);
+await wait(300);
 
-addCue('Drop two App Servers for horizontal scaling', 2500);
-const idApp1  = await dragFromPalette('appserver', 'app server', C.app1.x, C.app1.y);
+addCue('Two App Servers for horizontal scaling', 2500);
+const idApp1  = await dragFromPalette('appserver',    'app serv', C.app1.x,  C.app1.y);
 await wait(250);
-const idApp2  = await dragFromPalette('appserver', 'app server', C.app2.x, C.app2.y);
-await wait(350);
+const idApp2  = await dragFromPalette('appserver',    'app serv', C.app2.x,  C.app2.y);
+await wait(300);
 
-addCue('Add a Database for persistent storage', 2500);
-const idDB    = await dragFromPalette('database', 'database', C.db.x, C.db.y);
-await wait(350);
-
-addCue('And a Cache layer to reduce Database load', 2500);
-const idCache = await dragFromPalette('cache', 'cache', C.cache.x, C.cache.y);
-await wait(500);
+addCue('A Database and Cache to complete the tier', 2500);
+const idDB    = await dragFromPalette('database',     'database', C.db.x,    C.db.y);
+await wait(300);
+const idCache = await dragFromPalette('cache',        'cache',    C.cache.x, C.cache.y);
+await wait(400);
 
 await page.evaluate(({ a1, a2 }) => {
   window.renameNodeById(a1, 'App Server 1');
@@ -316,28 +315,25 @@ await page.evaluate(({ a1, a2 }) => {
 }, { a1: idApp1, a2: idApp2 });
 
 await page.evaluate(() => window.fitView?.());
-await wait(700);
+await wait(600);
 
-// ─── Scene 3: Connect nodes ───────────────────────────────────────────────────
-addCue('Step 2 — Connect components by dragging from port dots', 4000);
-await wait(800);
+// ─── Scene 5: Connect ─────────────────────────────────────────────────────────
+addCue('Connect components by dragging from port dots — rules are enforced automatically', 4000);
+await wait(600);
 
-addCue('Hover a node to reveal its blue port dots, then drag to connect', 3500);
-await connectNodes('Users', 'Load Balancer');
-await wait(250);
-
-addCue('Load Balancer splits traffic equally to both App Servers', 3000);
+await connectNodes('Users',         'Load Balancer');
+await wait(200);
+addCue('Load Balancer distributes traffic to both App Servers', 2500);
 await connectNodes('Load Balancer', 'App Server 1');
-await wait(200);
+await wait(150);
 await connectNodes('Load Balancer', 'App Server 2');
-await wait(250);
-
-addCue('App Servers read from Cache first, then fall back to Database', 3000);
-await connectNodes('App Server 1', 'Cache');
 await wait(200);
-await connectNodes('App Server 2', 'Cache');
-await wait(200);
-await connectNodes('Cache', 'Database');
+addCue('App Servers hit Cache first, then fall back to the Database', 2500);
+await connectNodes('App Server 1',  'Cache');
+await wait(150);
+await connectNodes('App Server 2',  'Cache');
+await wait(150);
+await connectNodes('Cache',         'Database');
 await wait(400);
 
 await page.evaluate(() => { window.forceRenderEdges(); window.fitView?.(); });
@@ -346,70 +342,53 @@ await wait(700);
 addCue('Architecture wired — 6 components, 6 connections', 3000);
 await wait(1500);
 
-// ─── Scene 4: Run Simulation ──────────────────────────────────────────────────
-addCue('Step 3 — Hit Run Sim to push live traffic through the design', 4000);
-await wait(600);
-
+// ─── Scene 6: Run simulation (green) ─────────────────────────────────────────
+addCue('Hit Run Sim — live traffic flows through your design instantly', 4000);
+await wait(500);
 await click('#btn-sim');
 await wait(2500);
 
-addCue('Green nodes — system is healthy with 100 users at low latency', 4000);
+addCue('All green — healthy system at 100 users, latency well within SLA', 4000);
 await wait(1800);
 
-// ─── Scene 5: Node stats panel ───────────────────────────────────────────────
-addCue('Click any node to inspect live stats: load %, latency, P95, SLA', 4000);
+// ─── Scene 7: Node stats panel ───────────────────────────────────────────────
+addCue('Click any node to inspect live stats: load %, latency, P95, and SLA status', 4000);
 await clickNode('Load Balancer');
 await wait(1000);
-
-addCue('Live metrics update in real-time as traffic flows through the node', 3500);
+addCue('Metrics update tick-by-tick as traffic flows through the node', 3500);
 await wait(2000);
+await deselect(canvasBox);
 
-// Deselect
-await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + 50);
-await wait(600);
-
-// ─── Scene 6: Edge traffic % panel ───────────────────────────────────────────
-addCue('Click an edge to inspect traffic flow and set custom split percentages', 4000);
-// Click midpoint of canvas to deselect, then click an edge
-await page.evaluate(() => {
-  // Click the first edge path element found
-  const hit = document.querySelector('.a-edge path.edge-hit, .a-edge line, .a-edge path');
-  if (hit) hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-});
-await wait(800);
-// Move cursor over the edge area (between Users and LB)
+// ─── Scene 8: Edge traffic % panel ───────────────────────────────────────────
+addCue('Click an edge to see live throughput and set custom traffic split percentages', 4000);
+// Move to midpoint of Users→LB edge and click
 const usersPos = await page.evaluate(() => {
   const el = [...document.querySelectorAll('.a-node')]
     .find(e => e.querySelector('.node-label')?.textContent?.trim() === 'Users');
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  return { x: r.right, y: r.top + r.height / 2 };
+  const r = el?.getBoundingClientRect();
+  return r ? { x: r.right, y: r.top + r.height/2 } : null;
 });
 const lbPos = await page.evaluate(() => {
   const el = [...document.querySelectorAll('.a-node')]
     .find(e => e.querySelector('.node-label')?.textContent?.trim() === 'Load Balancer');
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  return { x: r.left, y: r.top + r.height / 2 };
+  const r = el?.getBoundingClientRect();
+  return r ? { x: r.left, y: r.top + r.height/2 } : null;
 });
 if (usersPos && lbPos) {
-  const midX = (usersPos.x + lbPos.x) / 2;
-  const midY = (usersPos.y + lbPos.y) / 2;
-  await moveTo(midX, midY, 20);
+  const mx = (usersPos.x + lbPos.x) / 2, my = (usersPos.y + lbPos.y) / 2;
+  await moveTo(mx, my, 20);
   await wait(400);
-  await page.mouse.click(midX, midY);
+  await page.mouse.click(mx, my);
   await wait(800);
 }
-addCue('Set custom traffic split percentages per edge — or let Archi-Flow auto-balance', 4000);
+addCue('Set explicit split ratios or let Archi-Flow auto-balance across all downstream edges', 4000);
 await wait(2200);
+await deselect(canvasBox);
 
-// Deselect edge
-await page.mouse.click(canvasBox.x + 100, canvasBox.y + 50);
-await wait(600);
-
-// ─── Scene 7: Collapse overview ───────────────────────────────────────────────
-addCue('The Overview minimap helps you navigate large architectures', 3500);
-await hoverMinimap();
+// ─── Scene 9: Collapse overview ───────────────────────────────────────────────
+addCue('The Overview minimap shows your full architecture at a glance', 3500);
+const mmBox = await page.locator('#minimap').boundingBox().catch(() => null);
+if (mmBox) await moveTo(mmBox.x + mmBox.width/2, mmBox.y + mmBox.height/2, 20);
 await wait(600);
 
 addCue('Collapse it with one click to reclaim canvas space', 3000);
@@ -418,57 +397,115 @@ await wait(1200);
 
 addCue('Expand it again whenever you need it', 2500);
 await click('#minimap-toggle');
-await wait(1000);
+await wait(900);
 
-// ─── Scene 8: HUD cockpit toggle ─────────────────────────────────────────────
+// ─── Scene 10: HUD cockpit toggle ─────────────────────────────────────────────
 const hudBox = await page.locator('#canvas-hud').boundingBox().catch(() => null);
 if (hudBox) {
-  addCue('The Architecture Cockpit shows real-time cost, health, and node counts', 4000);
-  await moveTo(hudBox.x + hudBox.width / 2, hudBox.y + hudBox.height / 2, 20);
-  await wait(600);
+  addCue('The Architecture Cockpit shows real-time cost, health score, and node counts', 4000);
+  await moveTo(hudBox.x + hudBox.width/2, hudBox.y + 30, 20);
+  await wait(700);
 
-  addCue('Minimize it to a compact ring indicator — maximizing your canvas space', 3500);
+  addCue('Minimize to a compact ring indicator for more canvas space', 3000);
   await page.evaluate(() => window.toggleCockpitCompact?.(true));
   await wait(1500);
 
-  addCue('Expand back to full cockpit for the complete breakdown', 3000);
+  addCue('Expand back to the full cockpit to see the complete breakdown', 3000);
   await page.evaluate(() => window.toggleCockpitCompact?.(false));
   await wait(1200);
 }
 
-// ─── Scene 9: Ramp traffic ────────────────────────────────────────────────────
-addCue('Now ramp to 10,000 users — watch the bottlenecks appear', 4000);
+// ─── Scene 11: Reserved Instance pricing ─────────────────────────────────────
+addCue('Toggle Reserved Instance pricing — saves ~35% on all compute costs', 4000);
+await click('#btn-more');
+await wait(600);
+
+// Move cursor to btn-reserved inside menu
+const reservedBtn = await page.locator('#btn-reserved').boundingBox().catch(() => null);
+if (reservedBtn) {
+  await moveTo(reservedBtn.x + reservedBtn.width/2, reservedBtn.y + reservedBtn.height/2, 18);
+  await wait(300);
+  await page.mouse.click(reservedBtn.x + reservedBtn.width/2, reservedBtn.y + reservedBtn.height/2);
+  await wait(400);
+}
+await wait(800);
+
+addCue('Cost drops instantly — Reserved pricing applied across all compute nodes', 3500);
+await wait(1800);
+
+// Toggle it back off for clarity
+await click('#btn-more');
+await wait(400);
+const reservedBtn2 = await page.locator('#btn-reserved').boundingBox().catch(() => null);
+if (reservedBtn2) {
+  await page.mouse.click(reservedBtn2.x + reservedBtn2.width/2, reservedBtn2.y + reservedBtn2.height/2);
+  await wait(300);
+}
+await page.keyboard.press('Escape');
+await wait(500);
+
+// ─── Scene 12: Change theme ───────────────────────────────────────────────────
+addCue('Switch between Dark and Light themes — pick the look that suits you', 4000);
+await click('#btn-more');
+await wait(500);
+
+const themeBtn = await page.locator('#btn-theme').boundingBox().catch(() => null);
+if (themeBtn) {
+  await moveTo(themeBtn.x + themeBtn.width/2, themeBtn.y + themeBtn.height/2, 18);
+  await wait(300);
+  // Cycle to light
+  await page.mouse.click(themeBtn.x + themeBtn.width/2, themeBtn.y + themeBtn.height/2);
+  await wait(900);
+}
+
+addCue('Light theme — clean and bright for presentations and daytime work', 3500);
+await wait(2000);
+
+// Cycle back to dark
+await click('#btn-more');
+await wait(400);
+const themeBtn2 = await page.locator('#btn-theme').boundingBox().catch(() => null);
+if (themeBtn2) {
+  await page.mouse.click(themeBtn2.x + themeBtn2.width/2, themeBtn2.y + themeBtn2.height/2);
+  await wait(300);
+  await page.mouse.click(themeBtn2.x + themeBtn2.width/2, themeBtn2.y + themeBtn2.height/2);
+  await wait(300);
+}
+await page.keyboard.press('Escape');
+await wait(600);
+
+addCue('Back to Dark theme — designed for deep focus sessions', 2500);
+await wait(1200);
+
+// ─── Scene 13: Ramp to 10K users ─────────────────────────────────────────────
+addCue('Now stress-test it — ramp to 10,000 users and watch the system respond', 4000);
 await page.evaluate(() => {
   const sl = document.getElementById('users-slider');
   if (sl) {
-    // Slider is log-scale: pos = log10(users) * 100  →  10k users = pos 400
-    sl.value = Math.round(Math.log10(10000) * 100); // = 400
+    sl.value = Math.round(Math.log10(10000) * 100); // log-scale: 10k = pos 400
     sl.dispatchEvent(new Event('input'));
   }
 });
 await wait(2800);
 
-addCue('App Servers turn red — overloaded! The bottleneck is clear', 4000);
+addCue('App Servers turn red — overloaded! The bottleneck is crystal clear', 4000);
 await wait(1500);
 
-// ─── Scene 10: Suggestions panel ─────────────────────────────────────────────
-addCue('The Suggestions panel auto-detects problems and proposes fixes', 3500);
-await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + 60);
-await wait(600);
-
+// ─── Scene 14: Suggestions panel ─────────────────────────────────────────────
+addCue('Suggestions panel auto-detects the problem and proposes targeted fixes', 3500);
+await deselect(canvasBox);
 const sugBox = await page.locator('#suggestions').boundingBox().catch(() => null);
 if (sugBox) {
-  await moveTo(sugBox.x + sugBox.width / 2, sugBox.y + 70, 20);
+  await moveTo(sugBox.x + sugBox.width/2, sugBox.y + 70, 20);
   await wait(800);
 }
 addCue('One-click fixes: increase capacity, add replicas, or enable auto-scaling', 4000);
 await wait(2000);
 
-// ─── Scene 11: Enable auto-scale ─────────────────────────────────────────────
-addCue('Enable auto-scaling on App Server 1 — watch replicas spin up automatically', 4000);
+// ─── Scene 15: Auto-scale ─────────────────────────────────────────────────────
+addCue('Enable auto-scaling on App Server 1 — replicas spin up automatically', 4000);
 await clickNode('App Server 1');
 await wait(600);
-
 await page.evaluate(() => {
   const cb = document.querySelector('#autoscale-section input[type="checkbox"]');
   if (cb && !cb.checked) {
@@ -478,23 +515,47 @@ await page.evaluate(() => {
 });
 await wait(2800);
 
-addCue('Replicas spin up — load distributes, nodes return to healthy green', 4000);
+addCue('Replicas spin up — load distributes, system returns to healthy green', 4000);
 await page.evaluate(() => window.fitView?.());
-await wait(2500);
+await wait(2200);
+await deselect(canvasBox);
 
-// ─── Scene 12: Outro ──────────────────────────────────────────────────────────
-addCue('Export a PDF report, share a live link, or save to the cloud', 3500);
+// ─── Scene 16: Live Share ─────────────────────────────────────────────────────
+addCue('Share your architecture — generate a permanent link anyone can view live', 4000);
+await click('#btn-share');
+await wait(1200);
+
+const sharePanel = await page.locator('.share-panel, #share-overlay, [class*="share"]').first().boundingBox().catch(() => null);
+if (sharePanel) {
+  await moveTo(sharePanel.x + sharePanel.width/2, sharePanel.y + 80, 20);
+  await wait(600);
+}
+addCue('Copy the link — viewers get a live read-only preview of your architecture', 3500);
+await wait(2000);
+
+// Close share panel
+await page.keyboard.press('Escape');
+await wait(500);
+// Try clicking close button if escape didn't work
+await page.evaluate(() => {
+  document.getElementById('sh-close')?.click();
+  document.querySelector('.share-close')?.click();
+});
+await wait(500);
+
+// ─── Scene 17: Outro ──────────────────────────────────────────────────────────
+addCue('Export a PDF report, present in full-screen, or save to the cloud', 3500);
 await click('#btn-more');
-await wait(600);
-const moreMenu = await page.locator('#more-menu').boundingBox().catch(() => null);
-if (moreMenu) await moveTo(moreMenu.x + 30, moreMenu.y + 50, 14);
+await wait(700);
+const menu = await page.locator('#more-menu').boundingBox().catch(() => null);
+if (menu) await moveTo(menu.x + 40, menu.y + 60, 14);
 await wait(1200);
 await page.keyboard.press('Escape');
-await wait(600);
+await wait(500);
 
 addCue('Archi-Flow — design, simulate, and present cloud architectures in minutes', 5000);
 await page.evaluate(() => window.fitView?.());
-await wait(3500);
+await wait(3800);
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 await ctx.close();
