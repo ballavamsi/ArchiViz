@@ -217,8 +217,7 @@ await page.evaluate(() => {
   localStorage.setItem('archviz.tour.done', '1');
   document.getElementById('tour-overlay')?.remove();
   window.toggleMinimap?.(true);
-  // Start in dark mode
-  if (typeof setTheme === 'function') setTheme('dark');
+  window.setTheme?.('dark');
 });
 
 await page.waitForFunction(
@@ -446,32 +445,26 @@ await wait(500);
 
 // ─── Scene 12: Change theme ───────────────────────────────────────────────────
 addCue('Switch between Dark and Light themes — pick the look that suits you', 4000);
+// Open Menu and hover over theme button so viewer can see it
 await click('#btn-more');
 await wait(500);
-
 const themeBtn = await page.locator('#btn-theme').boundingBox().catch(() => null);
 if (themeBtn) {
   await moveTo(themeBtn.x + themeBtn.width/2, themeBtn.y + themeBtn.height/2, 18);
-  await wait(300);
-  // Cycle to light
-  await page.mouse.click(themeBtn.x + themeBtn.width/2, themeBtn.y + themeBtn.height/2);
-  await wait(900);
-}
-
-addCue('Light theme — clean and bright for presentations and daytime work', 3500);
-await wait(2000);
-
-// Cycle back to dark
-await click('#btn-more');
-await wait(400);
-const themeBtn2 = await page.locator('#btn-theme').boundingBox().catch(() => null);
-if (themeBtn2) {
-  await page.mouse.click(themeBtn2.x + themeBtn2.width/2, themeBtn2.y + themeBtn2.height/2);
-  await wait(300);
-  await page.mouse.click(themeBtn2.x + themeBtn2.width/2, themeBtn2.y + themeBtn2.height/2);
-  await wait(300);
+  await wait(400);
 }
 await page.keyboard.press('Escape');
+await wait(300);
+
+// Switch to light via window.setTheme (reliable, no cycle-counting needed)
+await page.evaluate(() => window.setTheme('light'));
+await wait(900);
+
+addCue('Light theme — clean and bright for presentations and daytime work', 3500);
+await wait(2200);
+
+// Switch back to dark
+await page.evaluate(() => window.setTheme('dark'));
 await wait(600);
 
 addCue('Back to Dark theme — designed for deep focus sessions', 2500);

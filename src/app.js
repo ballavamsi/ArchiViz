@@ -1371,6 +1371,7 @@ window.openExamplesModal = openExamplesModal;
 window.loadExample = loadExample;
 window.fitView = fitView;
 window.getExamplesCount = () => EXAMPLES.length; // for automation scripts
+window.setTheme = setTheme;
 
 // ══ PORT POSITIONS ════════════════════════════════════════════════════════════
 function portXY(nodeId, side) {

@@ -44,17 +44,13 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
 async function setup(page, theme = 'dark') {
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-  await page.evaluate(t => {
+  await page.evaluate(() => {
     document.querySelector('#cookie-banner button:last-child')?.click();
     localStorage.setItem('archviz.tour.done', '1');
     document.getElementById('tour-overlay')?.remove();
-    // Force theme via app's setTheme function
-    if (typeof setTheme === 'function') setTheme(t);
-    else {
-      document.documentElement.setAttribute('data-theme', t);
-      document.body.classList.toggle('theme-light', t === 'light');
-    }
-  }, theme);
+  });
+  // setTheme is exposed on window after module init — call it separately
+  await page.evaluate(t => window.setTheme?.(t), theme);
   await wait(500);
 }
 
