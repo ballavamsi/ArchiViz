@@ -196,3 +196,16 @@ test('more menu and cockpit stay compact', () => {
   assert.match(css, /#canvas-hud\.compact/, 'Compact cockpit should have dedicated styling');
   assert.match(css, /\.more-submenu/, 'More menu should support hover submenus');
 });
+
+test('connectors support magnetic snapping and endpoint reconnect', () => {
+  const appJs = readFileSync(rootFile('src/app.js'), 'utf8');
+  const css = readFileSync(rootFile('src/app.css'), 'utf8');
+
+  assert.match(appJs, /function nearestMagneticPort\(/, 'dragging connectors should detect nearby magnetic ports');
+  assert.match(appJs, /function updateMagneticPort\(/, 'connector preview should update magnetic port state');
+  assert.match(appJs, /function reconnectEdge\(/, 'selected edge endpoints should be reconnectable');
+  assert.match(appJs, /edge-end-handle/, 'selected edges should render endpoint handles');
+  assert.match(appJs, /G\.reconnect/, 'reconnect drag state should be tracked');
+  assert.match(css, /\.edge-end-handle/, 'endpoint handles should have visible styling');
+  assert.match(css, /port-magnetic/, 'magnetic ports should have a dedicated transient class');
+});

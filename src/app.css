@@ -354,6 +354,18 @@ body {
 @keyframes edge-draw { from { opacity:0; stroke-dashoffset: 400; stroke-dasharray: 400; } to { opacity:1; } }
 
 .edge-group:hover .edge-vis { opacity: 1 !important; stroke-width: 2.4 !important; }
+.edge-end-handle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+  cursor: grab;
+  filter: drop-shadow(0 0 6px rgba(79,156,249,0.55));
+}
+.edge-end-handle:hover {
+  fill: var(--accent);
+  stroke: #fff;
+  cursor: grabbing;
+}
 .edge-del-btn { cursor: pointer; pointer-events: all; opacity: 0; transition: opacity 0.15s; }
 .edge-group:hover .edge-del-btn { opacity: 1; }
 /* Particles: small crisp dots — no double-glow */
@@ -2805,6 +2817,9 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   box-shadow: 0 0 0 3px rgba(245,183,49,0.4), 0 0 12px rgba(245,183,49,0.6) !important;
   border-color: #f5b731 !important;
   z-index: 20;
+}
+.port.port-magnetic {
+  animation: port-pulse 0.7s ease-in-out infinite;
 }
 
 /* ── Flow readout ────────────────────────────────────────────────────────────── */

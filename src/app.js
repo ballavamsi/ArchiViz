@@ -95,6 +95,8 @@ let G = {
   pendingConn: null,   // { srcId, srcSide } — click mode: waiting for target click
   dragDef:     null,   // defId being dragged from palette
   portDragStart: null, // { x, y } for distinguishing click vs drag on port
+  reconnect:   null,   // { edgeId, end:'src'|'tgt', fixedId, fixedSide }
+  snapPort:    null,   // nearest magnetic port while dragging a connector
 };
 
 // DOM
@@ -121,6 +123,8 @@ function clearPendingConn() {
   G.pendingConn = null;
   G.conn = null;
   G.portDragStart = null;
+  G.reconnect = null;
+  clearMagneticPorts();
   connPrev.style.display = 'none';
   document.querySelectorAll('.port.pending-src').forEach(el => el.classList.remove('pending-src'));
 }
@@ -1000,6 +1004,86 @@ function portXY(nodeId, side) {
   return { x: cx, y: cy };
 }
 
+function clearMagneticPorts() {
+  G.snapPort = null;
+  document.querySelectorAll('.port.port-snap-valid,.port.port-snap-warn,.port.port-magnetic')
+    .forEach(el => el.classList.remove('port-snap-valid', 'port-snap-warn', 'port-magnetic'));
+}
+
+function magneticRoleForPort(nodeId, mode) {
+  if (!mode) return null;
+  if (mode.kind === 'new') {
+    if (mode.srcId === nodeId) return null;
+    const verdict = validateConnection(S.nodes[mode.srcId]?.defId, S.nodes[nodeId]?.defId);
+    return { ok: verdict.ok, warning: !verdict.ok };
+  }
+  if (mode.kind === 'reconnect') {
+    const edge = S.edges.find(e => e.id === mode.edgeId);
+    if (!edge) return null;
+    if (mode.end === 'tgt') {
+      if (edge.src === nodeId) return null;
+      const verdict = validateConnection(S.nodes[edge.src]?.defId, S.nodes[nodeId]?.defId);
+      return { ok: verdict.ok, warning: !verdict.ok };
+    }
+    if (edge.tgt === nodeId) return null;
+    const verdict = validateConnection(S.nodes[nodeId]?.defId, S.nodes[edge.tgt]?.defId);
+    return { ok: verdict.ok, warning: !verdict.ok };
+  }
+  return null;
+}
+
+function nearestMagneticPort(clientX, clientY, mode) {
+  const maxD = 28;
+  let best = null;
+  document.querySelectorAll('.a-node .port').forEach(port => {
+    const nodeId = port.dataset.node;
+    const role = magneticRoleForPort(nodeId, mode);
+    if (!role) return;
+    const r = port.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const d = Math.hypot(clientX - cx, clientY - cy);
+    if (d <= maxD && (!best || d < best.d)) {
+      best = { nodeId, side: port.dataset.side, port, d, ...role };
+    }
+  });
+  return best;
+}
+
+function updateMagneticPort(clientX, clientY, mode) {
+  clearMagneticPorts();
+  const snap = nearestMagneticPort(clientX, clientY, mode);
+  if (!snap) return null;
+  G.snapPort = snap;
+  snap.port.classList.add(snap.ok ? 'port-snap-valid' : 'port-snap-warn', 'port-magnetic');
+  return snap;
+}
+
+function reconnectEdge(edgeId, end, nodeId) {
+  const edge = S.edges.find(e => e.id === edgeId);
+  if (!edge || !S.nodes[nodeId]) return false;
+  if (end === 'src' && edge.tgt === nodeId) return false;
+  if (end === 'tgt' && edge.src === nodeId) return false;
+  const nextSrc = end === 'src' ? nodeId : edge.src;
+  const nextTgt = end === 'tgt' ? nodeId : edge.tgt;
+  const duplicate = S.edges.some(e => e.id !== edgeId && e.src === nextSrc && e.tgt === nextTgt);
+  if (duplicate) { pushToast('That connection already exists.', 'warn'); return false; }
+  const verdict = validateConnection(S.nodes[nextSrc]?.defId, S.nodes[nextTgt]?.defId);
+  snapshot();
+  edge.src = nextSrc;
+  edge.tgt = nextTgt;
+  edge._warn = !verdict.ok;
+  edge.dashed = S.nodes[nextSrc]?.defId === 'autoscaler' || verdict.dashed || false;
+  edge.animated = !edge.dashed;
+  S.activeExample = '';
+  setExampleSelect('');
+  if (!verdict.ok) pushToast(`⚠️ Unusual connection: ${verdict.message}`, 'warn');
+  autoSave();
+  renderEdges();
+  showEdgeProps(edge.id);
+  return true;
+}
+
 function bestSides(srcId, tgtId) {
   const s = S.nodes[srcId], t = S.nodes[tgtId];
   if (!s || !t) return { ss: 'r', ts: 'l' };
@@ -1119,6 +1203,30 @@ function renderEdges() {
     delTxt.setAttribute('font-size','11'); delTxt.setAttribute('fill','#f85149'); delTxt.textContent = '×';
     delG.appendChild(delBg); delG.appendChild(delTxt);
     g.appendChild(delG);
+
+    if (isSelected) {
+      [['src', s, ss], ['tgt', t, ts]].forEach(([end, pt, side]) => {
+        const h = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        h.setAttribute('class', `edge-end-handle edge-end-${end}`);
+        h.setAttribute('cx', pt.x);
+        h.setAttribute('cy', pt.y);
+        h.setAttribute('r', String(Math.max(6, 6 * z)));
+        h.setAttribute('data-edge-id', edge.id);
+        h.setAttribute('data-end', end);
+        h.style.pointerEvents = 'all';
+        h.addEventListener('mousedown', e => {
+          e.stopPropagation();
+          e.preventDefault();
+          G.reconnect = { edgeId: edge.id, end, fixedId: end === 'src' ? edge.tgt : edge.src, fixedSide: side };
+          const fixedSide = end === 'src' ? ts : ss;
+          const fixed = portXY(G.reconnect.fixedId, fixedSide);
+          G.conn = { reconnect: true, srcId: G.reconnect.fixedId, srcSide: fixedSide };
+          connPrev.style.display = '';
+          connPrev.setAttribute('d', bezier(fixed.x, fixed.y, pt.x, pt.y, fixedSide, side));
+        });
+        g.appendChild(h);
+      });
+    }
     edgesG.appendChild(g);
 
     // Warning badge for unusual connections
@@ -2578,14 +2686,37 @@ window.addEventListener('mousemove', e => {
     if (rb) rb.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;display:block`;
     return;
   }
+  // Existing edge endpoint reconnect
+  if (G.reconnect) {
+    const edge = S.edges.find(ed => ed.id === G.reconnect.edgeId);
+    if (!edge) { clearPendingConn(); return; }
+    const rect = cWrap.getBoundingClientRect();
+    const cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const snap = updateMagneticPort(e.clientX, e.clientY, { kind: 'reconnect', edgeId: edge.id, end: G.reconnect.end });
+    const moving = snap ? portXY(snap.nodeId, snap.side) : cursor;
+    if (G.reconnect.end === 'tgt') {
+      const { ss } = bestSides(edge.src, snap?.nodeId || edge.tgt);
+      const start = portXY(edge.src, ss);
+      const ts = snap?.side || (Math.abs(moving.x - start.x) >= Math.abs(moving.y - start.y) ? (moving.x >= start.x ? 'l' : 'r') : (moving.y >= start.y ? 't' : 'b'));
+      connPrev.setAttribute('d', bezier(start.x, start.y, moving.x, moving.y, ss, ts));
+    } else {
+      const { ts } = bestSides(snap?.nodeId || edge.src, edge.tgt);
+      const end = portXY(edge.tgt, ts);
+      const ss = snap?.side || (Math.abs(end.x - moving.x) >= Math.abs(end.y - moving.y) ? (end.x >= moving.x ? 'r' : 'l') : (end.y >= moving.y ? 'b' : 't'));
+      connPrev.setAttribute('d', bezier(moving.x, moving.y, end.x, end.y, ss, ts));
+    }
+    return;
+  }
   // Connection preview
   if (G.conn) {
     const s = portXY(G.conn.srcId, G.conn.srcSide);
     const rect = cWrap.getBoundingClientRect();
-    const tx = e.clientX-rect.left, ty = e.clientY-rect.top;
+    const snap = updateMagneticPort(e.clientX, e.clientY, { kind: 'new', srcId: G.conn.srcId });
+    const endPt = snap ? portXY(snap.nodeId, snap.side) : { x: e.clientX-rect.left, y: e.clientY-rect.top };
+    const tx = endPt.x, ty = endPt.y;
     // Guess opposite side for cursor end based on drag direction
     const dx=tx-s.x, dy=ty-s.y;
-    const tsSide = Math.abs(dx)>=Math.abs(dy) ? (dx>=0?'l':'r') : (dy>=0?'t':'b');
+    const tsSide = snap?.side || (Math.abs(dx)>=Math.abs(dy) ? (dx>=0?'l':'r') : (dy>=0?'t':'b'));
     connPrev.setAttribute('d', bezier(s.x,s.y,tx,ty,G.conn.srcSide,tsSide));
   }
 });
@@ -2610,6 +2741,21 @@ window.addEventListener('mouseup', e => {
       if (S.selSet.size > 0) renderAll();
     }
     G.rubber = null;
+  }
+  if (G.reconnect) {
+    const snap = G.snapPort || nearestMagneticPort(e.clientX, e.clientY, { kind: 'reconnect', edgeId: G.reconnect.edgeId, end: G.reconnect.end });
+    if (snap) reconnectEdge(G.reconnect.edgeId, G.reconnect.end, snap.nodeId);
+    clearPendingConn();
+    return;
+  }
+  if (G.conn && !G.pendingConn) {
+    const snap = G.snapPort || nearestMagneticPort(e.clientX, e.clientY, { kind: 'new', srcId: G.conn.srcId });
+    if (snap && snap.nodeId !== G.conn.srcId) {
+      addEdge(G.conn.srcId, snap.nodeId, { userInitiated: true });
+      clearPendingConn();
+      return;
+    }
+    clearMagneticPorts();
   }
   // Don't clear conn if we're in pending click-connect mode
   if (!G.pendingConn) { G.conn=null; connPrev.style.display='none'; }

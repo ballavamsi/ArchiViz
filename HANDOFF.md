@@ -14,6 +14,28 @@
 
 **Latest local iteration:** Guest Sign-in Recovery + Compact Menu/Cockpit
 
+**Latest connector polish:** Magnetic endpoints + reconnect handles
+
+Connector behavior now supports:
+- Magnetic port snapping while drawing a new connector. Nearby valid ports glow green; unusual-but-allowed architecture targets glow amber.
+- Selected edges render draggable start/end handles.
+- Dragging an endpoint handle to another port reconnects that side of the arrow.
+- Duplicate reconnects are blocked with a toast.
+- Reconnect recalculates warning/dashed/animated state from the new source/target component types.
+
+Verification:
+```bash
+node --check src/app.js
+npm test
+npm run build
+```
+
+---
+
+## Previous Update
+
+**Previous local iteration:** Guest Sign-in Recovery + Compact Menu/Cockpit
+
 Follow-up UI polish after the Cloud Diagram Library:
 - Guest users now get a `Sign in with Google` action in the More menu when Supabase auth is configured, even if they previously chose guest mode.
 - Guest mode now also injects a profile chip labeled `Guest`, with actions for `Sign in to save flows` and `My Flows`.
