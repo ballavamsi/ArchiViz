@@ -904,6 +904,10 @@ body[data-theme="light"] .node-titles .node-type {
 .node-load-bar { height: 3px; background: rgba(0,0,0,0.3); margin: 7px -12px -9px; border-radius: 0 0 13px 13px; overflow: hidden; }
 .node-load-fill { height: 100%; transition: width 0.5s ease, background-color 0.3s; }
 
+.mobile-node-move-handle {
+  display: none;
+}
+
 /* ── PORTS ── */
 .port {
   opacity: 0;
@@ -4068,6 +4072,32 @@ body[data-theme="light"] .sc-label { color: #4b5563; }
   .sim-bar { display: none !important; }
   #btn-sim-mobile {
     display: flex !important;
+  }
+
+  .mobile-node-move-handle {
+    display: flex;
+    position: absolute;
+    right: -12px;
+    top: -12px;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    z-index: 45;
+    color: #fff;
+    background: #2563eb;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 10px 24px rgba(37,99,235,0.36), 0 0 0 4px rgba(37,99,235,0.16);
+    touch-action: none;
+    cursor: grab;
+  }
+  .mobile-node-move-handle:active {
+    cursor: grabbing;
+    transform: scale(0.96);
+  }
+  .mobile-node-move-handle svg {
+    pointer-events: none;
   }
 
   /* Zoom controls: larger touch targets */

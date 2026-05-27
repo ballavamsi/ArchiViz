@@ -678,6 +678,10 @@ function isReadOnlyMode() {
   return !!S.readOnly;
 }
 
+function isMobile() {
+  return window.innerWidth <= 640;
+}
+
 function nodeScreenPos(n) {
   return { x: n.x * S.zoom + S.panX, y: n.y * S.zoom + S.panY };
 }
@@ -693,6 +697,7 @@ function renderNode(id) {
     cNodes.appendChild(el);
     let mobileTapStart = null;
     let mobilePointerDrag = null;
+    const isMobileMoveHandle = target => !!target?.closest?.('.mobile-node-move-handle');
     const moveMobileNode = (state, clientX, clientY) => {
       const dx = clientX - state.x;
       const dy = clientY - state.y;
@@ -712,6 +717,7 @@ function renderNode(id) {
     el.addEventListener('pointerdown', e => {
       if (!isMobile() || e.pointerType !== 'touch' || e.target.classList.contains('port')) return;
       if (!(window._mobileMoveMode && window._mobileMoveSrc === id)) return;
+      if (!isMobileMoveHandle(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
       mobilePointerDrag = { x: e.clientX, y: e.clientY, ox: n.x, oy: n.y, dragged: false };
@@ -739,6 +745,7 @@ function renderNode(id) {
     el.addEventListener('touchstart', e => {
       if (!isMobile() || e.touches.length !== 1 || e.target.classList.contains('port')) return;
       if (!(window._mobileMoveMode && window._mobileMoveSrc === id)) return;
+      if (!isMobileMoveHandle(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
       const t = e.touches[0];
@@ -874,9 +881,22 @@ function renderNode(id) {
   const noteTextColor = n.defId === 'textnote' ? 'var(--text)' : null;
   const toolName = n.defId === 'textnote' ? esc(noteToneLabel) : safeType;
   const toolTitle = n.defId === 'textnote' ? `Note type: ${esc(noteToneLabel)}` : `Tool: ${safeType}`;
+  const mobileMoveHandle = isMobile() && window._mobileMoveMode && window._mobileMoveSrc === id
+    ? `<button class="mobile-node-move-handle" type="button" aria-label="Drag to move component" title="Drag to move">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2v20"></path>
+          <path d="M2 12h20"></path>
+          <path d="m5 9-3 3 3 3"></path>
+          <path d="m19 9 3 3-3 3"></path>
+          <path d="m9 5 3-3 3 3"></path>
+          <path d="m9 19 3 3 3-3"></path>
+        </svg>
+      </button>`
+    : '';
 
   el.innerHTML = `
     <div class="node-accent" style="background:${n.defId === 'textnote' ? noteAccent : accentColor}"></div>
+    ${mobileMoveHandle}
     <div class="node-body">
       <div class="node-header">
         <div class="node-icon-wrap" style="background:${n.defId === 'textnote' ? noteAccent + '22' : accentColor + '1e'};box-shadow:inset 0 0 0 1px ${n.defId === 'textnote' ? noteAccent : accentColor}33,0 2px 10px ${n.defId === 'textnote' ? noteAccent : accentColor}18">${safeIcon}</div>
@@ -7555,6 +7575,7 @@ setTimeout(startTour, 1200);
     const hint = document.getElementById('mobile-move-hint');
     if (hint) hint.style.display = active ? 'block' : 'none';
     if (active) closeMobileSheet('mobile-props-sheet');
+    renderAll();
   }
   window._setMobileMoveMode = setMoveMode;
 
