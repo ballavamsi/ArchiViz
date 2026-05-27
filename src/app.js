@@ -4842,6 +4842,21 @@ function loadAutoSavedDiagram() {
   const auto = (() => { try { return JSON.parse(localStorage.getItem(LS_AUTO) || 'null'); } catch { return null; } })();
   if (!auto || !auto.payload) return false;
   importArchitecture(auto.payload);
+
+  // Welcome-back toast for returning users (not first visit)
+  const prevVisit = localStorage.getItem('archviz.visited');
+  if (prevVisit) {
+    const elapsed = Date.now() - parseInt(prevVisit, 10);
+    const rel = elapsed < 3600000 ? 'just now'
+      : elapsed < 86400000 ? `${Math.floor(elapsed / 3600000)}h ago`
+      : elapsed < 604800000 ? `${Math.floor(elapsed / 86400000)}d ago`
+      : new Date(parseInt(prevVisit, 10)).toLocaleDateString();
+    const nodeCount = Array.isArray(auto.payload?.nodes) ? auto.payload.nodes.length : 0;
+    if (nodeCount > 0) {
+      setTimeout(() => pushToast(`↩ Work restored · ${auto.payload.title || 'Untitled'} · last edited ${rel}`, 'info'), 900);
+    }
+  }
+
   return true;
 }
 
@@ -4853,6 +4868,77 @@ function diagramCountLabel(payload = architecturePayload()) {
 
 function fmtDiagramTime(ts) {
   return new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+function generateFlowPreviewSvg(payload) {
+  const nodes = Array.isArray(payload?.nodes) ? payload.nodes.filter(n => !n.props?._isReplica) : [];
+  const edges = Array.isArray(payload?.edges) ? payload.edges : [];
+  if (!nodes.length) return null;
+
+  const VW = 280, VH = 170;
+  const pad = 16;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => {
+    const nw = n.w || 160, nh = n.h || 88;
+    minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + nw); maxY = Math.max(maxY, n.y + nh);
+  });
+
+  const bw = maxX - minX || 1, bh = maxY - minY || 1;
+  const sx = (VW - pad*2) / bw, sy = (VH - pad*2) / bh;
+  const scale = Math.min(sx, sy, 1.2);
+  const ox = pad + ((VW - pad*2) - bw * scale) / 2 - minX * scale;
+  const oy = pad + ((VH - pad*2) - bh * scale) / 2 - minY * scale;
+
+  const nodeMap = {};
+  nodes.forEach(n => { nodeMap[n.id] = n; });
+
+  const CATEGORY_COLORS = {
+    compute: '#4f9cf9', network: '#a78bfa', database: '#34d399', storage: '#f59e0b',
+    security: '#f87171', messaging: '#fb923c', analytics: '#22d3ee', ml: '#e879f9',
+    monitoring: '#84cc16', cdn: '#06b6d4', default: '#6b7280'
+  };
+
+  function nodeColor(n) {
+    if (!window.COMPONENT_DEFS) return CATEGORY_COLORS.default;
+    const def = COMPONENT_DEFS.find(d => d.id === n.defId);
+    if (!def) return CATEGORY_COLORS.default;
+    return def.color || CATEGORY_COLORS[def.category] || CATEGORY_COLORS.default;
+  }
+
+  let edgesSvg = '', nodesSvg = '';
+
+  edges.forEach(e => {
+    const src = nodeMap[e.src], tgt = nodeMap[e.tgt];
+    if (!src || !tgt) return;
+    const sw = src.w || 160, sh = src.h || 88, tw = tgt.w || 160, th = tgt.h || 88;
+    const x1 = (src.x + sw/2) * scale + ox;
+    const y1 = (src.y + sh/2) * scale + oy;
+    const x2 = (tgt.x + tw/2) * scale + ox;
+    const y2 = (tgt.y + th/2) * scale + oy;
+    edgesSvg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(150,170,200,0.3)" stroke-width="1.2" stroke-dasharray="${e.dashed?'3,3':''}"/>`;
+  });
+
+  nodes.forEach(n => {
+    const nw = (n.w || 160) * scale, nh = (n.h || 88) * scale;
+    const nx = n.x * scale + ox, ny = n.y * scale + oy;
+    const color = nodeColor(n);
+    const r = Math.max(3, 6 * scale);
+    const label = (n.props?.label || n.defId || '').substring(0, 14);
+    const fontSize = Math.max(6, Math.min(9, nw / 8));
+    nodesSvg += `<g>
+      <rect x="${nx.toFixed(1)}" y="${ny.toFixed(1)}" width="${nw.toFixed(1)}" height="${nh.toFixed(1)}" rx="${r}" fill="${color}18" stroke="${color}" stroke-width="1" opacity="0.9"/>
+      <rect x="${nx.toFixed(1)}" y="${ny.toFixed(1)}" width="3" height="${nh.toFixed(1)}" rx="${r} 0 0 ${r}" fill="${color}" opacity="0.8"/>
+      ${label ? `<text x="${(nx + nw/2 + 2).toFixed(1)}" y="${(ny + nh/2 + fontSize*0.38).toFixed(1)}" text-anchor="middle" font-size="${fontSize}" font-family="Inter,system-ui,sans-serif" font-weight="600" fill="${color}" opacity="0.9">${esc(label)}</text>` : ''}
+    </g>`;
+  });
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VW} ${VH}" class="mf-preview-svg" style="background:transparent">
+    <rect width="${VW}" height="${VH}" fill="transparent"/>
+    ${edgesSvg}
+    ${nodesSvg}
+  </svg>`;
 }
 
 async function currentSessionToken() {
@@ -5217,6 +5303,8 @@ async function migrateLocalSavesToCloud() {
   }
 }
 
+let _mfActiveTab = 'mine';
+
 async function updateDiagramsPanel() {
   const panel = document.getElementById('my-diagrams-list');
   if (!panel) return;
@@ -5224,7 +5312,6 @@ async function updateDiagramsPanel() {
   const sub        = document.getElementById('diagrams-sub');
   const notice     = document.getElementById('diagrams-storage-notice');
   const migrateBtn = document.getElementById('btn-migrate-local');
-  const statusBlock= document.getElementById('diagrams-status-block');
   const savePrimary= document.getElementById('btn-save-diagram');
   const saveBtnLbl = document.getElementById('save-btn-label');
   const search     = document.getElementById('diagram-search');
@@ -5232,217 +5319,219 @@ async function updateDiagramsPanel() {
   const list       = lsGetSaved();
   const auto       = (() => { try { return JSON.parse(localStorage.getItem(LS_AUTO)||'null'); } catch { return null; } })();
 
-  // ── Update save button destination label ──────────────────────────────
-  if (savePrimary) {
-    savePrimary.classList.toggle('browser-mode', !cloud);
-  }
+  if (savePrimary) savePrimary.classList.toggle('browser-mode', !cloud);
   if (saveBtnLbl) saveBtnLbl.textContent = cloud ? 'Save to Cloud' : 'Save to Browser';
+  if (badge) { badge.textContent = cloud ? '☁ Cloud' : '⬡ Browser'; badge.classList.toggle('local', !cloud); }
+  if (sub) sub.textContent = cloud ? 'Private cloud library' : 'This browser only';
+  if (migrateBtn) migrateBtn.style.display = cloud && list.length ? '' : 'none';
+  if (notice) {
+    notice.innerHTML = cloud
+      ? '<b>Cloud active.</b> Changes autosave to your account.'
+      : '<b>Browser only.</b> Export JSON to back up your flows.';
+  }
 
-  // ── Storage badge + sub ───────────────────────────────────────────────
-  if (badge) { badge.textContent = cloud ? 'Cloud' : 'Browser'; badge.classList.toggle('local', !cloud); }
-  if (sub) sub.textContent = cloud ? 'Your private cloud library' : 'Stored in this browser only';
-
-  // ── Left panel status block ───────────────────────────────────────────
-  if (statusBlock) {
-    let sbHtml = '';
+  // ── Update sidebar user block ─────────────────────────────────────────
+  const userBlock = document.getElementById('mf-user-block');
+  if (userBlock) {
     if (cloud) {
-      // Signed in — show user info if available
-      let userHtml = '';
       try {
         const sb = getSB?.();
         const session = sb ? (await sb.auth.getSession())?.data?.session : null;
         const user = session?.user;
         if (user) {
-          const initials = (user.user_metadata?.full_name || user.email || 'U').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+          const initials = (user.user_metadata?.full_name || user.email || 'U').trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,2);
           const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Signed in';
-          const email = user.email || '';
-          userHtml = `<div class="dsb-user">
-            <div class="dsb-user-avatar">${esc(initials)}</div>
-            <div class="dsb-user-info">
-              <div class="dsb-user-name" title="${esc(name)}">${esc(name)}</div>
-              <div class="dsb-user-email" title="${esc(email)}">${esc(email)}</div>
-            </div>
+          userBlock.innerHTML = `<div class="mf-user-row">
+            <div class="mf-user-avatar">${esc(initials)}</div>
+            <div><div class="mf-user-name">${esc(name)}</div><div class="mf-user-email">${esc(user.email||'')}</div></div>
           </div>`;
         }
       } catch {}
-      sbHtml = `<div class="dsb-cloud">
-        <div class="dsb-cloud-row">
-          <span class="dsb-dot green"></span>
-          <span class="dsb-label">Cloud connected</span>
-        </div>
-        ${userHtml}
-        <div class="dsb-sub">Flows sync to your account and are accessible from any device.</div>
-      </div>`;
-    } else if (sbReady && sbReady()) {
-      sbHtml = `<div class="dsb-cloud">
-        <div class="dsb-cloud-row">
-          <span class="dsb-dot amber"></span>
-          <span class="dsb-label">Not signed in</span>
-        </div>
-        <div class="dsb-sub">Sign in with Google to save flows to your private cloud and access them anywhere.</div>
-        <button class="dsb-signin-btn" id="dsb-signin-trigger">
+    } else if (typeof sbReady === 'function' && sbReady()) {
+      userBlock.innerHTML = `<div class="mf-signin-nudge">
+        <div class="mf-signin-nudge-text">Sign in to sync flows across devices.</div>
+        <button class="mf-signin-btn" id="mf-signin-trigger">
           <svg width="13" height="13" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
           Sign in with Google
         </button>
       </div>`;
-    } else {
-      sbHtml = `<div class="dsb-cloud">
-        <div class="dsb-cloud-row">
-          <span class="dsb-dot grey"></span>
-          <span class="dsb-label">Browser only</span>
-        </div>
-        <div class="dsb-sub">Flows are saved in this browser. Clear cache and they're gone. Export JSON to back up.</div>
-      </div>`;
+      userBlock.querySelector('#mf-signin-trigger')?.addEventListener('click', startGoogleSignIn);
     }
-    statusBlock.innerHTML = sbHtml;
-    statusBlock.querySelector('#dsb-signin-trigger')?.addEventListener('click', startGoogleSignIn);
   }
-
-  // ── Footer notice ─────────────────────────────────────────────────────
-  if (notice) {
-    notice.className = cloud ? 'diagrams-footer-notice cloud' : 'diagrams-footer-notice';
-    notice.innerHTML = cloud
-      ? '<b>Cloud active.</b> Autosave still protects unsaved work locally.'
-      : '<b>Browser only.</b> Clearing browser data will erase saves. Export JSON to back up.';
-  }
-  if (migrateBtn) migrateBtn.style.display = cloud && list.length ? '' : 'none';
 
   // ── Icon constants ────────────────────────────────────────────────────
-  const ICON_FLOW = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="6" rx="1.5"/><rect x="16" y="3" width="6" height="6" rx="1.5"/><rect x="9" y="15" width="6" height="6" rx="1.5"/><path d="M5 9v3a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V9"/><line x1="12" y1="12" x2="12" y2="15"/></svg>`;
-  const ICON_CLOCK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-  const ICON_RENAME = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
-  const ICON_COPY = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-  const ICON_MORE = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`;
-  const ICON_VERSIONS = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>`;
-  const ICON_PUBLISH = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>`;
-  const ICON_DOWNLOAD = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
-  const ICON_TRASH = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
-  const ICON_LINK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>`;
+  const I = {
+    rename:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+    copy:     `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+    more:     `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`,
+    versions: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>`,
+    publish:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>`,
+    download: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+    trash:    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
+    link:     `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>`,
+    flow:     `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="6" rx="1.5"/><rect x="16" y="3" width="6" height="6" rx="1.5"/><rect x="9" y="15" width="6" height="6" rx="1.5"/><path d="M5 9v3a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V9"/><line x1="12" y1="12" x2="12" y2="15"/></svg>`,
+  };
 
-  const diagEmptyState = (msg, detail = '') => `<div class="diagram-empty">
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    <div class="diagram-empty-title">${msg}</div>
-    ${detail ? `<div class="diagram-empty-sub">${detail}</div>` : ''}
-  </div>`;
+  const mfEmpty = (msg, detail = '', action = '') => `
+    <div class="mf-empty">
+      ${I.flow}
+      <div class="mf-empty-title">${msg}</div>
+      ${detail ? `<div class="mf-empty-sub">${detail}</div>` : ''}
+      ${action}
+    </div>`;
 
-  // Date-group helper
-  function dateGroup(ts) {
-    const d = new Date(ts), now = new Date();
-    const sameDay = (a, b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
-    if (sameDay(d, now)) return 'Today';
-    const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
-    if (sameDay(d, yesterday)) return 'Yesterday';
-    const daysAgo = Math.floor((now - d) / 86400000);
-    if (daysAgo < 7) return 'This week';
-    if (daysAgo < 30) return 'This month';
-    return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const mfSpinner = () => `<div class="mf-empty"><div class="mf-spinner-lg"></div><div class="mf-empty-sub">Loading flows…</div></div>`;
+
+  function previewHtml(payload) {
+    const svg = generateFlowPreviewSvg(payload);
+    if (svg) return svg;
+    return `<div class="mf-card-preview-empty">${I.flow}<span>No preview</span></div>`;
   }
 
-  function groupedRows(items, rowFn, tsKey) {
-    let html = '', currentGroup = '';
+  function galleryGrouped(items, cardFn, tsKeyFn) {
+    let html = '', curGroup = '';
+    const now = new Date();
+    const sameDay = (a,b) => a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
     items.forEach(item => {
-      const g = dateGroup(item[tsKey]);
-      if (g !== currentGroup) { html += `<div class="diag-group-label">${g}</div>`; currentGroup = g; }
-      html += rowFn(item);
+      const ts = tsKeyFn(item);
+      const d = new Date(ts);
+      let g;
+      if (sameDay(d, now)) g = 'Today';
+      else {
+        const yd = new Date(now); yd.setDate(now.getDate()-1);
+        if (sameDay(d, yd)) g = 'Yesterday';
+        else {
+          const ago = Math.floor((now - d) / 86400000);
+          g = ago < 7 ? 'This week' : ago < 30 ? 'This month' : d.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+        }
+      }
+      if (g !== curGroup) { html += `<div class="mf-group-label">${g}</div>`; curGroup = g; }
+      html += cardFn(item);
     });
     return html;
   }
 
-  function cloudDiagRow(d) {
+  function cloudCard(d) {
     const isCurrent = S.currentDiagramId === d.id;
-    return `<div class="diag-row${isCurrent ? ' current-diag' : ''}" data-id="${esc(d.id)}">
-      <div class="diag-thumb">${ICON_FLOW}</div>
-      <div class="diag-info">
-        <div class="diag-title-row">
-          <span class="diag-name" title="${esc(d.title || 'Untitled Architecture')}">${esc(d.title || 'Untitled Architecture')}</span>
-          ${isCurrent ? '<span class="diag-state current">Open</span>' : ''}
-          <span class="diag-state ${d.is_public ? 'public' : ''}">${d.is_public ? '🌐 Public' : 'Private'}</span>
-        </div>
-        <div class="diag-meta-row">
-          <span class="diag-ts">${fmtDiagramTime(d.updated_at || d.created_at)}</span>
-          <span class="diag-meta">${d.node_count || 0} nodes · ${d.edge_count || 0} edges</span>
-        </div>
+    const tags = [
+      isCurrent ? `<span class="mf-tag mf-tag-open">Open</span>` : '',
+      d.is_public ? `<span class="mf-tag mf-tag-public">Public</span>` : `<span class="mf-tag mf-tag-private">Private</span>`,
+      `<span class="mf-tag mf-tag-cloud">Cloud</span>`,
+    ].join('');
+    const nodesCount = d.node_count || 0;
+    const edgesCount = d.edge_count || 0;
+    const preview = previewHtml(d.payload);
+    return `<div class="mf-card${isCurrent ? ' mf-card-current' : ''}" data-id="${esc(d.id)}" data-action-open="open">
+      <div class="mf-card-preview">
+        ${preview}
+        ${isCurrent ? `<div class="mf-card-open-badge">Currently Open</div>` : ''}
+        <div class="mf-card-hover-open"><span>Open Flow</span></div>
       </div>
-      <div class="diag-actions">
-        <button class="diag-open-btn" data-action="open" data-id="${esc(d.id)}">Open</button>
-        <button class="diag-icon-btn" data-action="rename" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}" title="Rename">${ICON_RENAME}</button>
-        <button class="diag-icon-btn" data-action="duplicate" data-id="${esc(d.id)}" title="Duplicate">${ICON_COPY}</button>
-        <div class="diag-more-wrap">
-          <button class="diag-icon-btn" data-action="more" title="More">${ICON_MORE}</button>
-          <div class="diag-more-menu">
-            <button class="diag-more-item" data-action="versions" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">${ICON_VERSIONS} Version history</button>
-            <button class="diag-more-item" data-action="${d.is_public ? 'unpublish' : 'publish'}" data-id="${esc(d.id)}">${ICON_PUBLISH} ${d.is_public ? 'Unpublish' : 'Publish public link'}</button>
-            ${d.public_slug ? `<button class="diag-more-item" data-action="copy-public" data-slug="${esc(d.public_slug)}">${ICON_LINK} Copy public link</button>` : ''}
-            <button class="diag-more-item" data-action="download" data-id="${esc(d.id)}">${ICON_DOWNLOAD} Download JSON</button>
-            <div class="diag-more-divider"></div>
-            <button class="diag-more-item danger" data-action="delete" data-id="${esc(d.id)}" data-title="${esc(d.title || '')}">${ICON_TRASH} Delete</button>
-          </div>
+      <div class="mf-card-footer">
+        <div class="mf-card-name" title="${esc(d.title||'Untitled Architecture')}">${esc(d.title||'Untitled Architecture')}</div>
+        <div class="mf-card-bottom-row">
+          <div class="mf-card-tags">${tags}</div>
+          <div class="mf-card-meta">${nodesCount}n · ${edgesCount}e</div>
+          <button class="mf-card-more" data-action="card-more" data-id="${esc(d.id)}" data-title="${esc(d.title||'')}" data-is-public="${d.is_public?'1':'0'}" data-slug="${esc(d.public_slug||'')}" data-type="cloud" title="More options">${I.more}</button>
         </div>
       </div>
     </div>`;
   }
 
-  // ── Cloud list ────────────────────────────────────────────────────────
+  function localCard(d, isAuto = false) {
+    const tags = [
+      isAuto ? `<span class="mf-tag mf-tag-auto">Auto-save</span>` : '',
+      `<span class="mf-tag mf-tag-local">Browser</span>`,
+    ].join('');
+    const preview = previewHtml(d.payload);
+    const name = isAuto ? 'Auto-save Recovery' : (d.name || 'Untitled');
+    const actionAttr = isAuto ? `data-action-open="load-auto"` : `data-action-open="load-local" data-id="${esc(d.id)}"`;
+    return `<div class="mf-card" ${actionAttr}>
+      <div class="mf-card-preview">
+        ${preview}
+        <div class="mf-card-hover-open"><span>${isAuto ? 'Restore' : 'Open Flow'}</span></div>
+      </div>
+      <div class="mf-card-footer">
+        <div class="mf-card-name" title="${esc(name)}">${esc(name)}</div>
+        <div class="mf-card-bottom-row">
+          <div class="mf-card-tags">${tags}</div>
+          <div class="mf-card-meta">${fmtDiagramTime(d.ts||d.updated_at||d.created_at)}</div>
+          ${!isAuto ? `<button class="mf-card-more" data-action="card-more" data-id="${esc(d.id)}" data-title="${esc(d.name||'')}" data-type="local" title="More options">${I.more}</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function sharedCard(d) {
+    const tags = [`<span class="mf-tag mf-tag-shared">Shared</span>`].join('');
+    const preview = previewHtml(d.payload);
+    return `<div class="mf-card" data-action-open="open-shared" data-id="${esc(d.id)}">
+      <div class="mf-card-preview">
+        ${preview}
+        <div class="mf-card-hover-open"><span>Open Flow</span></div>
+      </div>
+      <div class="mf-card-footer">
+        <div class="mf-card-name" title="${esc(d.title||'Shared Flow')}">${esc(d.title||'Shared Flow')}</div>
+        <div class="mf-card-bottom-row">
+          <div class="mf-card-tags">${tags}${d.owner_name ? `<span class="mf-tag mf-tag-private">${esc(d.owner_name)}</span>` : ''}</div>
+          <div class="mf-card-meta">${(d.node_count||0)}n · ${(d.edge_count||0)}e</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const activeTab = _mfActiveTab || 'mine';
+
+  // ── Shared tab ────────────────────────────────────────────────────────
+  if (activeTab === 'shared') {
+    if (!cloud) {
+      panel.innerHTML = mfEmpty('Sign in to see shared flows', 'Flows shared with you by collaborators will appear here.', `<button class="mf-save-btn" style="margin-top:4px;max-width:200px" onclick="startGoogleSignIn()">Sign in with Google</button>`);
+      return;
+    }
+    panel.innerHTML = mfSpinner();
+    try {
+      const q = (search?.value || '').trim();
+      const data = await cloudDiagramRequest(`/api/diagrams/shared${q ? `?query=${encodeURIComponent(q)}` : ''}`);
+      const diagrams = data.diagrams || [];
+      if (!diagrams.length) {
+        panel.innerHTML = mfEmpty('No flows shared with you', q ? `Nothing matched "<b>${esc(q)}</b>".` : 'When someone shares a flow with you, it will appear here.');
+        return;
+      }
+      panel.innerHTML = galleryGrouped(diagrams, sharedCard, d => new Date(d.updated_at||d.created_at||0).getTime());
+    } catch (err) {
+      panel.innerHTML = mfEmpty('Could not load shared flows', esc(err.message));
+    }
+    return;
+  }
+
+  // ── My Flows tab ──────────────────────────────────────────────────────
   if (cloud) {
-    panel.innerHTML = diagEmptyState('Loading your flows…');
+    panel.innerHTML = mfSpinner();
     try {
       const q = (search?.value || '').trim();
       const data = await cloudDiagramRequest(`/api/diagrams?limit=50${q ? `&query=${encodeURIComponent(q)}` : ''}`);
       const diagrams = data.diagrams || [];
       if (!diagrams.length) {
-        panel.innerHTML = q
-          ? diagEmptyState('No results', `Nothing matched "<b>${esc(q)}</b>".`)
-          : diagEmptyState('No cloud flows yet', 'Hit <b>Save to Cloud</b> to create your first flow.');
+        panel.innerHTML = mfEmpty(
+          q ? 'No results' : 'No cloud flows yet',
+          q ? `Nothing matched "<b>${esc(q)}</b>".` : 'Hit <b>Save to Cloud</b> to create your first flow.',
+        );
         return;
       }
-      panel.innerHTML = groupedRows(
-        diagrams,
-        cloudDiagRow,
-        d => new Date(d.updated_at || d.created_at).getTime()
-      );
+      panel.innerHTML = galleryGrouped(diagrams, cloudCard, d => new Date(d.updated_at||d.created_at||0).getTime());
       return;
     } catch (err) {
-      panel.innerHTML = diagEmptyState('Cloud unavailable', esc(err.message));
+      panel.innerHTML = mfEmpty('Cloud unavailable', esc(err.message));
     }
   }
 
   // ── Browser list ──────────────────────────────────────────────────────
   let html = '';
-  if (auto && auto.ts) {
-    html += `<div class="diag-group-label">Auto-save</div>
-    <div class="diag-row auto-row" data-autosave="1">
-      <div class="diag-thumb auto">${ICON_CLOCK}</div>
-      <div class="diag-info">
-        <div class="diag-title-row"><span class="diag-name">Auto-save recovery</span></div>
-        <div class="diag-meta-row"><span class="diag-ts">${fmtDiagramTime(auto.ts)}</span><span class="diag-meta">${diagramCountLabel(auto.payload)}</span></div>
-      </div>
-      <div class="diag-actions"><button class="diag-open-btn" data-action="load-auto">Restore</button></div>
-    </div>`;
-  }
+  if (auto && auto.ts) html += localCard({ ...auto, ts: auto.ts }, true);
   if (!list.length && !auto) {
-    html = diagEmptyState('No browser saves yet', 'Hit <b>Save to Browser</b> to keep your current flow.');
+    html = mfEmpty('No browser saves yet', 'Hit <b>Save to Browser</b> to keep your current flow.');
   } else {
-    const localRow = d => `<div class="diag-row" data-id="${esc(d.id)}">
-      <div class="diag-thumb">${ICON_FLOW}</div>
-      <div class="diag-info">
-        <div class="diag-title-row"><span class="diag-name" title="${esc(d.name)}">${esc(d.name)}</span></div>
-        <div class="diag-meta-row"><span class="diag-ts">${fmtDiagramTime(d.ts)}</span><span class="diag-meta">${diagramCountLabel(d.payload)}</span></div>
-      </div>
-      <div class="diag-actions">
-        <button class="diag-open-btn" data-action="load-local" data-id="${esc(d.id)}">Open</button>
-        <button class="diag-icon-btn" data-action="rename-local" data-id="${esc(d.id)}" data-title="${esc(d.name)}" title="Rename">${ICON_RENAME}</button>
-        <div class="diag-more-wrap">
-          <button class="diag-icon-btn" data-action="more" title="More">${ICON_MORE}</button>
-          <div class="diag-more-menu">
-            <button class="diag-more-item" data-action="rename-local" data-id="${esc(d.id)}" data-title="${esc(d.name)}">${ICON_RENAME} Rename</button>
-            <button class="diag-more-item" data-action="download-local" data-id="${esc(d.id)}">${ICON_DOWNLOAD} Download JSON</button>
-            <div class="diag-more-divider"></div>
-            <button class="diag-more-item danger" data-action="delete-local" data-id="${esc(d.id)}">${ICON_TRASH} Delete</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-    html += groupedRows(list, localRow, 'ts');
+    html += galleryGrouped(list, d => localCard(d, false), d => d.ts || 0);
   }
   panel.innerHTML = html;
 }
@@ -6027,40 +6116,117 @@ document.getElementById('diagram-search').oninput = () => {
   clearTimeout(_diagramSearchTimer);
   _diagramSearchTimer = setTimeout(updateDiagramsPanel, 180);
 };
-document.addEventListener('click', () => {
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+document.getElementById('mf-tabs')?.addEventListener('click', e => {
+  const tab = e.target.closest('.mf-tab');
+  if (!tab) return;
+  const tabId = tab.dataset.tab;
+  if (tabId === _mfActiveTab) return;
+  _mfActiveTab = tabId;
+  document.querySelectorAll('.mf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+  updateDiagramsPanel();
+});
+
+// ── Floating card context menu ────────────────────────────────────────────
+let _mfCardMenu = null;
+function _closeMfCardMenu() {
+  if (_mfCardMenu) { _mfCardMenu.remove(); _mfCardMenu = null; }
+}
+document.addEventListener('click', e => {
+  if (_mfCardMenu && !_mfCardMenu.contains(e.target)) _closeMfCardMenu();
   document.querySelectorAll('.diag-more-menu.open').forEach(m => m.classList.remove('open'));
 });
-document.getElementById('my-diagrams-list').onclick = e => {
-  const btn = e.target.closest('button[data-action]');
-  if (!btn) return;
-  const id = btn.dataset.id;
-  const action = btn.dataset.action;
-  if (action === 'more') {
-    e.stopPropagation();
-    const menu = btn.closest('.diag-more-wrap')?.querySelector('.diag-more-menu');
-    if (!menu) return;
-    document.querySelectorAll('.diag-more-menu.open').forEach(m => { if (m !== menu) m.classList.remove('open'); });
-    menu.classList.toggle('open');
-    return;
+
+function _openMfCardMenu(btn) {
+  _closeMfCardMenu();
+  const id      = btn.dataset.id;
+  const title   = btn.dataset.title || '';
+  const type    = btn.dataset.type;   // 'cloud' | 'local'
+  const isPublic = btn.dataset.isPublic === '1';
+  const slug    = btn.dataset.slug || '';
+
+  const I_R = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const I_C = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+  const I_V = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>`;
+  const I_P = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>`;
+  const I_D = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+  const I_T = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+  const I_L = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>`;
+
+  let items = '';
+  if (type === 'cloud') {
+    items = `
+      <button class="mf-menu-item" data-mf-action="rename" data-id="${esc(id)}" data-title="${esc(title)}">${I_R} Rename</button>
+      <button class="mf-menu-item" data-mf-action="duplicate" data-id="${esc(id)}">${I_C} Duplicate</button>
+      <button class="mf-menu-item" data-mf-action="versions" data-id="${esc(id)}" data-title="${esc(title)}">${I_V} Version history</button>
+      <div class="mf-menu-divider"></div>
+      <button class="mf-menu-item" data-mf-action="${isPublic?'unpublish':'publish'}" data-id="${esc(id)}">${I_P} ${isPublic?'Unpublish':'Make public'}</button>
+      ${slug ? `<button class="mf-menu-item" data-mf-action="copy-public" data-slug="${esc(slug)}">${I_L} Copy public link</button>` : ''}
+      <button class="mf-menu-item" data-mf-action="download" data-id="${esc(id)}">${I_D} Download JSON</button>
+      <div class="mf-menu-divider"></div>
+      <button class="mf-menu-item danger" data-mf-action="delete" data-id="${esc(id)}" data-title="${esc(title)}">${I_T} Delete</button>`;
+  } else {
+    items = `
+      <button class="mf-menu-item" data-mf-action="rename-local" data-id="${esc(id)}" data-title="${esc(title)}">${I_R} Rename</button>
+      <button class="mf-menu-item" data-mf-action="download-local" data-id="${esc(id)}">${I_D} Download JSON</button>
+      <div class="mf-menu-divider"></div>
+      <button class="mf-menu-item danger" data-mf-action="delete-local" data-id="${esc(id)}" data-title="${esc(title)}">${I_T} Delete</button>`;
   }
-  if (action === 'open') loadCloudDiagram(id);
-  if (action === 'rename') renameCloudDiagram(id, btn.dataset.title);
-  if (action === 'duplicate') duplicateCloudDiagram(id);
-  if (action === 'versions') showVersionHistory(id, btn.dataset.title);
-  if (action === 'publish') publishCloudDiagram(id);
-  if (action === 'unpublish') unpublishCloudDiagram(id);
-  if (action === 'copy-public') copyPublicFlowLink(btn.dataset.slug);
-  if (action === 'download') downloadCloudDiagram(id);
-  if (action === 'delete') deleteCloudDiagram(id, btn.dataset.title);
-  if (action === 'load-auto') loadSavedDiagram(JSON.parse(localStorage.getItem(LS_AUTO) || '{}'));
-  if (action === 'load-local') loadSavedDiagram(lsGetSaved().find(x => x.id === id));
-  if (action === 'download-local') {
-    const d = lsGetSaved().find(x => x.id === id);
-    if (d) downloadBlob(new Blob([JSON.stringify(d.payload, null, 2)], { type: 'application/json' }), `${(d.name || 'architecture').replace(/[^\w.-]+/g, '-').toLowerCase()}.json`);
-  }
-  if (action === 'rename-local') renameSavedDiagram(id, btn.dataset.title);
-  if (action === 'delete-local' && confirm('Delete?')) deleteSavedDiagram(id);
-};
+
+  const menu = document.createElement('div');
+  menu.className = 'mf-card-menu';
+  menu.innerHTML = items;
+  document.body.appendChild(menu);
+  _mfCardMenu = menu;
+
+  const r = btn.getBoundingClientRect();
+  const mw = 195, mh = menu.scrollHeight;
+  let top = r.bottom + 4, left = r.right - mw;
+  if (top + mh > window.innerHeight - 8) top = r.top - mh - 4;
+  if (left < 8) left = 8;
+  menu.style.cssText = `top:${top}px;left:${left}px`;
+
+  menu.addEventListener('click', e => {
+    const item = e.target.closest('[data-mf-action]');
+    if (!item) return;
+    const a = item.dataset.mfAction;
+    const iid = item.dataset.id;
+    const ititle = item.dataset.title || '';
+    _closeMfCardMenu();
+    if (a === 'rename')       renameCloudDiagram(iid, ititle);
+    if (a === 'duplicate')    duplicateCloudDiagram(iid);
+    if (a === 'versions')     showVersionHistory(iid, ititle);
+    if (a === 'publish')      publishCloudDiagram(iid);
+    if (a === 'unpublish')    unpublishCloudDiagram(iid);
+    if (a === 'copy-public')  copyPublicFlowLink(item.dataset.slug);
+    if (a === 'download')     downloadCloudDiagram(iid);
+    if (a === 'delete')       deleteCloudDiagram(iid, ititle);
+    if (a === 'rename-local') renameSavedDiagram(iid, ititle);
+    if (a === 'download-local') {
+      const d = lsGetSaved().find(x => x.id === iid);
+      if (d) downloadBlob(new Blob([JSON.stringify(d.payload,null,2)],{type:'application/json'}),`${(d.name||'architecture').replace(/[^\w.-]+/g,'-').toLowerCase()}.json`);
+    }
+    if (a === 'delete-local' && confirm('Delete?')) deleteSavedDiagram(iid);
+  });
+}
+
+// ── Gallery card click handler ────────────────────────────────────────────
+document.getElementById('my-diagrams-list').addEventListener('click', e => {
+  // Three-dot more button
+  const moreBtn = e.target.closest('[data-action="card-more"]');
+  if (moreBtn) { e.stopPropagation(); _openMfCardMenu(moreBtn); return; }
+
+  // Card click → open flow
+  const card = e.target.closest('.mf-card');
+  if (!card) return;
+  const openAction = card.dataset.actionOpen;
+  const id = card.dataset.id;
+  if (openAction === 'open')        { loadCloudDiagram(id); document.getElementById('my-diagrams-modal').classList.remove('open'); }
+  if (openAction === 'load-local')  { loadSavedDiagram(lsGetSaved().find(x => x.id === id)); document.getElementById('my-diagrams-modal').classList.remove('open'); }
+  if (openAction === 'load-auto')   { loadSavedDiagram(JSON.parse(localStorage.getItem(LS_AUTO)||'{}')); document.getElementById('my-diagrams-modal').classList.remove('open'); }
+  if (openAction === 'open-shared') { loadCloudDiagram(id); document.getElementById('my-diagrams-modal').classList.remove('open'); }
+});
 
 document.getElementById('btn-clear').onclick  = () => {
   track('canvas_cleared', { node_count: Object.keys(S.nodes).length, edge_count: S.edges.length });
@@ -7254,6 +7420,19 @@ const TOUR_STEPS_MOBILE = [
 
 function startTour() {
   if (localStorage.getItem(TOUR_KEY) === '1') return;
+
+  // Returning user — they know the product, don't interrupt them again.
+  // _prevVisitTs is set above before this function is called.
+  if (typeof _prevVisitTs === 'string' && _prevVisitTs) {
+    localStorage.setItem(TOUR_KEY, '1');
+    return;
+  }
+  // User has saved diagrams — experienced, skip the tour.
+  try {
+    const saved = JSON.parse(localStorage.getItem('archviz.saved') || '[]');
+    if (saved.length > 0) { localStorage.setItem(TOUR_KEY, '1'); return; }
+  } catch {}
+
   let step = 0;
 
   const overlay = document.createElement('div');
@@ -7436,6 +7615,14 @@ function startTour() {
 
 // Stub replaced by initMobile — called from showProps when innerWidth ≤ 640
 window._mobileShowProps = function() {};
+
+// ── Visit tracking ────────────────────────────────────────────────────────
+// Record this session so we can distinguish first-time vs returning users.
+// Written BEFORE startTour so the tour can read it.
+const _VISITED_KEY = 'archviz.visited';
+const _prevVisitTs = localStorage.getItem(_VISITED_KEY);
+// Update to current session timestamp
+try { localStorage.setItem(_VISITED_KEY, Date.now().toString()); } catch {}
 
 // Launch tour after a short delay so the app finishes rendering
 setTimeout(startTour, 1200);

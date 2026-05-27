@@ -46,6 +46,7 @@ Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that 
 | 5 | Reserved pricing + cost HUD | ✅ Done | −35% compute/network, breakdown by category |
 | 6 | Professional PDF export | ✅ Done | Dark cover, bottleneck analysis, performance table, SLA fix |
 | 6.7 | UX polish | ✅ Done | Menu left + hover bridge, port snap colors, warning edge static, auto-save badge, cloud auto-save, edge visibility |
+| 6.8 | Flows gallery redesign | ✅ Done | 92vw/92vh gallery modal, SVG flow previews per card, tags, "Shared with me" tab, floating three-dot menu, returning-user UX |
 | 7 | Multi-select + canvas productivity | ⏳ Next | Rubber-band, shift-click, group move/delete, Ctrl+D |
 | 8 | Formula cost engine | ⏳ Pending | S3, CDN, compute, DB formulas; cost delta preview |
 | 9 | Advanced simulation | ⏳ Pending | Queue backlog, failure mode, burst test, sparklines |
@@ -81,6 +82,12 @@ Make Archi-Flow feel like a **Lucid/draw.io-grade architecture workspace** that 
 | Drop-onto-edge to insert | ✅ |
 | Inline label editing (double-click) | ✅ |
 | 8 example templates | ✅ |
+| My Flows gallery (92vw, SVG previews, tags, date groups) | ✅ |
+| Shared with me tab (requires sign-in, fetches /api/diagrams/shared) | ✅ |
+| Flows three-dot context menu (floating, Rename/Duplicate/Delete/…) | ✅ |
+| Tour suppressed for returning users & users with saved diagrams | ✅ |
+| "Work restored" toast on return with auto-save | ✅ |
+| Visit tracking (archviz.visited) — first-time vs returning detection | ✅ |
 | JSON import/export | ✅ |
 | SVG diagram export | ✅ |
 | Professional PDF report export | ✅ |
