@@ -284,9 +284,7 @@ window._setSaveBadge = setSaveBadge;
 })();
 
 function setExampleSelect(id) {
-  const sel = document.getElementById('example-sel');
-  const idx = [...sel.options].findIndex(o => o.value === (id || ''));
-  sel.selectedIndex = idx >= 0 ? idx : 0;
+  // dropdown removed — nothing to update
 }
 
 // ══ HISTORY ══════════════════════════════════════════════════════════════════
@@ -439,14 +437,154 @@ function renderPalette() {
 
 // ══ EXAMPLES ═════════════════════════════════════════════════════════════════
 function initExamples() {
-  const sel = document.getElementById('example-sel');
-  EXAMPLES.forEach(ex => {
-    const o = document.createElement('option');
-    const meta = [ex.category, ex.difficulty].filter(Boolean).join(' · ');
-    o.value = ex.id; o.textContent = `${ex.name}${meta ? ` (${meta})` : ''} — ${ex.summary || ex.description}`;
-    sel.appendChild(o);
+  // No dropdown to populate — modal is built on open
+  _initExamplesModal();
+}
+
+// Difficulty colour map
+const _diffColor = { Beginner: '#34d058', Intermediate: '#f0a732', Advanced: '#f85149' };
+const _catIcon = {
+  Application: '🌐', Data: '🗄', Reliability: '🛡', AI: '🤖',
+  Networking: '🔗', Messaging: '📨', Default: '⚙',
+};
+
+function _buildExamplesGrid(filter = 'all', search = '') {
+  const grid = document.getElementById('examples-grid');
+  if (!grid) return;
+
+  const q = search.trim().toLowerCase();
+  const visible = EXAMPLES.filter(ex => {
+    const catMatch = filter === 'all' || (ex.category || 'Other') === filter;
+    if (!catMatch) return false;
+    if (!q) return true;
+    return (ex.name + ex.description + (ex.summary || '') + (ex.category || '')).toLowerCase().includes(q);
   });
-  sel.onchange = () => { if (sel.value) loadExample(sel.value); };
+
+  grid.innerHTML = '';
+
+  if (!visible.length) {
+    grid.innerHTML = `<div class="ex-empty">No examples match "<strong>${esc(search)}</strong>"</div>`;
+    return;
+  }
+
+  // Group by category
+  const groups = {};
+  visible.forEach(ex => {
+    const cat = ex.category || 'General';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(ex);
+  });
+
+  Object.entries(groups).forEach(([cat, exs]) => {
+    const section = document.createElement('div');
+    section.className = 'ex-section';
+
+    const heading = document.createElement('div');
+    heading.className = 'ex-section-heading';
+    const icon = _catIcon[cat] || _catIcon.Default;
+    heading.innerHTML = `<span class="ex-section-icon">${icon}</span>${esc(cat)}`;
+    section.appendChild(heading);
+
+    const row = document.createElement('div');
+    row.className = 'ex-cards-row';
+
+    exs.forEach(ex => {
+      const nodeCount = ex.nodes?.length || 0;
+      const edgeCount = ex.edges?.length || 0;
+      const diff = ex.difficulty || '';
+      const diffColor = _diffColor[diff] || 'var(--muted)';
+      const summary = ex.summary || ex.description || '';
+
+      const card = document.createElement('div');
+      card.className = 'ex-card';
+      card.dataset.id = ex.id;
+      card.innerHTML = `
+        <div class="ex-card-header">
+          <span class="ex-card-name">${esc(ex.name)}</span>
+          ${diff ? `<span class="ex-card-diff" style="color:${diffColor}">${esc(diff)}</span>` : ''}
+        </div>
+        <div class="ex-card-desc">${esc(summary)}</div>
+        <div class="ex-card-footer">
+          <span class="ex-card-stat">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="4" height="4"/><rect x="17" y="3" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/><rect x="3" y="17" width="4" height="4"/><rect x="17" y="17" width="4" height="4"/></svg>
+            ${nodeCount} nodes
+          </span>
+          <span class="ex-card-stat">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+            ${edgeCount} edges
+          </span>
+          <button class="ex-card-load-btn" data-id="${ex.id}">Load →</button>
+        </div>`;
+
+      card.addEventListener('click', e => {
+        const btn = e.target.closest('.ex-card-load-btn');
+        const id = btn?.dataset.id || card.dataset.id;
+        if (e.target.closest('.ex-card-load-btn') || e.currentTarget === card) {
+          closeExamplesModal();
+          loadExample(id);
+        }
+      });
+      row.appendChild(card);
+    });
+    section.appendChild(row);
+    grid.appendChild(section);
+  });
+}
+
+function openExamplesModal() {
+  const modal = document.getElementById('examples-modal');
+  if (!modal) return;
+  modal.style.display = '';
+  requestAnimationFrame(() => modal.classList.add('open'));
+  document.getElementById('examples-search')?.focus();
+  _buildExamplesGrid();
+}
+
+function closeExamplesModal() {
+  const modal = document.getElementById('examples-modal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.classList.add('closing');
+  setTimeout(() => { modal.style.display = 'none'; modal.classList.remove('closing'); }, 260);
+}
+
+function _initExamplesModal() {
+  document.getElementById('examples-modal-backdrop')?.addEventListener('click', closeExamplesModal);
+  document.getElementById('examples-modal-close')?.addEventListener('click', closeExamplesModal);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('examples-modal')?.classList.contains('open')) {
+      closeExamplesModal();
+    }
+  });
+  // Search input
+  document.getElementById('examples-search')?.addEventListener('input', e => {
+    const q = e.target.value;
+    const active = document.querySelector('.ex-filter-btn.active')?.dataset.cat || 'all';
+    _buildExamplesGrid(active, q);
+  });
+  // Category filter buttons — built after EXAMPLES loads
+  _buildExFilterBtns();
+}
+
+function _buildExFilterBtns() {
+  const bar = document.getElementById('examples-filter-bar');
+  if (!bar || !EXAMPLES.length) return;
+  const cats = [...new Set(EXAMPLES.map(e => e.category).filter(Boolean))];
+  cats.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'ex-filter-btn';
+    btn.dataset.cat = cat;
+    btn.textContent = cat;
+    bar.appendChild(btn);
+  });
+  bar.addEventListener('click', e => {
+    const btn = e.target.closest('.ex-filter-btn');
+    if (!btn) return;
+    bar.querySelectorAll('.ex-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const q = document.getElementById('examples-search')?.value || '';
+    _buildExamplesGrid(btn.dataset.cat, q);
+  });
 }
 
 function loadExample(id) {
@@ -1228,7 +1366,8 @@ function _initNotifPanel() {
   });
 }
 _initNotifPanel();
-window.pushToast = pushToast; // expose for debugging / external callers
+window.pushToast = pushToast;
+window.openExamplesModal = openExamplesModal;
 
 // ══ PORT POSITIONS ════════════════════════════════════════════════════════════
 function portXY(nodeId, side) {
@@ -4953,11 +5092,13 @@ function organizeMoreMenu() {
   const menu = document.getElementById('more-menu');
   if (!menu || menu.dataset.organized === '1') return;
   menu.dataset.organized = '1';
-  const ids = ['btn-signin-google','btn-my-diagrams','btn-import','btn-export','btn-export-pdf','btn-export-svg','btn-export-png','btn-present','btn-theme','btn-cockpit-view','btn-shortcuts','btn-restart-tour','btn-suggestions','btn-reserved','btn-service-mesh','btn-clear'];
+  const ids = ['btn-examples','btn-signin-google','btn-my-diagrams','btn-import','btn-export','btn-export-pdf','btn-export-svg','btn-export-png','btn-present','btn-theme','btn-cockpit-view','btn-shortcuts','btn-restart-tour','btn-suggestions','btn-reserved','btn-service-mesh','btn-clear'];
   const items = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
   menu.replaceChildren();
+  const examples = items['btn-examples'];
   const signIn = items['btn-signin-google'];
   const diagrams = items['btn-my-diagrams'];
+  if (examples) menu.appendChild(examples);
   if (signIn) menu.appendChild(signIn);
   if (diagrams) menu.appendChild(diagrams);
   makeMoreGroup('Import / Export', ['btn-import', 'btn-export', 'btn-export-pdf', 'btn-export-svg', 'btn-export-png'], items);
@@ -5223,13 +5364,11 @@ document.getElementById('btn-layout').onclick = autoLayout;
 document.getElementById('btn-fit').onclick    = fitView;
 
 // Empty state CTA buttons
-document.getElementById('btn-empty-example')?.addEventListener('click', () => {
-  // Open the example dropdown and load the first example
-  const sel = document.getElementById('example-sel');
-  if (sel && sel.options.length > 1) {
-    sel.value = sel.options[1].value;
-    sel.dispatchEvent(new Event('change'));
-  }
+document.getElementById('btn-empty-example')?.addEventListener('click', openExamplesModal);
+document.getElementById('btn-examples')?.addEventListener('click', () => {
+  // close the menu first, then open modal
+  document.getElementById('more-menu').style.display = 'none';
+  openExamplesModal();
 });
 document.getElementById('btn-empty-tour')?.addEventListener('click', () => {
   localStorage.removeItem(TOUR_KEY);
