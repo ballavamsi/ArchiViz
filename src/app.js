@@ -4034,6 +4034,48 @@ async function updateAuthMenu() {
   btn.style.display = sbReady() && !signedIn ? '' : 'none';
 }
 
+function injectGuestChip() {
+  if (document.getElementById('user-chip')) return;
+  const chip = document.createElement('div');
+  chip.id = 'user-chip';
+  chip.className = 'guest-chip';
+  chip.title = 'Guest\nBrowser-only flows';
+  chip.innerHTML = '<div class="user-avatar-initials">G</div>';
+
+  const menu = document.createElement('div');
+  menu.id = 'user-menu';
+  menu.innerHTML = `
+    <div class="user-menu-name">Guest</div>
+    <div class="user-menu-email">Browser-only flows</div>
+    <div class="user-menu-hint">Sign in to save flows to your private cloud library and open them from any device.</div>
+    <hr class="user-menu-divider"/>
+    <button id="guest-signin-btn" class="user-menu-item user-menu-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in to save flows
+    </button>
+    <button id="guest-flows-btn" class="user-menu-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      My Flows
+    </button>`;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;display:flex;align-items:center;margin-left:4px';
+  wrap.appendChild(chip);
+  wrap.appendChild(menu);
+  chip.onclick = e => { e.stopPropagation(); menu.classList.toggle('open'); };
+  menu.onclick = e => e.stopPropagation();
+  document.addEventListener('click', () => menu.classList.remove('open'), { capture: false });
+  setTimeout(() => {
+    menu.querySelector('#guest-signin-btn')?.addEventListener('click', startGoogleSignIn);
+    menu.querySelector('#guest-flows-btn')?.addEventListener('click', () => {
+      menu.classList.remove('open');
+      document.getElementById('btn-my-diagrams')?.click();
+    });
+  }, 0);
+  const toolbar = document.getElementById('btn-notif')?.closest('div')?.parentElement;
+  if (toolbar) toolbar.insertBefore(wrap, document.getElementById('btn-notif').closest('div'));
+}
+
 function setCurrentDiagram(meta = {}) {
   S.currentDiagramId = meta.id || null;
   S.currentDiagramTitle = meta.title || getDiagramTitle();
@@ -4209,22 +4251,22 @@ async function updateDiagramsPanel() {
     badge.classList.toggle('local', !cloud);
   }
   if (sub) sub.innerHTML = cloud
-    ? 'Cloud diagrams are private to your signed-in account. Search, open, rename, delete, import or download them anytime.'
-    : 'You are using browser-only storage. Sign in with Google to save diagrams to your private cloud library.';
+    ? 'Cloud flows are private to your signed-in account. Search, open, rename, delete, import or download them anytime.'
+    : 'You are using browser-only storage. Sign in with Google to save flows to your private cloud library.';
   if (notice) notice.innerHTML = cloud
     ? '<b>Cloud library active.</b> Local autosave still protects work during refreshes. Existing browser saves can be moved to cloud.'
-    : '<b>Browser-only storage.</b> Clearing browser data will erase saved diagrams. Export JSON or sign in for cloud saves.';
+    : '<b>Browser-only storage.</b> Clearing browser data will erase saved flows. Export JSON or sign in for cloud saves.';
   if (migrateBtn) migrateBtn.style.display = cloud && list.length ? '' : 'none';
   if (signInBtn) signInBtn.style.display = !cloud && sbReady() ? '' : 'none';
 
   if (cloud) {
-    panel.innerHTML = '<div class="diagram-empty">Loading cloud diagrams...</div>';
+    panel.innerHTML = '<div class="diagram-empty">Loading cloud flows...</div>';
     try {
       const q = (search?.value || '').trim();
       const data = await cloudDiagramRequest(`/api/diagrams?limit=50${q ? `&query=${encodeURIComponent(q)}` : ''}`);
       const diagrams = data.diagrams || [];
       if (!diagrams.length) {
-        panel.innerHTML = `<div class="diagram-empty">${q ? 'No diagrams match your search.' : 'No cloud diagrams yet. Save the current canvas to create one.'}</div>`;
+        panel.innerHTML = `<div class="diagram-empty">${q ? 'No flows match your search.' : 'No cloud flows yet. Save the current canvas to create one.'}</div>`;
         return;
       }
       panel.innerHTML = diagrams.map(d => `
@@ -4242,7 +4284,7 @@ async function updateDiagramsPanel() {
         </div>`).join('');
       return;
     } catch (err) {
-      panel.innerHTML = `<div class="diagram-empty">Cloud library unavailable: ${esc(err.message)}<br>Browser saves are still available below.</div>`;
+      panel.innerHTML = `<div class="diagram-empty">Cloud flow library unavailable: ${esc(err.message)}<br>Browser saves are still available below.</div>`;
     }
   }
 
@@ -4713,7 +4755,7 @@ speedSel.onchange = () => {
   }
 
   // Guest mode — user previously skipped login
-  if (localStorage.getItem('archviz.guest') === '1') { updateAuthMenu(); return; }
+  if (localStorage.getItem('archviz.guest') === '1') { injectGuestChip(); updateAuthMenu(); return; }
 
   const gate = document.createElement('div');
   gate.id = 'auth-gate';
@@ -4747,6 +4789,8 @@ speedSel.onchange = () => {
     localStorage.setItem('archviz.guest', '1');
     const el = document.getElementById('auth-gate');
     if (el) el.remove();
+    injectGuestChip();
+    updateAuthMenu();
   };
 
   // Listen for auth state change (OAuth redirect back)
@@ -4787,7 +4831,9 @@ function _onUserLoggedIn(user, isNewLogin = false) {
 }
 
 function _injectUserChip(name, firstName, avatar, email) {
-  if (document.getElementById('user-chip')) return; // already injected
+  const existing = document.getElementById('user-chip');
+  if (existing && !existing.classList.contains('guest-chip')) return; // already injected
+  existing?.parentElement?.remove();
   const chip = document.createElement('div');
   chip.id = 'user-chip';
   chip.title = `${name}\n${email}`;

@@ -1748,6 +1748,13 @@ body[data-theme="light"] .auth-guest-btn:hover {
   flex-shrink: 0;
 }
 #user-chip:hover { border-color: #4f9cf9; }
+#user-chip.guest-chip {
+  border-style: dashed;
+  border-color: rgba(245,183,49,0.7);
+}
+#user-chip.guest-chip .user-avatar-initials {
+  background: linear-gradient(135deg,#f5b731,#8b5cf6);
+}
 
 .user-avatar {
   width: 100%; height: 100%;
@@ -1777,6 +1784,7 @@ body[data-theme="light"] .auth-guest-btn:hover {
 
 .user-menu-name  { padding: 6px 14px 1px; font-size: 12px; font-weight: 600; color: #e6edf3; }
 .user-menu-email { padding: 0 14px 8px;   font-size: 11px; color: #6b7f96; }
+.user-menu-hint  { padding: 0 14px 9px; font-size: 10.5px; color: #8b949e; line-height: 1.45; }
 .user-menu-divider { border: none; border-top: 1px solid #30363d; margin: 0; }
 .user-menu-item {
   display: flex; align-items: center; gap: 8px;
@@ -1787,6 +1795,8 @@ body[data-theme="light"] .auth-guest-btn:hover {
   transition: background 0.1s;
 }
 .user-menu-item:hover { background: rgba(255,255,255,0.05); }
+.user-menu-primary { color: #4f9cf9; font-weight: 700; }
+.user-menu-primary:hover { background: rgba(79,156,249,0.1); }
 .user-menu-signout { color: #f87171; }
 .user-menu-signout:hover { background: rgba(248,113,113,0.08); }
 
@@ -2229,6 +2239,7 @@ body[data-theme="light"] .tbtn-collab:hover {
 .auth-gate-footer,
 .welcome-consent-text,
 .user-menu-email { color: var(--muted); }
+.user-menu-hint { color: var(--muted); }
 .auth-google-btn,
 #user-menu {
   background: var(--surface);

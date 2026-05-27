@@ -16,7 +16,9 @@
 
 Follow-up UI polish after the Cloud Diagram Library:
 - Guest users now get a `Sign in with Google` action in the More menu when Supabase auth is configured, even if they previously chose guest mode.
-- More menu is runtime-organized into hover submenus: `Import / Export`, `View`, and `Simulation`, with top-level `My Diagrams`, optional sign-in, `Clear Canvas`, and a compact About block.
+- Guest mode now also injects a profile chip labeled `Guest`, with actions for `Sign in to save flows` and `My Flows`.
+- The saved-file feature is branded as `My Flows` in the UI instead of `My Diagrams`.
+- More menu is runtime-organized into hover submenus: `Import / Export`, `View`, and `Simulation`, with top-level `My Flows`, optional sign-in, `Clear Canvas`, and a compact About block.
 - Architecture cockpit now defaults to compact mode and can expand/collapse. State persists in `localStorage` as `archviz.cockpit`.
 - More → View includes an explicit `Cockpit: Compact / Full` switch for toggling between the collapsed and current full cockpit view.
 - Regression tests now assert the guest sign-in recovery action, grouped More menu, and compact cockpit hooks.
@@ -34,10 +36,10 @@ npm run build
 
 **Previous local iteration:** Cloud Diagram Library
 
-Implemented a Supabase-backed private “My Diagrams” library while keeping browser-only saves as the guest/offline fallback.
+Implemented a Supabase-backed private “My Flows” library while keeping browser-only saves as the guest/offline fallback.
 
 Current cloud library behavior:
-- Signed-in users save diagrams to a new private `user_diagrams` table, separate from public short links.
+- Signed-in users save flows to a new private `user_diagrams` table, separate from public short links.
 - The modal supports save, save as, search, open, rename, delete, JSON download, JSON import, and moving browser saves to cloud.
 - Frontend sends the Supabase access token as `Authorization: Bearer ...`.
 - `server.mjs` validates the Supabase user before listing/loading/updating/deleting diagrams and scopes every operation by `user_id`.

@@ -143,9 +143,10 @@ test('netlify config publishes explicit build output', () => {
   assert.match(config, /npm test && npm run build/, 'Netlify build should run tests then build static output');
 });
 
-test('cloud diagram library has private API and UI hooks', () => {
+test('cloud flow library has private API and UI hooks', () => {
   const html = readFileSync(rootFile('index.html'), 'utf8');
   const appJs = readFileSync(rootFile('src/app.js'), 'utf8');
+  const css = readFileSync(rootFile('src/app.css'), 'utf8');
   const server = readFileSync(rootFile('server.mjs'), 'utf8');
   const sql = readFileSync(rootFile('supabase-user-diagrams.sql'), 'utf8');
 
@@ -166,6 +167,11 @@ test('cloud diagram library has private API and UI hooks', () => {
   assert.match(appJs, /migrateLocalSavesToCloud/, 'frontend should move browser saves to cloud');
   assert.match(appJs, /currentDiagramId/, 'frontend should track the currently open cloud file');
   assert.match(html + appJs, /btn-signin-google/, 'guest users should have a Google sign-in recovery action');
+  assert.match(html, /My Flows/, 'saved library should be branded as My Flows');
+  assert.doesNotMatch(html, /My Diagrams/, 'saved library should not use old My Diagrams label');
+  assert.match(appJs, /function injectGuestChip\(/, 'guest mode should show a profile chip');
+  assert.match(appJs, /Sign in to save flows/, 'guest profile should explain cloud-save sign-in');
+  assert.match(css, /guest-chip/, 'guest profile chip should have dedicated styling');
 
   assert.match(server, /\/api\/diagrams/, 'server should expose private diagram routes');
   assert.match(server, /verifySupabaseUser/, 'server should validate Supabase users');
