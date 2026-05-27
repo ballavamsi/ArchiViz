@@ -128,17 +128,50 @@ body {
 #title-wrap:hover #title-edit-icon { opacity: 0.9; }
 #title-wrap:focus-within #title-edit-icon { opacity: 0; }
 
+/* ── Auto-save badge ─────────────────────────────────────────────────────── */
 #title-saved-badge {
   font-size: 10px;
   font-weight: 600;
-  color: #34d058;
-  opacity: 0;
-  transition: opacity 0.3s;
   white-space: nowrap;
   pointer-events: none;
   letter-spacing: 0.01em;
+  border-radius: 4px;
+  padding: 1px 6px;
+  transition: all 0.25s;
+  opacity: 0;
 }
-#title-saved-badge.visible { opacity: 1; }
+#title-saved-badge.save-badge-unsaved {
+  opacity: 1;
+  color: #f5b731;
+  background: rgba(245,183,49,0.1);
+}
+#title-saved-badge.save-badge-saving {
+  opacity: 1;
+  color: var(--muted);
+  background: transparent;
+}
+#title-saved-badge.save-badge-saved {
+  opacity: 1;
+  color: #34d058;
+  background: rgba(52,208,88,0.1);
+}
+#title-saved-badge.save-badge-saving-cloud {
+  opacity: 1;
+  color: #4f9cf9;
+  background: rgba(79,156,249,0.08);
+}
+#title-saved-badge.save-badge-saved-cloud {
+  opacity: 1;
+  color: #4f9cf9;
+  background: rgba(79,156,249,0.1);
+  border: 1px solid rgba(79,156,249,0.2);
+}
+#title-saved-badge.save-badge-idle {
+  opacity: 0.45;
+  color: #34d058;
+  background: transparent;
+  font-weight: 500;
+}
 .tbtn { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; line-height: 1; }
 .tbtn:hover { background: var(--border); color: var(--text); border-color: var(--border2); }
 .tbtn.active { background: #1f6feb22; color: var(--accent); border-color: #1f6feb55; }
@@ -340,20 +373,20 @@ body {
 
 /* ── EDGES ── */
 .edge-hit  { fill: none; stroke: transparent; stroke-width: 18; cursor: pointer; pointer-events: stroke; }
-.edge-vis  { fill: none; stroke-width: 1.6; pointer-events: none; stroke-linecap: round; transition: stroke-width 0.2s; }
+.edge-vis  { fill: none; stroke-width: 2; pointer-events: none; stroke-linecap: round; transition: stroke-width 0.2s; }
 /* Flowing traffic: fine dotted line with round caps — clean and readable */
 .edge-anim { stroke-dasharray: 1,9; stroke-linecap: round; animation: flowdots 1.8s linear infinite; }
 /* Replication / dependency dashed */
-.edge-dash { stroke-dasharray: 6,5; stroke-linecap: butt; opacity: 0.55; }
-.edge-idle { stroke: var(--border2); opacity: 0.55; }
-.edge-ok   { stroke: var(--green);  opacity: 0.85; }
-.edge-warn { stroke: var(--yellow); opacity: 0.85; }
-.edge-crit { stroke: var(--red);    opacity: 0.9;  }
+.edge-dash { stroke-dasharray: 6,5; stroke-linecap: butt; opacity: 0.7; }
+.edge-idle { stroke: rgba(140,165,200,0.65); opacity: 1; }
+.edge-ok   { stroke: var(--green);  opacity: 0.9; }
+.edge-warn { stroke: var(--yellow); opacity: 0.9; }
+.edge-crit { stroke: var(--red);    opacity: 0.95; }
 @keyframes flowdots { to { stroke-dashoffset: -10; } }
 .edge-draw-in { animation: edge-draw 0.45s cubic-bezier(0.4,0,0.2,1) forwards; }
 @keyframes edge-draw { from { opacity:0; stroke-dashoffset: 400; stroke-dasharray: 400; } to { opacity:1; } }
 
-.edge-group:hover .edge-vis { opacity: 1 !important; stroke-width: 2.4 !important; }
+.edge-group:hover .edge-vis { opacity: 1 !important; stroke-width: 3 !important; }
 .edge-end-handle {
   fill: var(--surface);
   stroke: var(--accent);
@@ -888,9 +921,9 @@ body[data-theme="light"] .node-titles .node-type {
 @keyframes port-pulse { 0%,100%{box-shadow:0 0 0 4px rgba(79,156,249,0.3), 0 0 14px rgba(79,156,249,0.5);} 50%{box-shadow:0 0 0 7px rgba(79,156,249,0.5), 0 0 24px rgba(79,156,249,0.85);} }
 
 /* ── EDGES ── */
-.edge-vis { stroke-width: 2; }
+.edge-vis { stroke-width: 2.2; }
 .edge-hit  { stroke-width: 20; }
-.edge-idle { stroke: rgba(100,130,165,0.3); }
+.edge-idle { stroke: rgba(160,185,220,0.8); opacity: 1; }
 .edge-ok   { stroke: var(--green); filter: drop-shadow(0 0 3px rgba(52,208,88,0.35)); }
 .edge-warn { stroke: var(--yellow); filter: drop-shadow(0 0 3px rgba(245,183,49,0.35)); }
 .edge-crit { stroke: var(--red); filter: drop-shadow(0 0 4px rgba(246,96,96,0.45)); }
@@ -2138,7 +2171,7 @@ body[data-theme="light"] .tbtn-collab:hover {
   display: none;
   position: absolute;
   top: -6px;
-  right: calc(100% + 8px);
+  left: calc(100% + 4px);
   min-width: 220px;
   padding: 6px;
   background: var(--menu-bg);
@@ -2147,8 +2180,26 @@ body[data-theme="light"] .tbtn-collab:hover {
   box-shadow: 0 18px 50px rgba(15,23,42,0.22);
   z-index: 520;
 }
+/* Invisible hover bridge — fills the gap so mouse can travel from parent → submenu */
+#more-menu .more-submenu::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -12px;
+  width: 12px;
+  height: 100%;
+}
 #more-menu .more-group:hover > .more-submenu,
 #more-menu .more-group:focus-within > .more-submenu { display: flex; flex-direction: column; }
+/* Menu button (hamburger + text) */
+.tbtn-menu {
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 10px !important;
+  color: var(--text2) !important;
+}
+.tbtn-menu:hover { color: var(--text) !important; }
 #more-menu .more-item {
   min-height: 34px;
   justify-content: flex-start;
@@ -2340,7 +2391,7 @@ body[data-theme="light"] .empty-headline {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-body[data-theme="light"] .edge-idle { stroke: rgba(100,116,139,0.42); }
+body[data-theme="light"] .edge-idle { stroke: rgba(71,85,105,0.6); }
 body[data-theme="light"] .flow-txt { fill: #334155; }
 body[data-theme="light"] .share-overlay,
 body[data-theme="light"] #my-diagrams-modal,

@@ -226,19 +226,40 @@ function getDiagramTitle() {
   return document.getElementById('diagram-title')?.value || 'Untitled Architecture';
 }
 
+// ── Save status badge ─────────────────────────────────────────────────────
+const _saveBadge = document.getElementById('title-saved-badge');
+let _saveBadgeTimer = null;
+function setSaveBadge(state) { // 'unsaved' | 'saving' | 'saved' | 'saving-cloud' | 'saved-cloud'
+  if (!_saveBadge) return;
+  clearTimeout(_saveBadgeTimer);
+  _saveBadge.className = 'save-badge-' + state;
+  if (state === 'unsaved') {
+    _saveBadge.textContent = '● Unsaved';
+  } else if (state === 'saving') {
+    _saveBadge.textContent = 'Saving…';
+  } else if (state === 'saving-cloud') {
+    _saveBadge.textContent = '☁ Saving…';
+  } else if (state === 'saved-cloud') {
+    _saveBadge.textContent = '☁ Saved';
+    _saveBadgeTimer = setTimeout(() => {
+      _saveBadge.className = 'save-badge-idle';
+      _saveBadge.textContent = '☁ Saved';
+    }, 4000);
+  } else {
+    _saveBadge.textContent = '✓ Saved';
+    // Fade to subtle idle state after 4s
+    _saveBadgeTimer = setTimeout(() => {
+      _saveBadge.className = 'save-badge-idle';
+      _saveBadge.textContent = '✓ Saved';
+    }, 4000);
+  }
+}
+window._setSaveBadge = setSaveBadge;
+
 // ── Title input behaviour ─────────────────────────────────────────────────
 (function wireTitleInput() {
   const inp = document.getElementById('diagram-title');
-  const badge = document.getElementById('title-saved-badge');
   if (!inp) return;
-  let _savedTimer = null;
-
-  function flashSaved() {
-    if (!badge) return;
-    badge.classList.add('visible');
-    clearTimeout(_savedTimer);
-    _savedTimer = setTimeout(() => badge.classList.remove('visible'), 1800);
-  }
 
   inp.addEventListener('input', () => {
     S.title = inp.value;
@@ -251,7 +272,6 @@ function getDiagramTitle() {
     S.title = inp.value;
     document.title = inp.value + ' — Archi-Flow';
     autoSave();
-    flashSaved();
   });
 
   // Select all on focus for easy rename
@@ -3066,7 +3086,7 @@ function clearCanvas(silent) {
   S.nodes={}; S.edges=[]; S.eFlow={}; S.simLoad={}; S.sel=null; S.selEdge=null;
   S.activeExample='';
   setCurrentDiagram({});
-  S.dirty = false;
+  S.dirty = false; setSaveBadge('saved');
   S.nSeq=0; S.eSeq=0;
   setExampleSelect('');
   cNodes.innerHTML=''; edgesG.innerHTML=''; labelsG.innerHTML=''; particlesG.innerHTML='';
@@ -3160,7 +3180,7 @@ function importArchitecture(payload) {
   document.getElementById('canvas-empty').style.display = Object.keys(S.nodes).length ? 'none' : '';
   renderAll(); updateStats(); updateCost(); showProps(null);
   if (!Number.isFinite(next.view?.zoom)) setTimeout(fitView, 50);
-  S.dirty = false;
+  S.dirty = false; setSaveBadge('saved');
 }
 
 function architecturePayload() {
@@ -4197,6 +4217,7 @@ function updateShareHash() {
 const LS_KEY  = 'archviz.saved';
 const LS_AUTO = 'archviz.autosave';
 let _autoSaveTimer = null;
+let _cloudAutoSaveTimer = null;
 let _diagramSearchTimer = null;
 
 function lsGetSaved() {
@@ -4206,15 +4227,44 @@ function lsSetSaved(list) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(list)); } catch {}
 }
 
+async function _cloudAutoSaveNow() {
+  if (!S.currentDiagramId) return;
+  const hasCloud = await hasCloudLibrary().catch(() => false);
+  if (!hasCloud) return;
+  if (!Object.keys(S.nodes).length) return;
+  setSaveBadge('saving-cloud');
+  try {
+    const title = getDiagramTitle();
+    const payload = architecturePayload();
+    const updated = await cloudDiagramRequest(`/api/diagrams/${S.currentDiagramId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title, payload }),
+    });
+    setCurrentDiagram(updated);
+    setSaveBadge('saved-cloud');
+  } catch (err) {
+    // Cloud save failed — fall back to showing local saved state
+    setSaveBadge('saved');
+    console.warn('[autoSave] cloud sync failed:', err.message);
+  }
+}
+
 function autoSave() {
   S.dirty = true;
+  setSaveBadge('unsaved');
+  // 1. Always write to localStorage quickly (1.5s)
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = setTimeout(() => {
-    if (!Object.keys(S.nodes).length) return; // nothing to save
+    setSaveBadge('saving');
+    if (!Object.keys(S.nodes).length) { setSaveBadge('saved'); return; }
     const payload = architecturePayload();
     try { localStorage.setItem(LS_AUTO, JSON.stringify({ ts: Date.now(), payload })); } catch {}
     updateDiagramsPanel();
-  }, 1800);
+    setSaveBadge('saved');
+  }, 1500);
+  // 2. If signed in with an open cloud flow, also sync to Supabase (10s debounce)
+  clearTimeout(_cloudAutoSaveTimer);
+  _cloudAutoSaveTimer = setTimeout(_cloudAutoSaveNow, 10000);
 }
 
 function loadAutoSavedDiagram() {
@@ -4338,7 +4388,7 @@ function injectGuestChip() {
 function setCurrentDiagram(meta = {}) {
   S.currentDiagramId = meta.id || null;
   S.currentDiagramTitle = meta.title || getDiagramTitle();
-  S.dirty = false;
+  S.dirty = false; setSaveBadge('saved');
   const inp = document.getElementById('save-diag-name');
   if (inp) inp.value = S.currentDiagramTitle || getDiagramTitle();
 }
@@ -4348,7 +4398,7 @@ function saveNamedDiagram(name) {
   const id   = 'diag_' + Date.now();
   list.unshift({ id, name: name || getDiagramTitle() || 'Untitled', ts: Date.now(), payload: architecturePayload() });
   lsSetSaved(list.slice(0, 20)); // keep last 20
-  S.dirty = false;
+  S.dirty = false; setSaveBadge('saved');
   updateDiagramsPanel();
   pushToast(`"${name}" saved to browser.`, 'info');
   track('diagram_saved_local', { name });
@@ -4375,6 +4425,7 @@ async function saveCloudDiagram({ saveAs = false } = {}) {
       body: JSON.stringify({ title, payload }),
     });
     setCurrentDiagram(updated);
+    setSaveBadge('saved-cloud');
     pushToast(`Saved "${updated.title}".`, 'info');
     track('diagram_saved_cloud', { mode: 'update', node_count: Object.keys(S.nodes).length });
   } else {
@@ -4383,6 +4434,7 @@ async function saveCloudDiagram({ saveAs = false } = {}) {
       body: JSON.stringify({ title, payload }),
     });
     setCurrentDiagram(created);
+    setSaveBadge('saved-cloud');
     pushToast(`Saved "${created.title}".`, 'info');
     track('diagram_saved_cloud', { mode: 'create', node_count: Object.keys(S.nodes).length });
   }
