@@ -26,7 +26,7 @@
  *
  * Output:
  *   social-screenshots/archi-flow-demo.webm
- *   social-screenshots/archi-flow-demo.mp4   (2× speed, requires ffmpeg)
+ *   social-screenshots/archi-flow-demo.mp4   (with TTS voice, requires ffmpeg + macOS say)
  *   social-screenshots/archi-flow-demo.srt
  */
 import { chromium }          from 'playwright';
